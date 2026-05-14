@@ -1,0 +1,40 @@
+package main
+
+import (
+	"log"
+
+	"gorm.io/gorm"
+
+	"github.com/educabot/alizia-inclusion-be/config"
+	"github.com/educabot/alizia-inclusion-be/src/core/providers"
+	air "github.com/educabot/alizia-inclusion-be/src/repositories/ai"
+	catalogr "github.com/educabot/alizia-inclusion-be/src/repositories/catalog"
+	inclusionr "github.com/educabot/alizia-inclusion-be/src/repositories/inclusion"
+)
+
+type Repositories struct {
+	Ramps           providers.RampProvider
+	Devices         providers.DeviceProvider
+	Students        providers.StudentProvider
+	StudentProfiles providers.StudentProfileProvider
+	AI              providers.AIClient
+}
+
+func NewRepositories(db *gorm.DB, cfg *config.Config) *Repositories {
+	var aiClient providers.AIClient
+	if cfg.AzureOpenAIKey != "" && cfg.AzureOpenAIEndpoint != "" && cfg.AzureOpenAIKey != "your-azure-openai-key" {
+		aiClient = air.NewAzureClient(cfg.AzureOpenAIEndpoint, cfg.AzureOpenAIKey, cfg.AzureOpenAIModel)
+		log.Printf("[INFO] Using Azure OpenAI client (endpoint: %s, model: %s)", cfg.AzureOpenAIEndpoint, cfg.AzureOpenAIModel)
+	} else {
+		aiClient = air.NewStubClient()
+		log.Println("[WARN] Using stub AI client — set AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT for real AI")
+	}
+
+	return &Repositories{
+		Ramps:           catalogr.NewRampRepo(db),
+		Devices:         catalogr.NewDeviceRepo(db),
+		Students:        inclusionr.NewStudentRepo(db),
+		StudentProfiles: inclusionr.NewStudentProfileRepo(db),
+		AI:              aiClient,
+	}
+}
