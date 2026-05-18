@@ -14,4 +14,7 @@ var (
 var (
 	ErrProfileNotFound    = bcerrors.New("student inclusion profile not found")
 	ErrServiceUnavailable = bcerrors.New("AI service unavailable")
+	ErrInvalidCredentials = bcerrors.New("invalid email or password")
+	ErrClassroomNotFound  = bcerrors.New("classroom not found")
+	ErrAdaptationNotFound = bcerrors.New("adaptation not found")
 )

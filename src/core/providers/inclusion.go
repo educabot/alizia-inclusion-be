@@ -16,4 +16,8 @@ type StudentProfileProvider interface {
 type StudentProvider interface {
 	GetStudent(ctx context.Context, orgID uuid.UUID, id int64) (*entities.Student, error)
 	ListByClassroom(ctx context.Context, orgID uuid.UUID, classroomID int64) ([]entities.Student, error)
+	List(ctx context.Context, orgID uuid.UUID) ([]entities.Student, error)
+	Create(ctx context.Context, student *entities.Student) error
+	Update(ctx context.Context, student *entities.Student) error
+	Delete(ctx context.Context, orgID uuid.UUID, id int64) error
 }

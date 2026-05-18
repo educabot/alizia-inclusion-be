@@ -15,6 +15,11 @@ func NewHandlers(uc *UseCases, cfg *config.Config) *entrypoints.WebHandlerContai
 	toker := tokens.New(cfg.JWTSecret, jwtIssuer)
 
 	return &entrypoints.WebHandlerContainer{
+		Auth: &entrypoints.AuthContainer{
+			Toker:   toker,
+			LoginUC: uc.Login,
+			GetMe:   uc.GetMe,
+		},
 		Catalog: &entrypoints.CatalogContainer{
 			ListRamps:   uc.ListRamps,
 			GetRamp:     uc.GetRamp,
@@ -27,6 +32,27 @@ func NewHandlers(uc *UseCases, cfg *config.Config) *entrypoints.WebHandlerContai
 			ListClassroomStudents: uc.ListClassroomStudents,
 			RecommendDevice:       uc.RecommendDevice,
 			AssistClassroom:       uc.AssistClassroom,
+			ListStudents:          uc.ListStudents,
+			CreateStudent:         uc.CreateStudent,
+			UpdateStudent:         uc.UpdateStudent,
+			DeleteStudent:         uc.DeleteStudent,
+			ListAdaptations:       uc.ListAdaptations,
+			GetAdaptation:         uc.GetAdaptation,
+			CreateAdaptation:      uc.CreateAdaptation,
+			UpdateAdaptation:      uc.UpdateAdaptation,
+			DeleteAdaptation:      uc.DeleteAdaptation,
+			GetChatHistory:        uc.GetChatHistory,
+		},
+		Management: &entrypoints.ManagementContainer{
+			ListClassrooms:  uc.ListClassrooms,
+			GetClassroom:    uc.GetClassroom,
+			CreateClassroom: uc.CreateClassroom,
+			UpdateClassroom: uc.UpdateClassroom,
+			DeleteClassroom: uc.DeleteClassroom,
+			ListTeachers:    uc.ListTeachers,
+		},
+		Dashboard: &entrypoints.DashboardContainer{
+			GetMetrics: uc.GetMetrics,
 		},
 		AuthMiddleware:   tokens.ValidateTokenMiddleware(toker, bcfg.Environment(cfg.Env)),
 		TenantMiddleware: middleware.TenantMiddleware(),

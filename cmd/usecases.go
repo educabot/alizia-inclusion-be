@@ -1,8 +1,11 @@
 package main
 
 import (
+	authuc "github.com/educabot/alizia-inclusion-be/src/core/usecases/auth"
 	cataloguc "github.com/educabot/alizia-inclusion-be/src/core/usecases/catalog"
+	dashuc "github.com/educabot/alizia-inclusion-be/src/core/usecases/dashboard"
 	inclusionuc "github.com/educabot/alizia-inclusion-be/src/core/usecases/inclusion"
+	mgmtuc "github.com/educabot/alizia-inclusion-be/src/core/usecases/management"
 )
 
 type UseCases struct {
@@ -16,6 +19,29 @@ type UseCases struct {
 	ListClassroomStudents inclusionuc.ListClassroomStudents
 	RecommendDevice       inclusionuc.RecommendDevice
 	AssistClassroom       inclusionuc.AssistClassroom
+
+	Login authuc.Login
+	GetMe authuc.GetMe
+
+	ListClassrooms  mgmtuc.ListClassrooms
+	GetClassroom    mgmtuc.GetClassroom
+	CreateClassroom mgmtuc.CreateClassroom
+	UpdateClassroom mgmtuc.UpdateClassroom
+	DeleteClassroom mgmtuc.DeleteClassroom
+	ListTeachers    mgmtuc.ListTeachers
+
+	ListStudents     inclusionuc.ListStudents
+	CreateStudent    inclusionuc.CreateStudent
+	UpdateStudent    inclusionuc.UpdateStudent
+	DeleteStudent    inclusionuc.DeleteStudent
+	ListAdaptations  inclusionuc.ListAdaptations
+	GetAdaptation    inclusionuc.GetAdaptation
+	CreateAdaptation inclusionuc.CreateAdaptation
+	UpdateAdaptation inclusionuc.UpdateAdaptation
+	DeleteAdaptation inclusionuc.DeleteAdaptation
+	GetChatHistory   inclusionuc.GetChatHistory
+
+	GetMetrics dashuc.GetMetrics
 }
 
 func NewUseCases(repos *Repositories) *UseCases {
@@ -30,5 +56,28 @@ func NewUseCases(repos *Repositories) *UseCases {
 		ListClassroomStudents: inclusionuc.NewListClassroomStudents(repos.Students),
 		RecommendDevice:       inclusionuc.NewRecommendDevice(repos.AI, repos.Students, repos.Devices, repos.Ramps),
 		AssistClassroom:       inclusionuc.NewAssistClassroom(repos.AI, repos.Students, repos.Devices),
+
+		Login: authuc.NewLogin(repos.Users),
+		GetMe: authuc.NewGetMe(repos.Users),
+
+		ListClassrooms:  mgmtuc.NewListClassrooms(repos.Classrooms),
+		GetClassroom:    mgmtuc.NewGetClassroom(repos.Classrooms),
+		CreateClassroom: mgmtuc.NewCreateClassroom(repos.Classrooms),
+		UpdateClassroom: mgmtuc.NewUpdateClassroom(repos.Classrooms),
+		DeleteClassroom: mgmtuc.NewDeleteClassroom(repos.Classrooms),
+		ListTeachers:    mgmtuc.NewListTeachers(repos.Users),
+
+		ListStudents:     inclusionuc.NewListStudents(repos.Students),
+		CreateStudent:    inclusionuc.NewCreateStudent(repos.Students),
+		UpdateStudent:    inclusionuc.NewUpdateStudent(repos.Students),
+		DeleteStudent:    inclusionuc.NewDeleteStudent(repos.Students),
+		ListAdaptations:  inclusionuc.NewListAdaptations(repos.Adaptations),
+		GetAdaptation:    inclusionuc.NewGetAdaptation(repos.Adaptations),
+		CreateAdaptation: inclusionuc.NewCreateAdaptation(repos.Adaptations),
+		UpdateAdaptation: inclusionuc.NewUpdateAdaptation(repos.Adaptations),
+		DeleteAdaptation: inclusionuc.NewDeleteAdaptation(repos.Adaptations),
+		GetChatHistory:   inclusionuc.NewGetChatHistory(repos.Conversations),
+
+		GetMetrics: dashuc.NewGetMetrics(repos.Students, repos.Adaptations, repos.Classrooms),
 	}
 }

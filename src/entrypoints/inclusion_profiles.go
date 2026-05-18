@@ -2,6 +2,7 @@ package entrypoints
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/educabot/team-ai-toolkit/web"
 
@@ -25,6 +26,7 @@ type studentWithProfileResponse struct {
 	Name        string                  `json:"name"`
 	ClassroomID int64                   `json:"classroom_id"`
 	Profile     *studentProfileResponse `json:"profile,omitempty"`
+	CreatedAt   string                  `json:"created_at"`
 }
 
 func mapStudentWithProfile(s entities.Student) studentWithProfileResponse {
@@ -32,6 +34,7 @@ func mapStudentWithProfile(s entities.Student) studentWithProfileResponse {
 		ID:          s.ID,
 		Name:        s.Name,
 		ClassroomID: s.ClassroomID,
+		CreatedAt:   s.CreatedAt.Format(time.RFC3339),
 	}
 	if s.Profile != nil {
 		diffs := make([]string, len(s.Profile.Difficulties))
@@ -63,7 +66,7 @@ type upsertProfileBody struct {
 }
 
 func (c *InclusionContainer) HandleGetStudentProfile(req web.Request) web.Response {
-	studentID, err := strconv.ParseInt(req.Param("student_id"), 10, 64)
+	studentID, err := strconv.ParseInt(req.Param("id"), 10, 64)
 	if err != nil {
 		return rest.HandleError(err)
 	}
@@ -79,7 +82,7 @@ func (c *InclusionContainer) HandleGetStudentProfile(req web.Request) web.Respon
 }
 
 func (c *InclusionContainer) HandleUpsertStudentProfile(req web.Request) web.Response {
-	studentID, err := strconv.ParseInt(req.Param("student_id"), 10, 64)
+	studentID, err := strconv.ParseInt(req.Param("id"), 10, 64)
 	if err != nil {
 		return rest.HandleError(err)
 	}
@@ -111,7 +114,7 @@ func (c *InclusionContainer) HandleUpsertStudentProfile(req web.Request) web.Res
 }
 
 func (c *InclusionContainer) HandleListClassroomStudents(req web.Request) web.Response {
-	classroomID, err := strconv.ParseInt(req.Param("classroom_id"), 10, 64)
+	classroomID, err := strconv.ParseInt(req.Param("id"), 10, 64)
 	if err != nil {
 		return rest.HandleError(err)
 	}

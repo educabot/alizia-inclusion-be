@@ -16,6 +16,7 @@ type rampResponse struct {
 	Name             string           `json:"name"`
 	Description      *string          `json:"description,omitempty"`
 	ShortDescription *string          `json:"short_description,omitempty"`
+	VideoURL         *string          `json:"video_url,omitempty"`
 	SortOrder        int              `json:"sort_order"`
 	Devices          []deviceResponse `json:"devices"`
 }
@@ -26,6 +27,7 @@ func mapRamp(r entities.Ramp) rampResponse {
 		Name:             r.Name,
 		Description:      r.Description,
 		ShortDescription: r.ShortDescription,
+		VideoURL:         r.VideoURL,
 		SortOrder:        r.SortOrder,
 		Devices:          mapDevices(r.Devices),
 	}

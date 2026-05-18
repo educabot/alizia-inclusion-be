@@ -25,3 +25,9 @@ vendor/
 
 # Coverage
 coverage.out
+
+# Logs
+*.log
+
+# Docs (local tracking)
+PENDIENTES-*.md

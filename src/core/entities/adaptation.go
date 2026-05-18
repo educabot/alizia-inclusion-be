@@ -1,0 +1,21 @@
+package entities
+
+import "github.com/google/uuid"
+
+type Adaptation struct {
+	ID                  int64     `json:"id" gorm:"primaryKey"`
+	OrganizationID      uuid.UUID `json:"organization_id"`
+	StudentID           int64     `json:"student_id"`
+	TeacherID           int64     `json:"teacher_id"`
+	DeviceID            *int64    `json:"device_id,omitempty"`
+	Subject             string    `json:"subject"`
+	ActivityDescription *string   `json:"activity_description,omitempty"`
+	AdaptationStrategy  *string   `json:"adaptation_strategy,omitempty"`
+	Outcome             *string   `json:"outcome,omitempty"`
+	Notes               *string   `json:"notes,omitempty"`
+	Status              string    `json:"status" gorm:"default:en_curso"`
+	Student             *Student  `json:"student,omitempty" gorm:"foreignKey:StudentID"`
+	Teacher             *User     `json:"teacher,omitempty" gorm:"foreignKey:TeacherID"`
+	Device              *Device   `json:"device,omitempty" gorm:"foreignKey:DeviceID"`
+	TimeTrackedEntity
+}

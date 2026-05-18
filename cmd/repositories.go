@@ -8,8 +8,10 @@ import (
 	"github.com/educabot/alizia-inclusion-be/config"
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
 	air "github.com/educabot/alizia-inclusion-be/src/repositories/ai"
+	authr "github.com/educabot/alizia-inclusion-be/src/repositories/auth"
 	catalogr "github.com/educabot/alizia-inclusion-be/src/repositories/catalog"
 	inclusionr "github.com/educabot/alizia-inclusion-be/src/repositories/inclusion"
+	mgmtr "github.com/educabot/alizia-inclusion-be/src/repositories/management"
 )
 
 type Repositories struct {
@@ -18,6 +20,10 @@ type Repositories struct {
 	Students        providers.StudentProvider
 	StudentProfiles providers.StudentProfileProvider
 	AI              providers.AIClient
+	Users           providers.UserProvider
+	Classrooms      providers.ClassroomProvider
+	Adaptations     providers.AdaptationProvider
+	Conversations   providers.ConversationProvider
 }
 
 func NewRepositories(db *gorm.DB, cfg *config.Config) *Repositories {
@@ -36,5 +42,9 @@ func NewRepositories(db *gorm.DB, cfg *config.Config) *Repositories {
 		Students:        inclusionr.NewStudentRepo(db),
 		StudentProfiles: inclusionr.NewStudentProfileRepo(db),
 		AI:              aiClient,
+		Users:           authr.NewUserRepo(db),
+		Classrooms:      mgmtr.NewClassroomRepo(db),
+		Adaptations:     inclusionr.NewAdaptationRepo(db),
+		Conversations:   inclusionr.NewConversationRepo(db),
 	}
 }

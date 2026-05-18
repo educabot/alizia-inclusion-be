@@ -1,0 +1,533 @@
+{
+	"info": {
+		"name": "alizia-inclusion",
+		"description": "Coleccion completa de alizia-inclusion-be (35 requests).\n\nEjecutar con Newman o como Runner en Postman — el flujo es secuencial.\n\n1. Login guarda token automaticamente\n2. Creates guardan IDs en variables\n3. Updates/Deletes usan esos IDs dinamicos\n4. Nunca toca datos seed\n\nUsuarios demo: docente1@demo.edu / demo123, admin@demo.edu / demo123",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "base_url", "value": "http://localhost:8080/api/v1" },
+		{ "key": "token", "value": "" },
+		{ "key": "created_classroom_id", "value": "" },
+		{ "key": "created_student_id", "value": "" },
+		{ "key": "created_adaptation_id", "value": "" }
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+	},
+	"item": [
+		{
+			"name": "01 - Health & Auth",
+			"item": [
+				{
+					"name": "Health Check",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('Health OK', function() { pm.response.to.have.status(200); });"
+					]}}],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "http://localhost:8080/health", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["health"] },
+						"auth": { "type": "noauth" }
+					}
+				},
+				{
+					"name": "Login (docente1)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('Login OK', function() { pm.response.to.have.status(200); });",
+						"var json = pm.response.json();",
+						"var token = json.description ? json.description.token : json.token;",
+						"pm.collectionVariables.set('token', token);",
+						"console.log('Token saved');"
+					]}}],
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\n    \"email\": \"docente1@demo.edu\",\n    \"password\": \"demo123\"\n}" },
+						"url": { "raw": "{{base_url}}/auth/login", "host": ["{{base_url}}"], "path": ["auth", "login"] },
+						"auth": { "type": "noauth" }
+					}
+				},
+				{
+					"name": "Login (admin)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('Login admin OK', function() { pm.response.to.have.status(200); });",
+						"var json = pm.response.json();",
+						"var token = json.description ? json.description.token : json.token;",
+						"pm.collectionVariables.set('token', token);",
+						"console.log('Token switched to admin');"
+					]}}],
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\n    \"email\": \"admin@demo.edu\",\n    \"password\": \"demo123\"\n}" },
+						"url": { "raw": "{{base_url}}/auth/login", "host": ["{{base_url}}"], "path": ["auth", "login"] },
+						"auth": { "type": "noauth" }
+					}
+				},
+				{
+					"name": "Login back (docente1)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"var json = pm.response.json();",
+						"var token = json.description ? json.description.token : json.token;",
+						"pm.collectionVariables.set('token', token);"
+					]}}],
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\n    \"email\": \"docente1@demo.edu\",\n    \"password\": \"demo123\"\n}" },
+						"url": { "raw": "{{base_url}}/auth/login", "host": ["{{base_url}}"], "path": ["auth", "login"] },
+						"auth": { "type": "noauth" }
+					}
+				},
+				{
+					"name": "Get Me",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('Get Me OK', function() { pm.response.to.have.status(200); });",
+						"var json = pm.response.json();",
+						"var user = json.description || json;",
+						"pm.test('Has email', function() { pm.expect(user.email).to.eql('docente1@demo.edu'); });"
+					]}}],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/auth/me", "host": ["{{base_url}}"], "path": ["auth", "me"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "02 - Classrooms",
+			"item": [
+				{
+					"name": "List Classrooms",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('200', function() { pm.response.to.have.status(200); });",
+						"var json = pm.response.json();",
+						"var list = json.description || json;",
+						"pm.test('Has classrooms', function() { pm.expect(list.length).to.be.above(0); });"
+					]}}],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/classrooms", "host": ["{{base_url}}"], "path": ["classrooms"] }
+					}
+				},
+				{
+					"name": "Get Classroom (seed: 1)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('200', function() { pm.response.to.have.status(200); });"
+					]}}],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/classrooms/1", "host": ["{{base_url}}"], "path": ["classrooms", "1"] }
+					}
+				},
+				{
+					"name": "Create Classroom",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('201', function() { pm.response.to.have.status(201); });",
+						"var json = pm.response.json();",
+						"var obj = json.description || json;",
+						"pm.collectionVariables.set('created_classroom_id', obj.id);",
+						"console.log('Created classroom ID: ' + obj.id);"
+					]}}],
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\n    \"name\": \"6to Test\",\n    \"grade\": \"6\",\n    \"section\": \"T\"\n}" },
+						"url": { "raw": "{{base_url}}/classrooms", "host": ["{{base_url}}"], "path": ["classrooms"] }
+					}
+				},
+				{
+					"name": "Update Classroom (created)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('200', function() { pm.response.to.have.status(200); });"
+					]}}],
+					"request": {
+						"method": "PUT",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\n    \"name\": \"6to Test Updated\"\n}" },
+						"url": { "raw": "{{base_url}}/classrooms/{{created_classroom_id}}", "host": ["{{base_url}}"], "path": ["classrooms", "{{created_classroom_id}}"] }
+					}
+				},
+				{
+					"name": "List Classroom Students (seed: 1)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('200', function() { pm.response.to.have.status(200); });"
+					]}}],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/classrooms/1/students", "host": ["{{base_url}}"], "path": ["classrooms", "1", "students"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "03 - Teachers",
+			"item": [
+				{
+					"name": "List Teachers",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('200', function() { pm.response.to.have.status(200); });",
+						"var json = pm.response.json();",
+						"var list = json.description || json;",
+						"pm.test('Has teachers', function() { pm.expect(list.length).to.be.above(0); });"
+					]}}],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/teachers", "host": ["{{base_url}}"], "path": ["teachers"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "04 - Students",
+			"item": [
+				{
+					"name": "List Students",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('200', function() { pm.response.to.have.status(200); });"
+					]}}],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/students", "host": ["{{base_url}}"], "path": ["students"] }
+					}
+				},
+				{
+					"name": "List Students (by classroom)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('200', function() { pm.response.to.have.status(200); });"
+					]}}],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/students?classroom_id=1", "host": ["{{base_url}}"], "path": ["students"], "query": [{ "key": "classroom_id", "value": "1" }] }
+					}
+				},
+				{
+					"name": "Get Student (seed: 1)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('200', function() { pm.response.to.have.status(200); });"
+					]}}],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/students/1", "host": ["{{base_url}}"], "path": ["students", "1"] }
+					}
+				},
+				{
+					"name": "Create Student",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('201', function() { pm.response.to.have.status(201); });",
+						"var json = pm.response.json();",
+						"var obj = json.description || json;",
+						"pm.collectionVariables.set('created_student_id', obj.id);",
+						"console.log('Created student ID: ' + obj.id);"
+					]}}],
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\n    \"name\": \"Test Alumno Newman\",\n    \"classroom_id\": 2\n}" },
+						"url": { "raw": "{{base_url}}/students", "host": ["{{base_url}}"], "path": ["students"] }
+					}
+				},
+				{
+					"name": "Update Student (created)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('200', function() { pm.response.to.have.status(200); });"
+					]}}],
+					"request": {
+						"method": "PUT",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\n    \"name\": \"Test Alumno Updated\"\n}" },
+						"url": { "raw": "{{base_url}}/students/{{created_student_id}}", "host": ["{{base_url}}"], "path": ["students", "{{created_student_id}}"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "05 - Student Profiles",
+			"item": [
+				{
+					"name": "Get Student Profile (seed: 1)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('200', function() { pm.response.to.have.status(200); });"
+					]}}],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/students/1/profile", "host": ["{{base_url}}"], "path": ["students", "1", "profile"] }
+					}
+				},
+				{
+					"name": "Upsert Student Profile (seed: 1)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('200', function() { pm.response.to.have.status(200); });"
+					]}}],
+					"request": {
+						"method": "PUT",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\n    \"is_transitory\": false,\n    \"difficulties\": [\"motricidad_fina\", \"atencion\"],\n    \"free_description\": \"Test: dificultades de motricidad fina y atencion.\"\n}" },
+						"url": { "raw": "{{base_url}}/students/1/profile", "host": ["{{base_url}}"], "path": ["students", "1", "profile"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "06 - Catalog (Ramps & Devices)",
+			"item": [
+				{
+					"name": "List Ramps",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('200', function() { pm.response.to.have.status(200); });",
+						"var json = pm.response.json();",
+						"var list = json.description || json;",
+						"pm.test('Has ramps', function() { pm.expect(list.length).to.be.above(0); });"
+					]}}],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/ramps", "host": ["{{base_url}}"], "path": ["ramps"] }
+					}
+				},
+				{
+					"name": "Get Ramp (1)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('200', function() { pm.response.to.have.status(200); });"
+					]}}],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/ramps/1", "host": ["{{base_url}}"], "path": ["ramps", "1"] }
+					}
+				},
+				{
+					"name": "List Devices",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('200', function() { pm.response.to.have.status(200); });",
+						"var json = pm.response.json();",
+						"var list = json.description || json;",
+						"pm.test('Has devices', function() { pm.expect(list.length).to.be.above(0); });"
+					]}}],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/devices", "host": ["{{base_url}}"], "path": ["devices"] }
+					}
+				},
+				{
+					"name": "List Devices (by ramp)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('200', function() { pm.response.to.have.status(200); });"
+					]}}],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/devices?ramp_id=1", "host": ["{{base_url}}"], "path": ["devices"], "query": [{ "key": "ramp_id", "value": "1" }] }
+					}
+				},
+				{
+					"name": "Get Device (1)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('200', function() { pm.response.to.have.status(200); });"
+					]}}],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/devices/1", "host": ["{{base_url}}"], "path": ["devices", "1"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "07 - Adaptations",
+			"item": [
+				{
+					"name": "List Adaptations",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('200', function() { pm.response.to.have.status(200); });"
+					]}}],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/adaptations", "host": ["{{base_url}}"], "path": ["adaptations"] }
+					}
+				},
+				{
+					"name": "Create Adaptation",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('201', function() { pm.response.to.have.status(201); });",
+						"var json = pm.response.json();",
+						"var obj = json.description || json;",
+						"pm.collectionVariables.set('created_adaptation_id', obj.id);",
+						"console.log('Created adaptation ID: ' + obj.id);"
+					]}}],
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\n    \"student_id\": 1,\n    \"device_id\": 1,\n    \"subject\": \"Matematica\",\n    \"activity_description\": \"Fracciones con material concreto\",\n    \"adaptation_strategy\": \"Tablet con calculadora visual\",\n    \"notes\": \"Responde bien a estimulos visuales\"\n}" },
+						"url": { "raw": "{{base_url}}/adaptations", "host": ["{{base_url}}"], "path": ["adaptations"] }
+					}
+				},
+				{
+					"name": "List Adaptations (by student)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('200', function() { pm.response.to.have.status(200); });"
+					]}}],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/adaptations?student_id=1", "host": ["{{base_url}}"], "path": ["adaptations"], "query": [{ "key": "student_id", "value": "1" }] }
+					}
+				},
+				{
+					"name": "Get Adaptation (created)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('200', function() { pm.response.to.have.status(200); });"
+					]}}],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/adaptations/{{created_adaptation_id}}", "host": ["{{base_url}}"], "path": ["adaptations", "{{created_adaptation_id}}"] }
+					}
+				},
+				{
+					"name": "Update Adaptation (created)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('200', function() { pm.response.to.have.status(200); });"
+					]}}],
+					"request": {
+						"method": "PUT",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\n    \"status\": \"probado\",\n    \"outcome\": \"Completo la actividad con mayor autonomia\",\n    \"notes\": \"Funciono bien, repetir en proxima clase\"\n}" },
+						"url": { "raw": "{{base_url}}/adaptations/{{created_adaptation_id}}", "host": ["{{base_url}}"], "path": ["adaptations", "{{created_adaptation_id}}"] }
+					}
+				},
+				{
+					"name": "Delete Adaptation (created)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('204', function() { pm.response.to.have.status(204); });"
+					]}}],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": { "raw": "{{base_url}}/adaptations/{{created_adaptation_id}}", "host": ["{{base_url}}"], "path": ["adaptations", "{{created_adaptation_id}}"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "08 - Chat History",
+			"item": [
+				{
+					"name": "Chat History (assist)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('200', function() { pm.response.to.have.status(200); });"
+					]}}],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/chat/history/assist", "host": ["{{base_url}}"], "path": ["chat", "history", "assist"] }
+					}
+				},
+				{
+					"name": "Chat History (recommend)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('200', function() { pm.response.to.have.status(200); });"
+					]}}],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/chat/history/recommend", "host": ["{{base_url}}"], "path": ["chat", "history", "recommend"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "09 - Dashboard",
+			"item": [
+				{
+					"name": "Get Metrics",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('200', function() { pm.response.to.have.status(200); });",
+						"var json = pm.response.json();",
+						"var d = json.description || json;",
+						"pm.test('Has total_students', function() { pm.expect(d.total_students).to.be.a('number'); });"
+					]}}],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/dashboard/metrics", "host": ["{{base_url}}"], "path": ["dashboard", "metrics"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "10 - AI Inclusion",
+			"item": [
+				{
+					"name": "Recommend Device",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('200', function() { pm.response.to.have.status(200); });",
+						"var json = pm.response.json();",
+						"var d = json.description || json;",
+						"pm.test('Has response', function() { pm.expect(d.response).to.be.a('string'); });"
+					]}}],
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\n    \"student_id\": 1,\n    \"subject\": \"Lengua\",\n    \"objective\": \"Produccion de textos narrativos\",\n    \"duration\": \"40\",\n    \"dynamic\": \"Trabajo individual con apoyo docente\",\n    \"materials\": \"Cuaderno, lapiz\",\n    \"history\": []\n}" },
+						"url": { "raw": "{{base_url}}/inclusion/recommend", "host": ["{{base_url}}"], "path": ["inclusion", "recommend"] }
+					}
+				},
+				{
+					"name": "Assist Classroom",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('200', function() { pm.response.to.have.status(200); });",
+						"var json = pm.response.json();",
+						"var d = json.description || json;",
+						"pm.test('Has response', function() { pm.expect(d.response).to.be.a('string'); });"
+					]}}],
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\n    \"classroom_id\": 1,\n    \"student_id\": 1,\n    \"message\": \"Lucas no logra sostener la atencion en actividades de escritura. Que puedo hacer?\",\n    \"history\": []\n}" },
+						"url": { "raw": "{{base_url}}/inclusion/assist", "host": ["{{base_url}}"], "path": ["inclusion", "assist"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "11 - Cleanup (deletes test data)",
+			"item": [
+				{
+					"name": "Delete Student (created)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('204', function() { pm.response.to.have.status(204); });"
+					]}}],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": { "raw": "{{base_url}}/students/{{created_student_id}}", "host": ["{{base_url}}"], "path": ["students", "{{created_student_id}}"] }
+					}
+				},
+				{
+					"name": "Delete Classroom (created)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"pm.test('204', function() { pm.response.to.have.status(204); });"
+					]}}],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": { "raw": "{{base_url}}/classrooms/{{created_classroom_id}}", "host": ["{{base_url}}"], "path": ["classrooms", "{{created_classroom_id}}"] }
+					}
+				}
+			]
+		}
+	]
+}

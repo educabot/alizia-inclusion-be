@@ -1,0 +1,2 @@
+-- Irreversible: PostgreSQL no soporta DROP VALUE de un ENUM.
+-- Para revertir, se necesitaría recrear el tipo y migrar la columna.

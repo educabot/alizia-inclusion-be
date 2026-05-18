@@ -10,4 +10,15 @@ type InclusionContainer struct {
 	ListClassroomStudents inclusionuc.ListClassroomStudents
 	RecommendDevice       inclusionuc.RecommendDevice
 	AssistClassroom       inclusionuc.AssistClassroom
+
+	ListStudents     inclusionuc.ListStudents
+	CreateStudent    inclusionuc.CreateStudent
+	UpdateStudent    inclusionuc.UpdateStudent
+	DeleteStudent    inclusionuc.DeleteStudent
+	ListAdaptations  inclusionuc.ListAdaptations
+	GetAdaptation    inclusionuc.GetAdaptation
+	CreateAdaptation inclusionuc.CreateAdaptation
+	UpdateAdaptation inclusionuc.UpdateAdaptation
+	DeleteAdaptation inclusionuc.DeleteAdaptation
+	GetChatHistory   inclusionuc.GetChatHistory
 }

@@ -1,0 +1,1 @@
+ALTER TABLE ramps DROP COLUMN IF EXISTS video_url;
