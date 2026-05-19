@@ -23,6 +23,7 @@ type deviceResponse struct {
 	Rationale          *string `json:"rationale,omitempty"`
 	ClassroomBenefit   *string `json:"classroom_benefit,omitempty"`
 	NeedsDescription   *string `json:"needs_description,omitempty"`
+	UsefulWhen         *string `json:"useful_when,omitempty"`
 	EvaluationCriteria *string `json:"evaluation_criteria,omitempty"`
 	Quantity           int     `json:"quantity"`
 	SortOrder          int     `json:"sort_order"`
@@ -42,6 +43,7 @@ func mapDevice(d entities.Device) deviceResponse {
 		Rationale:          d.Rationale,
 		ClassroomBenefit:   d.ClassroomBenefit,
 		NeedsDescription:   d.NeedsDescription,
+		UsefulWhen:         d.UsefulWhen,
 		EvaluationCriteria: d.EvaluationCriteria,
 		Quantity:           d.Quantity,
 		SortOrder:          d.SortOrder,

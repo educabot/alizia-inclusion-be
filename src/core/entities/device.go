@@ -15,6 +15,7 @@ type Device struct {
 	Rationale          *string   `json:"rationale,omitempty"`
 	ClassroomBenefit   *string   `json:"classroom_benefit,omitempty"`
 	NeedsDescription   *string   `json:"needs_description,omitempty"`
+	UsefulWhen         *string   `json:"useful_when,omitempty"`
 	EvaluationCriteria *string   `json:"evaluation_criteria,omitempty"`
 	Quantity           int       `json:"quantity"`
 	SortOrder          int       `json:"sort_order"`
