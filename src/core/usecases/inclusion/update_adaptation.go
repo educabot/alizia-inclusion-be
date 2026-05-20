@@ -13,9 +13,11 @@ type UpdateAdaptationRequest struct {
 	OrgID               uuid.UUID
 	AdaptationID        int64
 	DeviceID            *int64
+	DeviceIDs           *[]int64
 	Subject             *string
 	ActivityDescription *string
 	AdaptationStrategy  *string
+	AdaptationType      *string
 	Outcome             *string
 	Notes               *string
 	Status              *string
@@ -75,6 +77,9 @@ func (uc *updateAdaptationImpl) Execute(ctx context.Context, req UpdateAdaptatio
 	if req.AdaptationStrategy != nil {
 		existing.AdaptationStrategy = req.AdaptationStrategy
 	}
+	if req.AdaptationType != nil {
+		existing.AdaptationType = *req.AdaptationType
+	}
 	if req.Outcome != nil {
 		existing.Outcome = req.Outcome
 	}
@@ -88,5 +93,16 @@ func (uc *updateAdaptationImpl) Execute(ctx context.Context, req UpdateAdaptatio
 	if err := uc.adaptations.Update(ctx, existing); err != nil {
 		return nil, err
 	}
-	return existing, nil
+
+	if req.DeviceIDs != nil {
+		if err := uc.adaptations.SetDevices(ctx, existing.ID, *req.DeviceIDs); err != nil {
+			return nil, err
+		}
+	}
+
+	refreshed, err := uc.adaptations.Get(ctx, req.OrgID, req.AdaptationID)
+	if err != nil {
+		return nil, err
+	}
+	return refreshed, nil
 }

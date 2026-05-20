@@ -2,6 +2,7 @@ package dashboard
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -19,12 +20,21 @@ func (r GetMetricsRequest) Validate() error {
 	return nil
 }
 
+type DeviceUsageResponse struct {
+	DeviceID   int64  `json:"device_id"`
+	DeviceName string `json:"device_name"`
+	Count      int    `json:"count"`
+}
+
 type GetMetricsResponse struct {
-	TotalStudents        int            `json:"total_students"`
-	StudentsWithProfiles int            `json:"students_with_profiles"`
-	TotalAdaptations     int            `json:"total_adaptations"`
-	AdaptationsByStatus  map[string]int `json:"adaptations_by_status"`
-	ClassroomCount       int            `json:"classroom_count"`
+	TotalStudents        int                   `json:"total_students"`
+	StudentsWithProfiles int                   `json:"students_with_profiles"`
+	TotalAdaptations     int                   `json:"total_adaptations"`
+	AdaptationsByStatus  map[string]int        `json:"adaptations_by_status"`
+	AdaptationsByType    map[string]int        `json:"adaptations_by_type"`
+	TopUsedDevices       []DeviceUsageResponse `json:"top_used_devices"`
+	AdaptationsThisWeek  int                   `json:"adaptations_this_week"`
+	ClassroomCount       int                   `json:"classroom_count"`
 }
 
 type GetMetrics interface {
@@ -64,8 +74,12 @@ func (uc *getMetricsImpl) Execute(ctx context.Context, req GetMetricsRequest) (*
 	}
 
 	byStatus := make(map[string]int)
+	byType := make(map[string]int)
 	for _, a := range adaptations {
 		byStatus[a.Status]++
+		if a.AdaptationType != "" {
+			byType[a.AdaptationType]++
+		}
 	}
 
 	classrooms, err := uc.classrooms.List(ctx, req.OrgID)
@@ -73,11 +87,27 @@ func (uc *getMetricsImpl) Execute(ctx context.Context, req GetMetricsRequest) (*
 		return nil, err
 	}
 
+	weekAgo := time.Now().AddDate(0, 0, -7)
+	thisWeek, _ := uc.adaptations.CountSince(ctx, req.OrgID, weekAgo)
+
+	topDevicesRaw, _ := uc.adaptations.TopDevices(ctx, req.OrgID, 5)
+	topDevices := make([]DeviceUsageResponse, len(topDevicesRaw))
+	for i, d := range topDevicesRaw {
+		topDevices[i] = DeviceUsageResponse{
+			DeviceID:   d.DeviceID,
+			DeviceName: d.DeviceName,
+			Count:      d.Count,
+		}
+	}
+
 	return &GetMetricsResponse{
 		TotalStudents:        len(students),
 		StudentsWithProfiles: withProfiles,
 		TotalAdaptations:     len(adaptations),
 		AdaptationsByStatus:  byStatus,
+		AdaptationsByType:    byType,
+		TopUsedDevices:       topDevices,
+		AdaptationsThisWeek:  thisWeek,
 		ClassroomCount:       len(classrooms),
 	}, nil
 }

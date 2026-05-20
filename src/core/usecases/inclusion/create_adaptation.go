@@ -14,9 +14,11 @@ type CreateAdaptationRequest struct {
 	StudentID           int64
 	TeacherID           int64
 	DeviceID            *int64
+	DeviceIDs           []int64
 	Subject             string
 	ActivityDescription *string
 	AdaptationStrategy  *string
+	AdaptationType      string
 	Notes               *string
 }
 
@@ -61,6 +63,7 @@ func (uc *createAdaptationImpl) Execute(ctx context.Context, req CreateAdaptatio
 		Subject:             req.Subject,
 		ActivityDescription: req.ActivityDescription,
 		AdaptationStrategy:  req.AdaptationStrategy,
+		AdaptationType:      req.AdaptationType,
 		Notes:               req.Notes,
 		Status:              "en_curso",
 	}
@@ -68,5 +71,16 @@ func (uc *createAdaptationImpl) Execute(ctx context.Context, req CreateAdaptatio
 	if err := uc.adaptations.Create(ctx, adaptation); err != nil {
 		return nil, err
 	}
-	return adaptation, nil
+
+	if len(req.DeviceIDs) > 0 {
+		if err := uc.adaptations.SetDevices(ctx, adaptation.ID, req.DeviceIDs); err != nil {
+			return nil, err
+		}
+	}
+
+	refreshed, err := uc.adaptations.Get(ctx, req.OrgID, adaptation.ID)
+	if err != nil {
+		return nil, err
+	}
+	return refreshed, nil
 }

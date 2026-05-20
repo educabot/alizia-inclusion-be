@@ -1,6 +1,7 @@
 package inclusion
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -8,6 +9,14 @@ import (
 
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 )
+
+type GeneratedAdaptation struct {
+	Title       string   `json:"title"`
+	Type        string   `json:"type"`
+	Strategy    string   `json:"strategy"`
+	DeviceIDs   []int64  `json:"device_ids"`
+	DeviceNames []string `json:"device_names"`
+}
 
 func buildRecommendSystemPrompt(devices []entities.Device) string {
 	var b strings.Builder
@@ -41,7 +50,10 @@ func buildRecommendSystemPrompt(devices []entities.Device) string {
 	b.WriteString("1. Explicación pedagógica breve de por qué el recurso es adecuado.\n")
 	b.WriteString("2. Cómo integrarlo en la actividad descripta.\n")
 	b.WriteString("3. Tips prácticos.\n")
-	b.WriteString("4. Incluí [DEVICE_ID:X] con el ID del dispositivo recomendado.\n")
+	b.WriteString("4. Incluí [DEVICE_ID:X] con el ID del dispositivo recomendado principal.\n")
+	b.WriteString("5. Al final de tu respuesta, incluí un bloque estructurado con este formato exacto:\n")
+	b.WriteString("[ADAPTATION_JSON:{\"title\":\"título corto\",\"type\":\"tipo\",\"strategy\":\"resumen de estrategia\",\"device_ids\":[1,2],\"device_names\":[\"nombre1\",\"nombre2\"]}]\n")
+	b.WriteString("Los tipos válidos son: actividad_adaptada, material_nuevo, estrategia_aula, situacion_emergente.\n")
 	b.WriteString("\nUsá español rioplatense, tono cálido y profesional. No uses jerga clínica.\n")
 
 	return b.String()
@@ -51,7 +63,9 @@ func buildRecommendUserPrompt(student *entities.Student, req RecommendDeviceRequ
 	var b strings.Builder
 
 	fmt.Fprintf(&b, "Asignatura: %s\n", req.Subject)
-	fmt.Fprintf(&b, "Objetivo de la clase: %s\n", req.Objective)
+	if req.Objective != "" {
+		fmt.Fprintf(&b, "Objetivo de la clase: %s\n", req.Objective)
+	}
 	if req.Duration != "" {
 		fmt.Fprintf(&b, "Duración: %s\n", req.Duration)
 	}
@@ -115,13 +129,65 @@ func buildAssistSystemPrompt(devices []entities.Device, students []entities.Stud
 		b.WriteString("\n")
 	}
 
+	b.WriteString("\nBLOQUE ESTRUCTURADO:\n")
+	b.WriteString("Cuando generes una recomendación de adaptación concreta, incluí al final:\n")
+	b.WriteString("[ADAPTATION_JSON:{\"title\":\"título corto\",\"type\":\"tipo\",\"strategy\":\"resumen\",\"device_ids\":[1],\"device_names\":[\"nombre\"]}]\n")
+	b.WriteString("Los tipos válidos son: actividad_adaptada, material_nuevo, estrategia_aula, situacion_emergente.\n")
+	b.WriteString("Solo incluí el bloque cuando la respuesta contenga una adaptación concreta, no en preguntas o aclaraciones.\n")
+
 	b.WriteString("\nUsá español rioplatense, tono cálido. Sé concisa.\n")
+
+	return b.String()
+}
+
+func buildGuidedAssistPrompt(devices []entities.Device, students []entities.Student) string {
+	var b strings.Builder
+
+	b.WriteString("Sos Alizia, asistente de inclusión educativa de Educabot.\n")
+	b.WriteString("El docente quiere planificar una adaptación. Guialo conversacionalmente para recopilar la información necesaria.\n\n")
+
+	b.WriteString("FLUJO GUIADO:\n")
+	b.WriteString("1. Preguntá para qué alumno es la adaptación (si no lo mencionó).\n")
+	b.WriteString("2. Preguntá qué materia/actividad están trabajando.\n")
+	b.WriteString("3. Preguntá qué dificultad está observando en el aula.\n")
+	b.WriteString("4. Cuando tengas suficiente información, generá la recomendación con dispositivos.\n\n")
+
+	b.WriteString("IMPORTANTE:\n")
+	b.WriteString("- Hacé UNA pregunta por vez, no bombardees al docente.\n")
+	b.WriteString("- Si ya mencionó algún dato, no lo vuelvas a pedir.\n")
+	b.WriteString("- Usá tono cálido y profesional, español rioplatense.\n")
+	b.WriteString("- Cuando tengas suficiente info, generá la adaptación completa.\n\n")
+
+	if len(students) > 0 {
+		b.WriteString("ALUMNOS DEL AULA:\n")
+		for _, s := range students {
+			fmt.Fprintf(&b, "- [ID:%d] %s", s.ID, s.Name)
+			if s.Profile != nil {
+				fmt.Fprintf(&b, " — Dificultades: %s", strings.Join(s.Profile.Difficulties, ", "))
+			}
+			b.WriteString("\n")
+		}
+		b.WriteString("\n")
+	}
+
+	b.WriteString("DISPOSITIVOS DISPONIBLES:\n")
+	for _, d := range devices {
+		fmt.Fprintf(&b, "- [ID:%d] %s", d.ID, d.Name)
+		if d.NeedsDescription != nil {
+			fmt.Fprintf(&b, " — %s", *d.NeedsDescription)
+		}
+		b.WriteString("\n")
+	}
+
+	b.WriteString("\nCuando generes la adaptación final, incluí [STUDENT_ID:X], [DEVICE_ID:X], y:\n")
+	b.WriteString("[ADAPTATION_JSON:{\"title\":\"título\",\"type\":\"tipo\",\"strategy\":\"resumen\",\"device_ids\":[1],\"device_names\":[\"nombre\"]}]\n")
 
 	return b.String()
 }
 
 var deviceIDRegex = regexp.MustCompile(`\[DEVICE_ID:(\d+)\]`)
 var studentIDRegex = regexp.MustCompile(`\[STUDENT_ID:(\d+)\]`)
+var adaptationJSONRegex = regexp.MustCompile(`\[ADAPTATION_JSON:(\{[^]]+\})\]`)
 
 func extractDeviceID(content string) *int64 {
 	matches := deviceIDRegex.FindStringSubmatch(content)
@@ -145,4 +211,16 @@ func extractStudentID(content string) *int64 {
 		return nil
 	}
 	return &id
+}
+
+func extractAdaptationJSON(content string) *GeneratedAdaptation {
+	matches := adaptationJSONRegex.FindStringSubmatch(content)
+	if len(matches) < 2 {
+		return nil
+	}
+	var adaptation GeneratedAdaptation
+	if err := json.Unmarshal([]byte(matches[1]), &adaptation); err != nil {
+		return nil
+	}
+	return &adaptation
 }

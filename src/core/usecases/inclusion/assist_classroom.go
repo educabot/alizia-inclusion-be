@@ -14,6 +14,7 @@ type AssistClassroomRequest struct {
 	ClassroomID int64
 	StudentID   *int64
 	Message     string
+	Mode        string
 	History     []providers.ChatMessage
 }
 
@@ -28,9 +29,10 @@ func (r AssistClassroomRequest) Validate() error {
 }
 
 type AssistClassroomResponse struct {
-	Response          string `json:"response"`
-	IdentifiedStudent *int64 `json:"identified_student,omitempty"`
-	RecommendedDevice *int64 `json:"recommended_device,omitempty"`
+	Response          string               `json:"response"`
+	IdentifiedStudent *int64               `json:"identified_student,omitempty"`
+	RecommendedDevice *int64               `json:"recommended_device,omitempty"`
+	Adaptation        *GeneratedAdaptation `json:"adaptation,omitempty"`
 }
 
 type AssistClassroom interface {
@@ -58,7 +60,13 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	}
 
 	allStudents, _ := uc.students.ListByClassroom(ctx, req.OrgID, req.ClassroomID)
-	systemPrompt := buildAssistSystemPrompt(devices, allStudents)
+
+	var systemPrompt string
+	if req.Mode == "guided" {
+		systemPrompt = buildGuidedAssistPrompt(devices, allStudents)
+	} else {
+		systemPrompt = buildAssistSystemPrompt(devices, allStudents)
+	}
 
 	messages := make([]providers.ChatMessage, 0, len(req.History)+2)
 	messages = append(messages, providers.ChatMessage{Role: "system", Content: systemPrompt})
@@ -72,10 +80,12 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 
 	studentID := extractStudentID(resp.Content)
 	deviceID := extractDeviceID(resp.Content)
+	adaptation := extractAdaptationJSON(resp.Content)
 
 	return &AssistClassroomResponse{
 		Response:          resp.Content,
 		IdentifiedStudent: studentID,
 		RecommendedDevice: deviceID,
+		Adaptation:        adaptation,
 	}, nil
 }

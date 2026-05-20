@@ -34,12 +34,13 @@ type UseCases struct {
 	CreateStudent    inclusionuc.CreateStudent
 	UpdateStudent    inclusionuc.UpdateStudent
 	DeleteStudent    inclusionuc.DeleteStudent
-	ListAdaptations  inclusionuc.ListAdaptations
-	GetAdaptation    inclusionuc.GetAdaptation
-	CreateAdaptation inclusionuc.CreateAdaptation
-	UpdateAdaptation inclusionuc.UpdateAdaptation
-	DeleteAdaptation inclusionuc.DeleteAdaptation
-	GetChatHistory   inclusionuc.GetChatHistory
+	ListAdaptations          inclusionuc.ListAdaptations
+	GetAdaptation            inclusionuc.GetAdaptation
+	CreateAdaptation         inclusionuc.CreateAdaptation
+	UpdateAdaptation         inclusionuc.UpdateAdaptation
+	DeleteAdaptation         inclusionuc.DeleteAdaptation
+	ListAdaptationResources  inclusionuc.ListAdaptationResources
+	GetChatHistory           inclusionuc.GetChatHistory
 
 	GetMetrics dashuc.GetMetrics
 }
@@ -71,12 +72,13 @@ func NewUseCases(repos *Repositories) *UseCases {
 		CreateStudent:    inclusionuc.NewCreateStudent(repos.Students),
 		UpdateStudent:    inclusionuc.NewUpdateStudent(repos.Students),
 		DeleteStudent:    inclusionuc.NewDeleteStudent(repos.Students),
-		ListAdaptations:  inclusionuc.NewListAdaptations(repos.Adaptations),
-		GetAdaptation:    inclusionuc.NewGetAdaptation(repos.Adaptations),
-		CreateAdaptation: inclusionuc.NewCreateAdaptation(repos.Adaptations),
-		UpdateAdaptation: inclusionuc.NewUpdateAdaptation(repos.Adaptations),
-		DeleteAdaptation: inclusionuc.NewDeleteAdaptation(repos.Adaptations),
-		GetChatHistory:   inclusionuc.NewGetChatHistory(repos.Conversations),
+		ListAdaptations:         inclusionuc.NewListAdaptations(repos.Adaptations),
+		GetAdaptation:           inclusionuc.NewGetAdaptation(repos.Adaptations),
+		CreateAdaptation:        inclusionuc.NewCreateAdaptation(repos.Adaptations),
+		UpdateAdaptation:        inclusionuc.NewUpdateAdaptation(repos.Adaptations),
+		DeleteAdaptation:        inclusionuc.NewDeleteAdaptation(repos.Adaptations),
+		ListAdaptationResources: inclusionuc.NewListAdaptationResources(repos.AdaptationResources),
+		GetChatHistory:          inclusionuc.NewGetChatHistory(repos.Conversations),
 
 		GetMetrics: dashuc.NewGetMetrics(repos.Students, repos.Adaptations, repos.Classrooms),
 	}

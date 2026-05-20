@@ -15,15 +15,16 @@ import (
 )
 
 type Repositories struct {
-	Ramps           providers.RampProvider
-	Devices         providers.DeviceProvider
-	Students        providers.StudentProvider
-	StudentProfiles providers.StudentProfileProvider
-	AI              providers.AIClient
-	Users           providers.UserProvider
-	Classrooms      providers.ClassroomProvider
-	Adaptations     providers.AdaptationProvider
-	Conversations   providers.ConversationProvider
+	Ramps                providers.RampProvider
+	Devices              providers.DeviceProvider
+	Students             providers.StudentProvider
+	StudentProfiles      providers.StudentProfileProvider
+	AI                   providers.AIClient
+	Users                providers.UserProvider
+	Classrooms           providers.ClassroomProvider
+	Adaptations          providers.AdaptationProvider
+	AdaptationResources  providers.AdaptationResourceProvider
+	Conversations        providers.ConversationProvider
 }
 
 func NewRepositories(db *gorm.DB, cfg *config.Config) *Repositories {
@@ -37,14 +38,15 @@ func NewRepositories(db *gorm.DB, cfg *config.Config) *Repositories {
 	}
 
 	return &Repositories{
-		Ramps:           catalogr.NewRampRepo(db),
-		Devices:         catalogr.NewDeviceRepo(db),
-		Students:        inclusionr.NewStudentRepo(db),
-		StudentProfiles: inclusionr.NewStudentProfileRepo(db),
-		AI:              aiClient,
-		Users:           authr.NewUserRepo(db),
-		Classrooms:      mgmtr.NewClassroomRepo(db),
-		Adaptations:     inclusionr.NewAdaptationRepo(db),
-		Conversations:   inclusionr.NewConversationRepo(db),
+		Ramps:               catalogr.NewRampRepo(db),
+		Devices:             catalogr.NewDeviceRepo(db),
+		Students:            inclusionr.NewStudentRepo(db),
+		StudentProfiles:     inclusionr.NewStudentProfileRepo(db),
+		AI:                  aiClient,
+		Users:               authr.NewUserRepo(db),
+		Classrooms:          mgmtr.NewClassroomRepo(db),
+		Adaptations:         inclusionr.NewAdaptationRepo(db),
+		AdaptationResources: inclusionr.NewAdaptationResourceRepo(db),
+		Conversations:       inclusionr.NewConversationRepo(db),
 	}
 }

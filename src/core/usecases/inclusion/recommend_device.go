@@ -30,15 +30,13 @@ func (r RecommendDeviceRequest) Validate() error {
 	if r.Subject == "" {
 		return errSubjectRequired
 	}
-	if r.Objective == "" {
-		return errObjectiveRequired
-	}
 	return nil
 }
 
 type RecommendDeviceResponse struct {
-	Response string `json:"response"`
-	DeviceID *int64 `json:"device_id,omitempty"`
+	Response   string               `json:"response"`
+	DeviceID   *int64               `json:"device_id,omitempty"`
+	Adaptation *GeneratedAdaptation `json:"adaptation,omitempty"`
 }
 
 type RecommendDevice interface {
@@ -85,9 +83,11 @@ func (uc *recommendDeviceImpl) Execute(ctx context.Context, req RecommendDeviceR
 	}
 
 	deviceID := extractDeviceID(resp.Content)
+	adaptation := extractAdaptationJSON(resp.Content)
 
 	return &RecommendDeviceResponse{
-		Response: resp.Content,
-		DeviceID: deviceID,
+		Response:   resp.Content,
+		DeviceID:   deviceID,
+		Adaptation: adaptation,
 	}, nil
 }

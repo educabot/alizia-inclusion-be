@@ -14,21 +14,24 @@ import (
 )
 
 type adaptationResponse struct {
-	ID                  int64   `json:"id"`
-	StudentID           int64   `json:"student_id"`
-	StudentName         string  `json:"student_name"`
-	TeacherID           int64   `json:"teacher_id"`
-	TeacherName         string  `json:"teacher_name"`
-	DeviceID            *int64  `json:"device_id,omitempty"`
-	DeviceName          *string `json:"device_name,omitempty"`
-	Subject             string  `json:"subject"`
-	ActivityDescription *string `json:"activity_description,omitempty"`
-	AdaptationStrategy  *string `json:"adaptation_strategy,omitempty"`
-	Outcome             *string `json:"outcome,omitempty"`
-	Notes               *string `json:"notes,omitempty"`
-	Status              string  `json:"status"`
-	CreatedAt           string  `json:"created_at"`
-	UpdatedAt           string  `json:"updated_at"`
+	ID                  int64    `json:"id"`
+	StudentID           int64    `json:"student_id"`
+	StudentName         string   `json:"student_name"`
+	TeacherID           int64    `json:"teacher_id"`
+	TeacherName         string   `json:"teacher_name"`
+	DeviceID            *int64   `json:"device_id,omitempty"`
+	DeviceName          *string  `json:"device_name,omitempty"`
+	DeviceIDs           []int64  `json:"device_ids"`
+	DeviceNames         []string `json:"device_names"`
+	Subject             string   `json:"subject"`
+	ActivityDescription *string  `json:"activity_description,omitempty"`
+	AdaptationStrategy  *string  `json:"adaptation_strategy,omitempty"`
+	AdaptationType      string   `json:"adaptation_type"`
+	Outcome             *string  `json:"outcome,omitempty"`
+	Notes               *string  `json:"notes,omitempty"`
+	Status              string   `json:"status"`
+	CreatedAt           string   `json:"created_at"`
+	UpdatedAt           string   `json:"updated_at"`
 }
 
 func mapAdaptation(a entities.Adaptation) adaptationResponse {
@@ -40,11 +43,14 @@ func mapAdaptation(a entities.Adaptation) adaptationResponse {
 		Subject:             a.Subject,
 		ActivityDescription: a.ActivityDescription,
 		AdaptationStrategy:  a.AdaptationStrategy,
+		AdaptationType:      a.AdaptationType,
 		Outcome:             a.Outcome,
 		Notes:               a.Notes,
 		Status:              a.Status,
 		CreatedAt:           a.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:           a.UpdatedAt.Format(time.RFC3339),
+		DeviceIDs:           make([]int64, 0),
+		DeviceNames:         make([]string, 0),
 	}
 	if a.Student != nil {
 		resp.StudentName = a.Student.Name
@@ -54,6 +60,10 @@ func mapAdaptation(a entities.Adaptation) adaptationResponse {
 	}
 	if a.Device != nil {
 		resp.DeviceName = &a.Device.Name
+	}
+	for _, d := range a.Devices {
+		resp.DeviceIDs = append(resp.DeviceIDs, d.ID)
+		resp.DeviceNames = append(resp.DeviceNames, d.Name)
 	}
 	return resp
 }
@@ -69,20 +79,24 @@ func mapAdaptations(as []entities.Adaptation) []adaptationResponse {
 type createAdaptationBody struct {
 	StudentID           int64   `json:"student_id"`
 	DeviceID            *int64  `json:"device_id"`
+	DeviceIDs           []int64 `json:"device_ids"`
 	Subject             string  `json:"subject"`
 	ActivityDescription *string `json:"activity_description"`
 	AdaptationStrategy  *string `json:"adaptation_strategy"`
+	AdaptationType      string  `json:"adaptation_type"`
 	Notes               *string `json:"notes"`
 }
 
 type updateAdaptationBody struct {
-	DeviceID            *int64  `json:"device_id"`
-	Subject             *string `json:"subject"`
-	ActivityDescription *string `json:"activity_description"`
-	AdaptationStrategy  *string `json:"adaptation_strategy"`
-	Outcome             *string `json:"outcome"`
-	Notes               *string `json:"notes"`
-	Status              *string `json:"status"`
+	DeviceID            *int64   `json:"device_id"`
+	DeviceIDs           *[]int64 `json:"device_ids"`
+	Subject             *string  `json:"subject"`
+	ActivityDescription *string  `json:"activity_description"`
+	AdaptationStrategy  *string  `json:"adaptation_strategy"`
+	AdaptationType      *string  `json:"adaptation_type"`
+	Outcome             *string  `json:"outcome"`
+	Notes               *string  `json:"notes"`
+	Status              *string  `json:"status"`
 }
 
 func (c *InclusionContainer) HandleListAdaptations(req web.Request) web.Response {
@@ -132,9 +146,11 @@ func (c *InclusionContainer) HandleCreateAdaptation(req web.Request) web.Respons
 		StudentID:           body.StudentID,
 		TeacherID:           middleware.UserID(req),
 		DeviceID:            body.DeviceID,
+		DeviceIDs:           body.DeviceIDs,
 		Subject:             body.Subject,
 		ActivityDescription: body.ActivityDescription,
 		AdaptationStrategy:  body.AdaptationStrategy,
+		AdaptationType:      body.AdaptationType,
 		Notes:               body.Notes,
 	})
 	if err != nil {
@@ -158,9 +174,11 @@ func (c *InclusionContainer) HandleUpdateAdaptation(req web.Request) web.Respons
 		OrgID:               middleware.OrgID(req),
 		AdaptationID:        id,
 		DeviceID:            body.DeviceID,
+		DeviceIDs:           body.DeviceIDs,
 		Subject:             body.Subject,
 		ActivityDescription: body.ActivityDescription,
 		AdaptationStrategy:  body.AdaptationStrategy,
+		AdaptationType:      body.AdaptationType,
 		Outcome:             body.Outcome,
 		Notes:               body.Notes,
 		Status:              body.Status,

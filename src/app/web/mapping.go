@@ -56,6 +56,7 @@ func ConfigureMappings(engine *gin.Engine, h *entrypoints.WebHandlerContainer, _
 	api.GET("/adaptations/:id", webgin.Adapt(h.Inclusion.HandleGetAdaptation))
 	api.PUT("/adaptations/:id", webgin.Adapt(h.Inclusion.HandleUpdateAdaptation))
 	api.DELETE("/adaptations/:id", webgin.Adapt(h.Inclusion.HandleDeleteAdaptation))
+	api.GET("/adaptations/:id/resources", webgin.Adapt(h.Inclusion.HandleListAdaptationResources))
 
 	// Chat history
 	api.GET("/chat/history/:contextId", webgin.Adapt(h.Inclusion.HandleGetChatHistory))
