@@ -15,8 +15,6 @@ func HandleError(err error) web.Response {
 		return web.Err(http.StatusNotFound, "profile_not_found", err.Error())
 	case bcerrors.Is(err, providers.ErrServiceUnavailable):
 		return web.Err(http.StatusServiceUnavailable, "service_unavailable", err.Error())
-	case bcerrors.Is(err, providers.ErrInvalidCredentials):
-		return web.Err(http.StatusUnauthorized, "invalid_credentials", err.Error())
 	case bcerrors.Is(err, providers.ErrClassroomNotFound):
 		return web.Err(http.StatusNotFound, "classroom_not_found", err.Error())
 	case bcerrors.Is(err, providers.ErrAdaptationNotFound):
