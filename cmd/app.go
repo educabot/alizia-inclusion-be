@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -35,9 +36,9 @@ func NewApp(cfg *config.Config) *App {
 
 	engine := gin.Default()
 	engine.Use(cors.New(cors.Config{
-		AllowOrigins:     cfg.AllowedOrigins,
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowOriginFunc: buildOriginChecker(cfg.AllowedOrigins),
+		AllowMethods:    []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:    []string{"Origin", "Content-Type", "Authorization"},
 		AllowCredentials: true,
 	}))
 
@@ -85,6 +86,35 @@ func (a *App) Run() {
 func (a *App) Close() {
 	if sqlDB, err := a.db.DB(); err == nil {
 		_ = sqlDB.Close()
+	}
+}
+
+// buildOriginChecker returns a function that checks if an origin is allowed.
+// Supports exact matches and wildcard subdomain patterns like "https://*.example.com".
+func buildOriginChecker(allowed []string) func(string) bool {
+	for _, o := range allowed {
+		if o == "*" {
+			return func(string) bool { return true }
+		}
+	}
+	return func(origin string) bool {
+		for _, o := range allowed {
+			if o == origin {
+				return true
+			}
+			if strings.Contains(o, "*") {
+				suffix := strings.Replace(o, "*", "", 1)
+				scheme := ""
+				if idx := strings.Index(suffix, "://"); idx != -1 {
+					scheme = suffix[:idx+3]
+					suffix = suffix[idx+3:]
+				}
+				if strings.HasPrefix(origin, scheme) && strings.HasSuffix(origin, suffix) {
+					return true
+				}
+			}
+		}
+		return false
 	}
 }
 

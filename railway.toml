@@ -1,0 +1,11 @@
+[build]
+dockerfilePath = "Dockerfile"
+
+[build.args]
+GITHUB_TOKEN = "${{GITHUB_TOKEN}}"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3

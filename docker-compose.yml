@@ -10,6 +10,48 @@ services:
       - "5481:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    image: postgres:16-alpine
+    container_name: alizia-inclusion-migrate
+    volumes:
+      - ./db/migrations:/migrations:ro
+      - ./db/run-migrations.sh:/run-migrations.sh:ro
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/alizia_inclusion?sslmode=disable
+    entrypoint: ["sh", "/run-migrations.sh"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        GITHUB_TOKEN: ${GITHUB_TOKEN}
+    container_name: alizia-inclusion-api
+    ports:
+      - "8080:8080"
+    environment:
+      ENV: local
+      PORT: "8080"
+      DATABASE_URL: postgres://postgres:postgres@db:5432/alizia_inclusion?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-in-production}
+      ALLOWED_ORIGINS: "*"
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY:-}
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT:-}
+      AZURE_OPENAI_MODEL: ${AZURE_OPENAI_MODEL:-gpt-4o-mini}
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
 volumes:
   postgres_data:
