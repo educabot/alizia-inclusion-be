@@ -20,7 +20,6 @@ type UseCases struct {
 	RecommendDevice       inclusionuc.RecommendDevice
 	AssistClassroom       inclusionuc.AssistClassroom
 
-	Login authuc.Login
 	GetMe authuc.GetMe
 
 	ListClassrooms  mgmtuc.ListClassrooms
@@ -58,7 +57,6 @@ func NewUseCases(repos *Repositories) *UseCases {
 		RecommendDevice:       inclusionuc.NewRecommendDevice(repos.AI, repos.Students, repos.Devices, repos.Ramps),
 		AssistClassroom:       inclusionuc.NewAssistClassroom(repos.AI, repos.Students, repos.Devices),
 
-		Login: authuc.NewLogin(repos.Users),
 		GetMe: authuc.NewGetMe(repos.Users),
 
 		ListClassrooms:  mgmtuc.NewListClassrooms(repos.Classrooms),

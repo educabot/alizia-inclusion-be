@@ -10,6 +10,5 @@ import (
 
 type UserProvider interface {
 	GetByID(ctx context.Context, orgID uuid.UUID, id int64) (*entities.User, error)
-	GetByEmail(ctx context.Context, email string) (*entities.User, error)
 	ListByRole(ctx context.Context, orgID uuid.UUID, role string) ([]entities.User, error)
 }

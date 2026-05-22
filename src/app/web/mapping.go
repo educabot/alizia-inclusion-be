@@ -9,10 +9,6 @@ import (
 )
 
 func ConfigureMappings(engine *gin.Engine, h *entrypoints.WebHandlerContainer, _ *config.Config) {
-	// Auth: login is public (no auth middleware)
-	authPublic := engine.Group("/api/v1/auth")
-	authPublic.POST("/login", webgin.Adapt(h.Auth.HandleLogin))
-
 	api := engine.Group("/api/v1")
 	api.Use(webgin.AdaptMiddleware(h.AuthMiddleware))
 	api.Use(webgin.AdaptMiddleware(h.TenantMiddleware))

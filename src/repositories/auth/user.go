@@ -33,20 +33,6 @@ func (r *userRepo) GetByID(ctx context.Context, orgID uuid.UUID, id int64) (*ent
 	return &user, nil
 }
 
-func (r *userRepo) GetByEmail(ctx context.Context, email string) (*entities.User, error) {
-	var user entities.User
-	err := r.db.WithContext(ctx).
-		Where("email = ?", email).
-		First(&user).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, providers.ErrNotFound
-		}
-		return nil, err
-	}
-	return &user, nil
-}
-
 func (r *userRepo) ListByRole(ctx context.Context, orgID uuid.UUID, role string) ([]entities.User, error) {
 	var users []entities.User
 	err := r.db.WithContext(ctx).

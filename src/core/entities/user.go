@@ -7,7 +7,6 @@ type User struct {
 	OrganizationID uuid.UUID `json:"organization_id"`
 	Email          string    `json:"email"`
 	Name           string    `json:"name"`
-	PasswordHash   string    `json:"-"`
 	Role           string    `json:"role" gorm:"type:member_role"`
 	TimeTrackedEntity
 }

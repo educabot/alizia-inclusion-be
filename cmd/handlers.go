@@ -2,23 +2,16 @@ package main
 
 import (
 	bcfg "github.com/educabot/team-ai-toolkit/config"
-	"github.com/educabot/team-ai-toolkit/tokens"
 
 	"github.com/educabot/alizia-inclusion-be/config"
 	"github.com/educabot/alizia-inclusion-be/src/entrypoints"
 	"github.com/educabot/alizia-inclusion-be/src/entrypoints/middleware"
 )
 
-const jwtIssuer = "alizia-inclusion"
-
 func NewHandlers(uc *UseCases, cfg *config.Config) *entrypoints.WebHandlerContainer {
-	toker := tokens.New(cfg.JWTSecret, jwtIssuer)
-
 	return &entrypoints.WebHandlerContainer{
 		Auth: &entrypoints.AuthContainer{
-			Toker:   toker,
-			LoginUC: uc.Login,
-			GetMe:   uc.GetMe,
+			GetMe: uc.GetMe,
 		},
 		Catalog: &entrypoints.CatalogContainer{
 			ListRamps:   uc.ListRamps,
@@ -55,7 +48,7 @@ func NewHandlers(uc *UseCases, cfg *config.Config) *entrypoints.WebHandlerContai
 		Dashboard: &entrypoints.DashboardContainer{
 			GetMetrics: uc.GetMetrics,
 		},
-		AuthMiddleware:   tokens.ValidateTokenMiddleware(toker, bcfg.Environment(cfg.Env)),
+		AuthMiddleware:   middleware.RS256AuthMiddleware(cfg.JWTPublicKey, bcfg.Environment(cfg.Env)),
 		TenantMiddleware: middleware.TenantMiddleware(),
 	}
 }
