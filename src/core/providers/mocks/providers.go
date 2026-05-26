@@ -231,7 +231,8 @@ func (m *MockConversationProvider) AppendTurn(ctx context.Context, params provid
 // --- AIUsageProvider ---
 
 type MockAIUsageProvider struct {
-	RecordFn func(ctx context.Context, record providers.AIUsageRecord) error
+	RecordFn    func(ctx context.Context, record providers.AIUsageRecord) error
+	SummarizeFn func(ctx context.Context, orgID uuid.UUID, since time.Time) (*providers.AIUsageSummary, error)
 }
 
 func (m *MockAIUsageProvider) Record(ctx context.Context, record providers.AIUsageRecord) error {
@@ -239,4 +240,11 @@ func (m *MockAIUsageProvider) Record(ctx context.Context, record providers.AIUsa
 		return nil
 	}
 	return m.RecordFn(ctx, record)
+}
+
+func (m *MockAIUsageProvider) Summarize(ctx context.Context, orgID uuid.UUID, since time.Time) (*providers.AIUsageSummary, error) {
+	if m.SummarizeFn == nil {
+		return &providers.AIUsageSummary{}, nil
+	}
+	return m.SummarizeFn(ctx, orgID, since)
 }

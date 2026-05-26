@@ -227,13 +227,28 @@ estado intermedio ("Alizia está buscando el perfil de Lucas…").
 - Estado de "pensando/ejecutando acción" mientras el backend corre el loop.
 - Opcional: render de los pasos de herramientas si el backend los expone.
 
-### 5.4 Dashboard de uso de IA / tokens (Fase 4e)
+### 5.4 Dashboard de uso de IA / tokens — ✅ LISTO
 
-El backend ya registra consumo de tokens por organización (tabla `ai_usage`).
-Falta exponer un endpoint de agregación (propuesto: `GET /api/v1/admin/ai-usage`).
+`GET /api/v1/dashboard/ai-usage?days=30` (`days` opcional, default 30, máx 365).
 
-**A construir en el FE (cuando esté disponible):**
-- Vista admin con consumo de tokens por período y por modo (assist/recommend).
+```jsonc
+{
+  "window_days": 30,
+  "total_requests": 42,
+  "prompt_tokens": 12000,
+  "completion_tokens": 4500,
+  "total_tokens": 16500,
+  "by_mode": [
+    { "mode": "assist", "requests": 30, "prompt_tokens": 9000,
+      "completion_tokens": 3000, "total_tokens": 12000 },
+    { "mode": "recommend", "requests": 12, "prompt_tokens": 3000,
+      "completion_tokens": 1500, "total_tokens": 4500 }
+  ]
+}
+```
+
+**A construir en el FE:** vista admin con consumo de tokens del período y
+desglose por modo (assist/recommend); selector de ventana (`days`).
 
 ---
 
@@ -246,7 +261,7 @@ Falta exponer un endpoint de agregación (propuesto: `GET /api/v1/admin/ai-usage
 | Historial de chat | ✅ Listo | Panel de conversaciones |
 | Export PDF/MD | ✅ Listo | Botones de descarga (fetch + blob) |
 | Dashboard métricas | ✅ Listo | Tarjetas + gráficos |
+| Dashboard de tokens | ✅ Listo | Vista admin de uso (`/dashboard/ai-usage`) |
 | Streaming SSE | ⏳ Pendiente | Cliente SSE + render incremental |
 | Multimodal/visión | ⏳ Pendiente | Carga de imágenes |
-| Function calling UI | ⏳ Pendiente | Estado de ejecución de acciones |
-| Dashboard de tokens | ⏳ Pendiente | Vista admin de uso |
+| Function calling UI | ⚙️ Backend listo (flag off) | Estado de ejecución de acciones |

@@ -4,4 +4,5 @@ import dashuc "github.com/educabot/alizia-inclusion-be/src/core/usecases/dashboa
 
 type DashboardContainer struct {
 	GetMetrics dashuc.GetMetrics
+	GetAIUsage dashuc.GetAIUsage
 }

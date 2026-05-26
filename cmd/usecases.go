@@ -44,6 +44,7 @@ type UseCases struct {
 	GetChatHistory          inclusionuc.GetChatHistory
 
 	GetMetrics dashuc.GetMetrics
+	GetAIUsage dashuc.GetAIUsage
 }
 
 func NewUseCases(repos *Repositories, cfg *config.Config) *UseCases {
@@ -82,5 +83,6 @@ func NewUseCases(repos *Repositories, cfg *config.Config) *UseCases {
 		GetChatHistory:          inclusionuc.NewGetChatHistory(repos.Conversations),
 
 		GetMetrics: dashuc.NewGetMetrics(repos.Students, repos.Adaptations, repos.Classrooms),
+		GetAIUsage: dashuc.NewGetAIUsage(repos.AIUsage),
 	}
 }

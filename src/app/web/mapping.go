@@ -68,6 +68,7 @@ func ConfigureMappings(engine *gin.Engine, h *entrypoints.WebHandlerContainer, c
 
 	// Dashboard
 	api.GET("/dashboard/metrics", webgin.Adapt(h.Dashboard.HandleGetMetrics))
+	api.GET("/dashboard/ai-usage", webgin.Adapt(h.Dashboard.HandleGetAIUsage))
 
 	// AI endpoints (rate-limited per organization)
 	api.POST("/inclusion/recommend", aiRateLimit, webgin.Adapt(h.Inclusion.HandleRecommendDevice))
