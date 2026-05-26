@@ -31,3 +31,11 @@ coverage.out
 
 # Docs (local tracking)
 PENDIENTES-*.md
+*.pdf
+
+# Node tooling (sólo se usa para utilidades locales)
+node_modules/
+
+# Claude Code / Arcane local state
+.claude/
+production/
