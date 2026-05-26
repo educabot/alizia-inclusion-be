@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/educabot/alizia-inclusion-be/config"
 	authuc "github.com/educabot/alizia-inclusion-be/src/core/usecases/auth"
 	cataloguc "github.com/educabot/alizia-inclusion-be/src/core/usecases/catalog"
 	dashuc "github.com/educabot/alizia-inclusion-be/src/core/usecases/dashboard"
@@ -45,7 +46,7 @@ type UseCases struct {
 	GetMetrics dashuc.GetMetrics
 }
 
-func NewUseCases(repos *Repositories) *UseCases {
+func NewUseCases(repos *Repositories, cfg *config.Config) *UseCases {
 	return &UseCases{
 		ListRamps:   cataloguc.NewListRamps(repos.Ramps),
 		GetRamp:     cataloguc.NewGetRamp(repos.Ramps),
@@ -56,7 +57,7 @@ func NewUseCases(repos *Repositories) *UseCases {
 		UpsertStudentProfile:  inclusionuc.NewUpsertStudentProfile(repos.Students, repos.StudentProfiles),
 		ListClassroomStudents: inclusionuc.NewListClassroomStudents(repos.Students),
 		RecommendDevice:       inclusionuc.NewRecommendDevice(repos.AI, repos.Students, repos.Devices, repos.Ramps, repos.Conversations, repos.AIUsage),
-		AssistClassroom:       inclusionuc.NewAssistClassroom(repos.AI, repos.Students, repos.Devices, repos.Conversations, repos.AIUsage),
+		AssistClassroom:       inclusionuc.NewAssistClassroom(repos.AI, repos.Students, repos.Devices, repos.Conversations, repos.AIUsage, cfg.AIAgenticEnabled),
 
 		GetMe: authuc.NewGetMe(repos.Users),
 

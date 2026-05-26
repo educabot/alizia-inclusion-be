@@ -51,7 +51,7 @@ func TestAssistClassroom(t *testing.T) {
 	t.Run("returns assist response", func(t *testing.T) {
 		ai, students, devices, conversations, usage := setupMocks("Podrias usar pictogramas [DEVICE_ID:1]", nil)
 
-		got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage).Execute(ctx, baseRequest)
+		got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage, false).Execute(ctx, baseRequest)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -65,7 +65,7 @@ func TestAssistClassroom(t *testing.T) {
 		req := baseRequest
 		req.Mode = "guided"
 
-		got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage).Execute(ctx, req)
+		got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage, false).Execute(ctx, req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -77,7 +77,7 @@ func TestAssistClassroom(t *testing.T) {
 	t.Run("wraps AI error", func(t *testing.T) {
 		ai, students, devices, conversations, usage := setupMocks("", errDB)
 
-		_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage).Execute(ctx, baseRequest)
+		_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage, false).Execute(ctx, baseRequest)
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -90,7 +90,7 @@ func TestAssistClassroom(t *testing.T) {
 		ai, students, devices, conversations, usage := setupMocks("", nil)
 		req := baseRequest
 		req.OrgID = uuid.Nil
-		_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage).Execute(ctx, req)
+		_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage, false).Execute(ctx, req)
 		if !errors.Is(err, providers.ErrValidation) {
 			t.Errorf("expected ErrValidation, got: %v", err)
 		}
@@ -100,7 +100,7 @@ func TestAssistClassroom(t *testing.T) {
 		ai, students, devices, conversations, usage := setupMocks("", nil)
 		req := baseRequest
 		req.Message = ""
-		_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage).Execute(ctx, req)
+		_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage, false).Execute(ctx, req)
 		if !errors.Is(err, providers.ErrValidation) {
 			t.Errorf("expected ErrValidation, got: %v", err)
 		}
@@ -116,7 +116,7 @@ func TestAssistClassroom(t *testing.T) {
 		req := baseRequest
 		req.UserID = 7
 
-		got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage).Execute(ctx, req)
+		got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage, false).Execute(ctx, req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -139,7 +139,7 @@ func TestAssistClassroom(t *testing.T) {
 			return 99, nil
 		}
 
-		_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage).Execute(ctx, baseRequest)
+		_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage, false).Execute(ctx, baseRequest)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -164,7 +164,7 @@ func TestAssistClassroom(t *testing.T) {
 		req := baseRequest
 		req.UserID = 7
 
-		_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage).Execute(ctx, req)
+		_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage, false).Execute(ctx, req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

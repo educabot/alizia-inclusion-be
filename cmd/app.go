@@ -34,7 +34,7 @@ func NewApp(cfg *config.Config) *App {
 	db := connectDB(cfg)
 
 	repos := NewRepositories(db, cfg)
-	usecases := NewUseCases(repos)
+	usecases := NewUseCases(repos, cfg)
 	handlers := NewHandlers(usecases, cfg)
 
 	engine := gin.Default()

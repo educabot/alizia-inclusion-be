@@ -30,8 +30,10 @@ func NewAzureClient(endpoint, apiKey, deployment string) providers.AIClient {
 }
 
 type azureMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role       string          `json:"role"`
+	Content    string          `json:"content"`
+	ToolCallID string          `json:"tool_call_id,omitempty"`
+	ToolCalls  []azureToolCall `json:"tool_calls,omitempty"`
 }
 
 type azureToolFunction struct {
@@ -158,7 +160,14 @@ func (a *AzureClient) Chat(ctx context.Context, messages []providers.ChatMessage
 func (a *AzureClient) ChatWithTools(ctx context.Context, messages []providers.ChatMessage, tools []providers.ToolDefinition) (*providers.ChatResponse, error) {
 	azMsgs := make([]azureMessage, 0, len(messages))
 	for _, m := range messages {
-		azMsgs = append(azMsgs, azureMessage{Role: m.Role, Content: m.Content})
+		am := azureMessage{Role: m.Role, Content: m.Content, ToolCallID: m.ToolCallID}
+		for _, tc := range m.ToolCalls {
+			ac := azureToolCall{ID: tc.ID, Type: "function"}
+			ac.Function.Name = tc.Name
+			ac.Function.Arguments = tc.Arguments
+			am.ToolCalls = append(am.ToolCalls, ac)
+		}
+		azMsgs = append(azMsgs, am)
 	}
 
 	var azTools []azureTool

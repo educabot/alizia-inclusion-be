@@ -27,6 +27,10 @@ type Config struct {
 	AICircuitFailureThreshold int
 	// AICircuitCooldown is how long the circuit stays open before allowing a trial call.
 	AICircuitCooldown time.Duration
+
+	// AIAgenticEnabled turns on the tool-calling (function calling) loop for the
+	// assist endpoint. Off by default until validated against the live AI provider.
+	AIAgenticEnabled bool
 }
 
 func Load() *Config {
@@ -47,6 +51,8 @@ func Load() *Config {
 		AIRateLimitPerHour:        boundedUintToInt(bcfg.GetEnvUint("AI_RATE_LIMIT_PER_HOUR", "0")),
 		AICircuitFailureThreshold: boundedUintToInt(bcfg.GetEnvUint("AI_CIRCUIT_FAILURE_THRESHOLD", "5")),
 		AICircuitCooldown:         time.Duration(boundedUintToInt(bcfg.GetEnvUint("AI_CIRCUIT_COOLDOWN_SEC", "30"))) * time.Second,
+
+		AIAgenticEnabled: bcfg.EnvOr("AI_AGENTIC_ENABLED", "false") == "true",
 	}
 }
 

@@ -5,6 +5,12 @@ import "context"
 type ChatMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
+	// ToolCallID links a tool-result message (role "tool") back to the assistant
+	// tool call it answers. Empty for normal user/assistant/system messages.
+	ToolCallID string `json:"tool_call_id,omitempty"`
+	// ToolCalls echoes the tool calls an assistant message requested, so the
+	// model can be reminded of them on the next turn of an agentic loop.
+	ToolCalls []ToolCall `json:"tool_calls,omitempty"`
 }
 
 type ToolDefinition struct {

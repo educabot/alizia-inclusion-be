@@ -49,10 +49,11 @@ type assistClassroomImpl struct {
 	devices       providers.DeviceProvider
 	conversations providers.ConversationProvider
 	usage         providers.AIUsageProvider
+	agentic       bool
 }
 
-func NewAssistClassroom(ai providers.AIClient, students providers.StudentProvider, devices providers.DeviceProvider, conversations providers.ConversationProvider, usage providers.AIUsageProvider) AssistClassroom {
-	return &assistClassroomImpl{ai: ai, students: students, devices: devices, conversations: conversations, usage: usage}
+func NewAssistClassroom(ai providers.AIClient, students providers.StudentProvider, devices providers.DeviceProvider, conversations providers.ConversationProvider, usage providers.AIUsageProvider, agentic bool) AssistClassroom {
+	return &assistClassroomImpl{ai: ai, students: students, devices: devices, conversations: conversations, usage: usage, agentic: agentic}
 }
 
 func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomRequest) (*AssistClassroomResponse, error) {
@@ -80,7 +81,13 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	messages = append(messages, providers.ChatMessage{Role: "user", Content: req.Message})
 	messages = capMessages(messages, defaultMaxHistoryTokens)
 
-	resp, err := uc.ai.Chat(ctx, messages)
+	var tools []providers.ToolDefinition
+	if uc.agentic {
+		tools = inclusionTools()
+	}
+	dispatcher := inclusionDispatcher{students: uc.students, devices: uc.devices}
+
+	resp, err := runAgenticChat(ctx, uc.ai, messages, tools, dispatcher, req.OrgID, maxAgenticIterations)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", providers.ErrServiceUnavailable, err)
 	}

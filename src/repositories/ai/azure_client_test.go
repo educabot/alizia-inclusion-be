@@ -287,6 +287,62 @@ func TestAzureClient_ChatWithTools(t *testing.T) {
 			t.Errorf("unexpected arguments: %q", tc.Arguments)
 		}
 	})
+
+	t.Run("serializes assistant tool_calls and tool result messages in openai format", func(t *testing.T) {
+		var capturedBody map[string]any
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if err := json.NewDecoder(r.Body).Decode(&capturedBody); err != nil {
+				t.Errorf("decode request body: %v", err)
+			}
+			writeJSON(t, w, validAzureResponse("ok"))
+		}))
+		defer server.Close()
+
+		client := ai.NewAzureClient(server.URL, "test-key", "gpt-4o-mini")
+		_, err := client.ChatWithTools(
+			context.Background(),
+			[]providers.ChatMessage{
+				{Role: "user", Content: "que dispositivo uso?"},
+				{Role: "assistant", ToolCalls: []providers.ToolCall{
+					{ID: "call_9", Name: "list_devices", Arguments: "{}"},
+				}},
+				{Role: "tool", ToolCallID: "call_9", Content: `{"devices":[]}`},
+			},
+			[]providers.ToolDefinition{{Name: "list_devices", Description: "lista"}},
+		)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		msgs, ok := capturedBody["messages"].([]any)
+		if !ok || len(msgs) != 3 {
+			t.Fatalf("expected 3 messages, got %v", capturedBody["messages"])
+		}
+
+		assistant, ok := msgs[1].(map[string]any)
+		if !ok {
+			t.Fatal("assistant message is not a map")
+		}
+		toolCalls, ok := assistant["tool_calls"].([]any)
+		if !ok || len(toolCalls) != 1 {
+			t.Fatalf("expected assistant.tool_calls to have 1 entry, got %v", assistant["tool_calls"])
+		}
+		call, ok := toolCalls[0].(map[string]any)
+		if !ok {
+			t.Fatal("tool_call entry is not a map")
+		}
+		if call["id"] != "call_9" || call["type"] != "function" {
+			t.Errorf("unexpected tool_call envelope: %v", call)
+		}
+
+		toolMsg, ok := msgs[2].(map[string]any)
+		if !ok {
+			t.Fatal("tool message is not a map")
+		}
+		if toolMsg["tool_call_id"] != "call_9" {
+			t.Errorf("expected tool_call_id 'call_9', got %v", toolMsg["tool_call_id"])
+		}
+	})
 }
 
 // TestAzureClient_URLConstruction verifica que el endpoint se construye correctamente
