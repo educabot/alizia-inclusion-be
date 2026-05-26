@@ -71,8 +71,15 @@ type azureChoice struct {
 	Message azureRespMessage `json:"message"`
 }
 
+type azureUsage struct {
+	PromptTokens     int `json:"prompt_tokens"`
+	CompletionTokens int `json:"completion_tokens"`
+	TotalTokens      int `json:"total_tokens"`
+}
+
 type azureResponse struct {
 	Choices []azureChoice `json:"choices"`
+	Usage   *azureUsage   `json:"usage,omitempty"`
 	Error   *azureError   `json:"error,omitempty"`
 }
 
@@ -186,6 +193,13 @@ func (a *AzureClient) ChatWithTools(ctx context.Context, messages []providers.Ch
 			Name:      tc.Function.Name,
 			Arguments: tc.Function.Arguments,
 		})
+	}
+	if resp.Usage != nil {
+		out.Usage = &providers.TokenUsage{
+			PromptTokens:     resp.Usage.PromptTokens,
+			CompletionTokens: resp.Usage.CompletionTokens,
+			TotalTokens:      resp.Usage.TotalTokens,
+		}
 	}
 	return out, nil
 }

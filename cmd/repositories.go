@@ -25,6 +25,7 @@ type Repositories struct {
 	Adaptations         providers.AdaptationProvider
 	AdaptationResources providers.AdaptationResourceProvider
 	Conversations       providers.ConversationProvider
+	AIUsage             providers.AIUsageProvider
 }
 
 func NewRepositories(db *gorm.DB, cfg *config.Config) *Repositories {
@@ -48,5 +49,6 @@ func NewRepositories(db *gorm.DB, cfg *config.Config) *Repositories {
 		Adaptations:         inclusionr.NewAdaptationRepo(db),
 		AdaptationResources: inclusionr.NewAdaptationResourceRepo(db),
 		Conversations:       inclusionr.NewConversationRepo(db),
+		AIUsage:             inclusionr.NewAIUsageRepo(db),
 	}
 }

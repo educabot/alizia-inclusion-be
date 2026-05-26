@@ -53,10 +53,11 @@ type recommendDeviceImpl struct {
 	devices       providers.DeviceProvider
 	ramps         providers.RampProvider
 	conversations providers.ConversationProvider
+	usage         providers.AIUsageProvider
 }
 
-func NewRecommendDevice(ai providers.AIClient, students providers.StudentProvider, devices providers.DeviceProvider, ramps providers.RampProvider, conversations providers.ConversationProvider) RecommendDevice {
-	return &recommendDeviceImpl{ai: ai, students: students, devices: devices, ramps: ramps, conversations: conversations}
+func NewRecommendDevice(ai providers.AIClient, students providers.StudentProvider, devices providers.DeviceProvider, ramps providers.RampProvider, conversations providers.ConversationProvider, usage providers.AIUsageProvider) RecommendDevice {
+	return &recommendDeviceImpl{ai: ai, students: students, devices: devices, ramps: ramps, conversations: conversations, usage: usage}
 }
 
 func (uc *recommendDeviceImpl) Execute(ctx context.Context, req RecommendDeviceRequest) (*RecommendDeviceResponse, error) {
@@ -87,6 +88,8 @@ func (uc *recommendDeviceImpl) Execute(ctx context.Context, req RecommendDeviceR
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", providers.ErrServiceUnavailable, err)
 	}
+
+	recordAIUsage(ctx, uc.usage, req.OrgID, req.UserID, "recommend", resp.Usage)
 
 	deviceID := extractDeviceID(resp.Content)
 	adaptation := extractAdaptationJSON(resp.Content)

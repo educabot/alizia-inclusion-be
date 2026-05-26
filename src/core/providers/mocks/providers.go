@@ -227,3 +227,16 @@ func (m *MockConversationProvider) AppendTurn(ctx context.Context, params provid
 	}
 	return m.AppendTurnFn(ctx, params)
 }
+
+// --- AIUsageProvider ---
+
+type MockAIUsageProvider struct {
+	RecordFn func(ctx context.Context, record providers.AIUsageRecord) error
+}
+
+func (m *MockAIUsageProvider) Record(ctx context.Context, record providers.AIUsageRecord) error {
+	if m.RecordFn == nil {
+		return nil
+	}
+	return m.RecordFn(ctx, record)
+}

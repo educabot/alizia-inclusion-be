@@ -24,7 +24,7 @@ func TestRecommendDevice(t *testing.T) {
 		Objective: "Sumar fracciones",
 	}
 
-	setupMocks := func(aiResponse string, aiErr error) (*mocks.MockAIClient, *mocks.MockStudentProvider, *mocks.MockDeviceProvider, *mocks.MockRampProvider, *mocks.MockConversationProvider) {
+	setupMocks := func(aiResponse string, aiErr error) (*mocks.MockAIClient, *mocks.MockStudentProvider, *mocks.MockDeviceProvider, *mocks.MockRampProvider, *mocks.MockConversationProvider, *mocks.MockAIUsageProvider) {
 		student := testutil.NewStudentWithProfile(1, 1, "Lucas", []string{"distraccion"})
 		device := testutil.NewDevice(1, 1, "Timer Visual")
 		return &mocks.MockAIClient{
@@ -47,15 +47,16 @@ func TestRecommendDevice(t *testing.T) {
 				},
 			},
 			&mocks.MockRampProvider{},
-			&mocks.MockConversationProvider{}
+			&mocks.MockConversationProvider{},
+			&mocks.MockAIUsageProvider{}
 	}
 
 	t.Run("returns recommendation with device", func(t *testing.T) {
 		aiResp := `Recomiendo el Timer Visual [DEVICE_ID:1] para ayudar con la distraccion.
 [ADAPTATION_JSON:{"title":"Timer para fracciones","type":"actividad_adaptada","strategy":"Usar timer","device_ids":[1],"device_names":["Timer Visual"]}]`
-		ai, students, devices, ramps, conversations := setupMocks(aiResp, nil)
+		ai, students, devices, ramps, conversations, usage := setupMocks(aiResp, nil)
 
-		got, err := inclusion.NewRecommendDevice(ai, students, devices, ramps, conversations).Execute(ctx, baseRequest)
+		got, err := inclusion.NewRecommendDevice(ai, students, devices, ramps, conversations, usage).Execute(ctx, baseRequest)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -74,9 +75,9 @@ func TestRecommendDevice(t *testing.T) {
 	})
 
 	t.Run("handles response without markers", func(t *testing.T) {
-		ai, students, devices, ramps, conversations := setupMocks("Respuesta sin marcadores", nil)
+		ai, students, devices, ramps, conversations, usage := setupMocks("Respuesta sin marcadores", nil)
 
-		got, err := inclusion.NewRecommendDevice(ai, students, devices, ramps, conversations).Execute(ctx, baseRequest)
+		got, err := inclusion.NewRecommendDevice(ai, students, devices, ramps, conversations, usage).Execute(ctx, baseRequest)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -89,9 +90,9 @@ func TestRecommendDevice(t *testing.T) {
 	})
 
 	t.Run("wraps AI error as service unavailable", func(t *testing.T) {
-		ai, students, devices, ramps, conversations := setupMocks("", errDB)
+		ai, students, devices, ramps, conversations, usage := setupMocks("", errDB)
 
-		_, err := inclusion.NewRecommendDevice(ai, students, devices, ramps, conversations).Execute(ctx, baseRequest)
+		_, err := inclusion.NewRecommendDevice(ai, students, devices, ramps, conversations, usage).Execute(ctx, baseRequest)
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -101,30 +102,30 @@ func TestRecommendDevice(t *testing.T) {
 	})
 
 	t.Run("rejects nil org_id", func(t *testing.T) {
-		ai, students, devices, ramps, conversations := setupMocks("", nil)
+		ai, students, devices, ramps, conversations, usage := setupMocks("", nil)
 		req := baseRequest
 		req.OrgID = uuid.Nil
-		_, err := inclusion.NewRecommendDevice(ai, students, devices, ramps, conversations).Execute(ctx, req)
+		_, err := inclusion.NewRecommendDevice(ai, students, devices, ramps, conversations, usage).Execute(ctx, req)
 		if !errors.Is(err, providers.ErrValidation) {
 			t.Errorf("expected ErrValidation, got: %v", err)
 		}
 	})
 
 	t.Run("rejects zero student_id", func(t *testing.T) {
-		ai, students, devices, ramps, conversations := setupMocks("", nil)
+		ai, students, devices, ramps, conversations, usage := setupMocks("", nil)
 		req := baseRequest
 		req.StudentID = 0
-		_, err := inclusion.NewRecommendDevice(ai, students, devices, ramps, conversations).Execute(ctx, req)
+		_, err := inclusion.NewRecommendDevice(ai, students, devices, ramps, conversations, usage).Execute(ctx, req)
 		if !errors.Is(err, providers.ErrValidation) {
 			t.Errorf("expected ErrValidation, got: %v", err)
 		}
 	})
 
 	t.Run("rejects empty subject", func(t *testing.T) {
-		ai, students, devices, ramps, conversations := setupMocks("", nil)
+		ai, students, devices, ramps, conversations, usage := setupMocks("", nil)
 		req := baseRequest
 		req.Subject = ""
-		_, err := inclusion.NewRecommendDevice(ai, students, devices, ramps, conversations).Execute(ctx, req)
+		_, err := inclusion.NewRecommendDevice(ai, students, devices, ramps, conversations, usage).Execute(ctx, req)
 		if !errors.Is(err, providers.ErrValidation) {
 			t.Errorf("expected ErrValidation, got: %v", err)
 		}
@@ -132,7 +133,7 @@ func TestRecommendDevice(t *testing.T) {
 
 	t.Run("persists turn with metadata when user_id present", func(t *testing.T) {
 		aiResp := "Usá Timer Visual [DEVICE_ID:1]"
-		ai, students, devices, ramps, conversations := setupMocks(aiResp, nil)
+		ai, students, devices, ramps, conversations, usage := setupMocks(aiResp, nil)
 		var captured providers.AppendTurnParams
 		conversations.AppendTurnFn = func(_ context.Context, p providers.AppendTurnParams) (int64, error) {
 			captured = p
@@ -141,7 +142,7 @@ func TestRecommendDevice(t *testing.T) {
 		req := baseRequest
 		req.UserID = 5
 
-		got, err := inclusion.NewRecommendDevice(ai, students, devices, ramps, conversations).Execute(ctx, req)
+		got, err := inclusion.NewRecommendDevice(ai, students, devices, ramps, conversations, usage).Execute(ctx, req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

@@ -48,10 +48,11 @@ type assistClassroomImpl struct {
 	students      providers.StudentProvider
 	devices       providers.DeviceProvider
 	conversations providers.ConversationProvider
+	usage         providers.AIUsageProvider
 }
 
-func NewAssistClassroom(ai providers.AIClient, students providers.StudentProvider, devices providers.DeviceProvider, conversations providers.ConversationProvider) AssistClassroom {
-	return &assistClassroomImpl{ai: ai, students: students, devices: devices, conversations: conversations}
+func NewAssistClassroom(ai providers.AIClient, students providers.StudentProvider, devices providers.DeviceProvider, conversations providers.ConversationProvider, usage providers.AIUsageProvider) AssistClassroom {
+	return &assistClassroomImpl{ai: ai, students: students, devices: devices, conversations: conversations, usage: usage}
 }
 
 func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomRequest) (*AssistClassroomResponse, error) {
@@ -83,6 +84,8 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", providers.ErrServiceUnavailable, err)
 	}
+
+	recordAIUsage(ctx, uc.usage, req.OrgID, req.UserID, "assist", resp.Usage)
 
 	studentID := extractStudentID(resp.Content)
 	deviceID := extractDeviceID(resp.Content)
