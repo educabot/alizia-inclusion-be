@@ -33,6 +33,7 @@ func newTenantRequest() *web.MockRequest {
 type mockListRamps struct {
 	fn func(ctx context.Context, req cataloguc.ListRampsRequest) ([]entities.Ramp, error)
 }
+
 func (m *mockListRamps) Execute(ctx context.Context, req cataloguc.ListRampsRequest) ([]entities.Ramp, error) {
 	return m.fn(ctx, req)
 }
@@ -40,6 +41,7 @@ func (m *mockListRamps) Execute(ctx context.Context, req cataloguc.ListRampsRequ
 type mockGetRamp struct {
 	fn func(ctx context.Context, req cataloguc.GetRampRequest) (*entities.Ramp, error)
 }
+
 func (m *mockGetRamp) Execute(ctx context.Context, req cataloguc.GetRampRequest) (*entities.Ramp, error) {
 	return m.fn(ctx, req)
 }
@@ -47,6 +49,7 @@ func (m *mockGetRamp) Execute(ctx context.Context, req cataloguc.GetRampRequest)
 type mockListDevices struct {
 	fn func(ctx context.Context, req cataloguc.ListDevicesRequest) ([]entities.Device, error)
 }
+
 func (m *mockListDevices) Execute(ctx context.Context, req cataloguc.ListDevicesRequest) ([]entities.Device, error) {
 	return m.fn(ctx, req)
 }
@@ -54,6 +57,7 @@ func (m *mockListDevices) Execute(ctx context.Context, req cataloguc.ListDevices
 type mockGetDevice struct {
 	fn func(ctx context.Context, req cataloguc.GetDeviceRequest) (*entities.Device, error)
 }
+
 func (m *mockGetDevice) Execute(ctx context.Context, req cataloguc.GetDeviceRequest) (*entities.Device, error) {
 	return m.fn(ctx, req)
 }
@@ -63,6 +67,7 @@ func (m *mockGetDevice) Execute(ctx context.Context, req cataloguc.GetDeviceRequ
 type mockListClassrooms struct {
 	fn func(ctx context.Context, req mgmtuc.ListClassroomsRequest) ([]entities.Classroom, error)
 }
+
 func (m *mockListClassrooms) Execute(ctx context.Context, req mgmtuc.ListClassroomsRequest) ([]entities.Classroom, error) {
 	return m.fn(ctx, req)
 }
@@ -70,6 +75,7 @@ func (m *mockListClassrooms) Execute(ctx context.Context, req mgmtuc.ListClassro
 type mockGetClassroom struct {
 	fn func(ctx context.Context, req mgmtuc.GetClassroomRequest) (*entities.Classroom, error)
 }
+
 func (m *mockGetClassroom) Execute(ctx context.Context, req mgmtuc.GetClassroomRequest) (*entities.Classroom, error) {
 	return m.fn(ctx, req)
 }
@@ -77,6 +83,7 @@ func (m *mockGetClassroom) Execute(ctx context.Context, req mgmtuc.GetClassroomR
 type mockCreateClassroom struct {
 	fn func(ctx context.Context, req mgmtuc.CreateClassroomRequest) (*entities.Classroom, error)
 }
+
 func (m *mockCreateClassroom) Execute(ctx context.Context, req mgmtuc.CreateClassroomRequest) (*entities.Classroom, error) {
 	return m.fn(ctx, req)
 }
@@ -84,6 +91,7 @@ func (m *mockCreateClassroom) Execute(ctx context.Context, req mgmtuc.CreateClas
 type mockDeleteClassroom struct {
 	fn func(ctx context.Context, req mgmtuc.DeleteClassroomRequest) error
 }
+
 func (m *mockDeleteClassroom) Execute(ctx context.Context, req mgmtuc.DeleteClassroomRequest) error {
 	return m.fn(ctx, req)
 }
@@ -91,6 +99,7 @@ func (m *mockDeleteClassroom) Execute(ctx context.Context, req mgmtuc.DeleteClas
 type mockListTeachers struct {
 	fn func(ctx context.Context, req mgmtuc.ListTeachersRequest) ([]entities.User, error)
 }
+
 func (m *mockListTeachers) Execute(ctx context.Context, req mgmtuc.ListTeachersRequest) ([]entities.User, error) {
 	return m.fn(ctx, req)
 }
@@ -100,6 +109,7 @@ func (m *mockListTeachers) Execute(ctx context.Context, req mgmtuc.ListTeachersR
 type mockGetMe struct {
 	fn func(ctx context.Context, req authuc.GetMeRequest) (*entities.User, error)
 }
+
 func (m *mockGetMe) Execute(ctx context.Context, req authuc.GetMeRequest) (*entities.User, error) {
 	return m.fn(ctx, req)
 }
@@ -109,6 +119,7 @@ func (m *mockGetMe) Execute(ctx context.Context, req authuc.GetMeRequest) (*enti
 type mockGetMetrics struct {
 	fn func(ctx context.Context, req dashuc.GetMetricsRequest) (*dashuc.GetMetricsResponse, error)
 }
+
 func (m *mockGetMetrics) Execute(ctx context.Context, req dashuc.GetMetricsRequest) (*dashuc.GetMetricsResponse, error) {
 	return m.fn(ctx, req)
 }

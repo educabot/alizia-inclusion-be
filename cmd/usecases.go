@@ -29,17 +29,17 @@ type UseCases struct {
 	DeleteClassroom mgmtuc.DeleteClassroom
 	ListTeachers    mgmtuc.ListTeachers
 
-	ListStudents     inclusionuc.ListStudents
-	CreateStudent    inclusionuc.CreateStudent
-	UpdateStudent    inclusionuc.UpdateStudent
-	DeleteStudent    inclusionuc.DeleteStudent
-	ListAdaptations          inclusionuc.ListAdaptations
-	GetAdaptation            inclusionuc.GetAdaptation
-	CreateAdaptation         inclusionuc.CreateAdaptation
-	UpdateAdaptation         inclusionuc.UpdateAdaptation
-	DeleteAdaptation         inclusionuc.DeleteAdaptation
-	ListAdaptationResources  inclusionuc.ListAdaptationResources
-	GetChatHistory           inclusionuc.GetChatHistory
+	ListStudents            inclusionuc.ListStudents
+	CreateStudent           inclusionuc.CreateStudent
+	UpdateStudent           inclusionuc.UpdateStudent
+	DeleteStudent           inclusionuc.DeleteStudent
+	ListAdaptations         inclusionuc.ListAdaptations
+	GetAdaptation           inclusionuc.GetAdaptation
+	CreateAdaptation        inclusionuc.CreateAdaptation
+	UpdateAdaptation        inclusionuc.UpdateAdaptation
+	DeleteAdaptation        inclusionuc.DeleteAdaptation
+	ListAdaptationResources inclusionuc.ListAdaptationResources
+	GetChatHistory          inclusionuc.GetChatHistory
 
 	GetMetrics dashuc.GetMetrics
 }
@@ -66,10 +66,10 @@ func NewUseCases(repos *Repositories) *UseCases {
 		DeleteClassroom: mgmtuc.NewDeleteClassroom(repos.Classrooms),
 		ListTeachers:    mgmtuc.NewListTeachers(repos.Users),
 
-		ListStudents:     inclusionuc.NewListStudents(repos.Students),
-		CreateStudent:    inclusionuc.NewCreateStudent(repos.Students),
-		UpdateStudent:    inclusionuc.NewUpdateStudent(repos.Students),
-		DeleteStudent:    inclusionuc.NewDeleteStudent(repos.Students),
+		ListStudents:            inclusionuc.NewListStudents(repos.Students),
+		CreateStudent:           inclusionuc.NewCreateStudent(repos.Students),
+		UpdateStudent:           inclusionuc.NewUpdateStudent(repos.Students),
+		DeleteStudent:           inclusionuc.NewDeleteStudent(repos.Students),
 		ListAdaptations:         inclusionuc.NewListAdaptations(repos.Adaptations),
 		GetAdaptation:           inclusionuc.NewGetAdaptation(repos.Adaptations),
 		CreateAdaptation:        inclusionuc.NewCreateAdaptation(repos.Adaptations),

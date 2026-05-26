@@ -15,16 +15,16 @@ import (
 )
 
 type Repositories struct {
-	Ramps                providers.RampProvider
-	Devices              providers.DeviceProvider
-	Students             providers.StudentProvider
-	StudentProfiles      providers.StudentProfileProvider
-	AI                   providers.AIClient
-	Users                providers.UserProvider
-	Classrooms           providers.ClassroomProvider
-	Adaptations          providers.AdaptationProvider
-	AdaptationResources  providers.AdaptationResourceProvider
-	Conversations        providers.ConversationProvider
+	Ramps               providers.RampProvider
+	Devices             providers.DeviceProvider
+	Students            providers.StudentProvider
+	StudentProfiles     providers.StudentProfileProvider
+	AI                  providers.AIClient
+	Users               providers.UserProvider
+	Classrooms          providers.ClassroomProvider
+	Adaptations         providers.AdaptationProvider
+	AdaptationResources providers.AdaptationResourceProvider
+	Conversations       providers.ConversationProvider
 }
 
 func NewRepositories(db *gorm.DB, cfg *config.Config) *Repositories {
