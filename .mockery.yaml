@@ -1,0 +1,16 @@
+with-expecter: false
+dir: "{{.InterfaceDir}}/mocks"
+outpkg: mocks
+packages:
+  github.com/educabot/alizia-inclusion-be/src/core/providers:
+    interfaces:
+      RampProvider:
+      DeviceProvider:
+      StudentProvider:
+      StudentProfileProvider:
+      AIClient:
+      UserProvider:
+      ClassroomProvider:
+      AdaptationProvider:
+      AdaptationResourceProvider:
+      ConversationProvider:

@@ -1,4 +1,4 @@
-.PHONY: build test test-cover vet lint docker migrate run seed
+.PHONY: build test test-cover vet lint docker migrate run seed mocks
 
 build:
 	CGO_ENABLED=0 go build -o alizia-inclusion-api ./cmd
@@ -24,6 +24,9 @@ migrate:
 
 seed:
 	./scripts/seed.sh
+
+mocks:
+	mockery
 
 run:
 	air
