@@ -35,8 +35,8 @@ func mapRamp(r entities.Ramp) rampResponse {
 
 func mapRamps(rs []entities.Ramp) []rampResponse {
 	out := make([]rampResponse, len(rs))
-	for i, r := range rs {
-		out[i] = mapRamp(r)
+	for i := range rs {
+		out[i] = mapRamp(rs[i])
 	}
 	return out
 }

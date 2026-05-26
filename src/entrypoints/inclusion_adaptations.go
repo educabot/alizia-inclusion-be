@@ -61,7 +61,8 @@ func mapAdaptation(a entities.Adaptation) adaptationResponse {
 	if a.Device != nil {
 		resp.DeviceName = &a.Device.Name
 	}
-	for _, d := range a.Devices {
+	for i := range a.Devices {
+		d := &a.Devices[i]
 		resp.DeviceIDs = append(resp.DeviceIDs, d.ID)
 		resp.DeviceNames = append(resp.DeviceNames, d.Name)
 	}
@@ -70,8 +71,8 @@ func mapAdaptation(a entities.Adaptation) adaptationResponse {
 
 func mapAdaptations(as []entities.Adaptation) []adaptationResponse {
 	out := make([]adaptationResponse, len(as))
-	for i, a := range as {
-		out[i] = mapAdaptation(a)
+	for i := range as {
+		out[i] = mapAdaptation(as[i])
 	}
 	return out
 }

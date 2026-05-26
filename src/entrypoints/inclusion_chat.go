@@ -43,8 +43,8 @@ func mapConversation(c entities.Conversation) conversationResponse {
 
 func mapConversations(cs []entities.Conversation) []conversationResponse {
 	out := make([]conversationResponse, len(cs))
-	for i, c := range cs {
-		out[i] = mapConversation(c)
+	for i := range cs {
+		out[i] = mapConversation(cs[i])
 	}
 	return out
 }

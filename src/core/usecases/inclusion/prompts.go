@@ -32,7 +32,8 @@ func buildRecommendSystemPrompt(devices []entities.Device) string {
 	b.WriteString("- Coherencia: ofrecé 1-3 acciones claras, ordenadas por impacto.\n\n")
 
 	b.WriteString("CATÁLOGO DE DISPOSITIVOS:\n")
-	for _, d := range devices {
+	for i := range devices {
+		d := &devices[i]
 		fmt.Fprintf(&b, "- [ID:%d] %s", d.ID, d.Name)
 		if d.NeedsDescription != nil {
 			fmt.Fprintf(&b, " — %s", *d.NeedsDescription)
@@ -121,7 +122,8 @@ func buildAssistSystemPrompt(devices []entities.Device, students []entities.Stud
 	}
 
 	b.WriteString("DISPOSITIVOS DISPONIBLES:\n")
-	for _, d := range devices {
+	for i := range devices {
+		d := &devices[i]
 		fmt.Fprintf(&b, "- [ID:%d] %s", d.ID, d.Name)
 		if d.NeedsDescription != nil {
 			fmt.Fprintf(&b, " — %s", *d.NeedsDescription)
@@ -171,7 +173,8 @@ func buildGuidedAssistPrompt(devices []entities.Device, students []entities.Stud
 	}
 
 	b.WriteString("DISPOSITIVOS DISPONIBLES:\n")
-	for _, d := range devices {
+	for i := range devices {
+		d := &devices[i]
 		fmt.Fprintf(&b, "- [ID:%d] %s", d.ID, d.Name)
 		if d.NeedsDescription != nil {
 			fmt.Fprintf(&b, " — %s", *d.NeedsDescription)

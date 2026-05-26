@@ -32,8 +32,8 @@ func mapClassroom(c entities.Classroom) classroomResponse {
 
 func mapClassrooms(cs []entities.Classroom) []classroomResponse {
 	out := make([]classroomResponse, len(cs))
-	for i, c := range cs {
-		out[i] = mapClassroom(c)
+	for i := range cs {
+		out[i] = mapClassroom(cs[i])
 	}
 	return out
 }

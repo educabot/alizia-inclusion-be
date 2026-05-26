@@ -40,7 +40,7 @@ func NewClassroom(id int64, name string) entities.Classroom {
 	}
 }
 
-func NewStudent(id int64, classroomID int64, name string) entities.Student {
+func NewStudent(id, classroomID int64, name string) entities.Student {
 	return entities.Student{
 		ID:             id,
 		OrganizationID: TestOrgID,
@@ -53,7 +53,7 @@ func NewStudent(id int64, classroomID int64, name string) entities.Student {
 	}
 }
 
-func NewStudentWithProfile(id int64, classroomID int64, name string, difficulties []string) entities.Student {
+func NewStudentWithProfile(id, classroomID int64, name string, difficulties []string) entities.Student {
 	s := NewStudent(id, classroomID, name)
 	s.Profile = &entities.StudentProfile{
 		ID:           id,
@@ -81,7 +81,7 @@ func NewRamp(id int64, name string) entities.Ramp {
 	}
 }
 
-func NewDevice(id int64, rampID int64, name string) entities.Device {
+func NewDevice(id, rampID int64, name string) entities.Device {
 	return entities.Device{
 		ID:             id,
 		OrganizationID: TestOrgID,
@@ -96,7 +96,7 @@ func NewDevice(id int64, rampID int64, name string) entities.Device {
 	}
 }
 
-func NewAdaptation(id int64, studentID int64, teacherID int64) entities.Adaptation {
+func NewAdaptation(id, studentID, teacherID int64) entities.Adaptation {
 	return entities.Adaptation{
 		ID:             id,
 		OrganizationID: TestOrgID,
@@ -111,7 +111,7 @@ func NewAdaptation(id int64, studentID int64, teacherID int64) entities.Adaptati
 	}
 }
 
-func NewConversation(id int64, userID int64, mode string) entities.Conversation {
+func NewConversation(id, userID int64, mode string) entities.Conversation {
 	return entities.Conversation{
 		ID:             id,
 		OrganizationID: TestOrgID,
@@ -124,7 +124,7 @@ func NewConversation(id int64, userID int64, mode string) entities.Conversation 
 	}
 }
 
-func NewAdaptationResource(id int64, adaptationID int64) entities.AdaptationResource {
+func NewAdaptationResource(id, adaptationID int64) entities.AdaptationResource {
 	return entities.AdaptationResource{
 		ID:           id,
 		AdaptationID: adaptationID,

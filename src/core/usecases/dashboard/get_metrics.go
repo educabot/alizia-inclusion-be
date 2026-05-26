@@ -75,7 +75,8 @@ func (uc *getMetricsImpl) Execute(ctx context.Context, req GetMetricsRequest) (*
 
 	byStatus := make(map[string]int)
 	byType := make(map[string]int)
-	for _, a := range adaptations {
+	for i := range adaptations {
+		a := &adaptations[i]
 		byStatus[a.Status]++
 		if a.AdaptationType != "" {
 			byType[a.AdaptationType]++

@@ -56,8 +56,8 @@ func mapDevice(d entities.Device) deviceResponse {
 
 func mapDevices(ds []entities.Device) []deviceResponse {
 	out := make([]deviceResponse, len(ds))
-	for i, d := range ds {
-		out[i] = mapDevice(d)
+	for i := range ds {
+		out[i] = mapDevice(ds[i])
 	}
 	return out
 }

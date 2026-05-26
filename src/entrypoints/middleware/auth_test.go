@@ -18,7 +18,7 @@ import (
 	mw "github.com/educabot/alizia-inclusion-be/src/entrypoints/middleware"
 )
 
-func generateRSAKeyPair(t *testing.T) (*rsa.PrivateKey, string) {
+func generateRSAKeyPair(t *testing.T) (privKey *rsa.PrivateKey, publicPEM string) {
 	t.Helper()
 	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
