@@ -187,7 +187,7 @@ func buildGuidedAssistPrompt(devices []entities.Device, students []entities.Stud
 
 var deviceIDRegex = regexp.MustCompile(`\[DEVICE_ID:(\d+)\]`)
 var studentIDRegex = regexp.MustCompile(`\[STUDENT_ID:(\d+)\]`)
-var adaptationJSONRegex = regexp.MustCompile(`\[ADAPTATION_JSON:(\{[^]]+\})\]`)
+var adaptationJSONRegex = regexp.MustCompile(`\[ADAPTATION_JSON:(\{.+\})\]`)
 
 func extractDeviceID(content string) *int64 {
 	matches := deviceIDRegex.FindStringSubmatch(content)
