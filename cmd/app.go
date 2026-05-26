@@ -40,9 +40,9 @@ func NewApp(cfg *config.Config) *App {
 	engine := gin.Default()
 	engine.Use(appmw.RequestLogger())
 	engine.Use(cors.New(cors.Config{
-		AllowOriginFunc: buildOriginChecker(cfg.AllowedOrigins),
-		AllowMethods:    []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:    []string{"Origin", "Content-Type", "Authorization"},
+		AllowOriginFunc:  buildOriginChecker(cfg.AllowedOrigins),
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		AllowCredentials: true,
 	}))
 

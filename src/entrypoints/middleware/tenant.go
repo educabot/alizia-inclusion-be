@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/google/uuid"
 	"github.com/educabot/team-ai-toolkit/tokens"
 	"github.com/educabot/team-ai-toolkit/web"
+	"github.com/google/uuid"
 )
 
 const (

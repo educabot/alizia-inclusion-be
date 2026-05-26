@@ -1,8 +1,8 @@
 package web
 
 import (
-	"github.com/gin-gonic/gin"
 	webgin "github.com/educabot/team-ai-toolkit/web/gin"
+	"github.com/gin-gonic/gin"
 
 	"github.com/educabot/alizia-inclusion-be/config"
 	"github.com/educabot/alizia-inclusion-be/src/entrypoints"
