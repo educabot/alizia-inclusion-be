@@ -213,9 +213,17 @@ func (m *MockClassroomProvider) Delete(ctx context.Context, orgID uuid.UUID, id 
 // --- ConversationProvider ---
 
 type MockConversationProvider struct {
-	ListByUserFn func(ctx context.Context, orgID uuid.UUID, userID int64, mode string) ([]entities.Conversation, error)
+	ListByUserFn  func(ctx context.Context, orgID uuid.UUID, userID int64, mode string) ([]entities.Conversation, error)
+	AppendTurnFn  func(ctx context.Context, params providers.AppendTurnParams) (int64, error)
 }
 
 func (m *MockConversationProvider) ListByUser(ctx context.Context, orgID uuid.UUID, userID int64, mode string) ([]entities.Conversation, error) {
 	return m.ListByUserFn(ctx, orgID, userID, mode)
+}
+
+func (m *MockConversationProvider) AppendTurn(ctx context.Context, params providers.AppendTurnParams) (int64, error) {
+	if m.AppendTurnFn == nil {
+		return params.ConversationID, nil
+	}
+	return m.AppendTurnFn(ctx, params)
 }

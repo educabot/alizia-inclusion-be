@@ -54,8 +54,8 @@ func NewUseCases(repos *Repositories) *UseCases {
 		GetStudentProfile:     inclusionuc.NewGetStudentProfile(repos.Students),
 		UpsertStudentProfile:  inclusionuc.NewUpsertStudentProfile(repos.Students, repos.StudentProfiles),
 		ListClassroomStudents: inclusionuc.NewListClassroomStudents(repos.Students),
-		RecommendDevice:       inclusionuc.NewRecommendDevice(repos.AI, repos.Students, repos.Devices, repos.Ramps),
-		AssistClassroom:       inclusionuc.NewAssistClassroom(repos.AI, repos.Students, repos.Devices),
+		RecommendDevice:       inclusionuc.NewRecommendDevice(repos.AI, repos.Students, repos.Devices, repos.Ramps, repos.Conversations),
+		AssistClassroom:       inclusionuc.NewAssistClassroom(repos.AI, repos.Students, repos.Devices, repos.Conversations),
 
 		GetMe: authuc.NewGetMe(repos.Users),
 

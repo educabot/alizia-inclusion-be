@@ -23,7 +23,7 @@ func TestAssistClassroom(t *testing.T) {
 		Message:     "Lucas no puede concentrarse",
 	}
 
-	setupMocks := func(aiResponse string, aiErr error) (*mocks.MockAIClient, *mocks.MockStudentProvider, *mocks.MockDeviceProvider) {
+	setupMocks := func(aiResponse string, aiErr error) (*mocks.MockAIClient, *mocks.MockStudentProvider, *mocks.MockDeviceProvider, *mocks.MockConversationProvider) {
 		return &mocks.MockAIClient{
 				ChatFn: func(_ context.Context, _ []providers.ChatMessage) (*providers.ChatResponse, error) {
 					if aiErr != nil {
@@ -43,13 +43,14 @@ func TestAssistClassroom(t *testing.T) {
 					d := testutil.NewDevice(1, 1, "Pictogramas")
 					return []entities.Device{d}, nil
 				},
-			}
+			},
+			&mocks.MockConversationProvider{}
 	}
 
 	t.Run("returns assist response", func(t *testing.T) {
-		ai, students, devices := setupMocks("Podrias usar pictogramas [DEVICE_ID:1]", nil)
+		ai, students, devices, conversations := setupMocks("Podrias usar pictogramas [DEVICE_ID:1]", nil)
 
-		got, err := inclusion.NewAssistClassroom(ai, students, devices).Execute(ctx, baseRequest)
+		got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations).Execute(ctx, baseRequest)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -59,11 +60,11 @@ func TestAssistClassroom(t *testing.T) {
 	})
 
 	t.Run("works in guided mode", func(t *testing.T) {
-		ai, students, devices := setupMocks("Para que alumno necesitas la adaptacion?", nil)
+		ai, students, devices, conversations := setupMocks("Para que alumno necesitas la adaptacion?", nil)
 		req := baseRequest
 		req.Mode = "guided"
 
-		got, err := inclusion.NewAssistClassroom(ai, students, devices).Execute(ctx, req)
+		got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations).Execute(ctx, req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -73,9 +74,9 @@ func TestAssistClassroom(t *testing.T) {
 	})
 
 	t.Run("wraps AI error", func(t *testing.T) {
-		ai, students, devices := setupMocks("", errDB)
+		ai, students, devices, conversations := setupMocks("", errDB)
 
-		_, err := inclusion.NewAssistClassroom(ai, students, devices).Execute(ctx, baseRequest)
+		_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations).Execute(ctx, baseRequest)
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -85,22 +86,64 @@ func TestAssistClassroom(t *testing.T) {
 	})
 
 	t.Run("rejects nil org_id", func(t *testing.T) {
-		ai, students, devices := setupMocks("", nil)
+		ai, students, devices, conversations := setupMocks("", nil)
 		req := baseRequest
 		req.OrgID = uuid.Nil
-		_, err := inclusion.NewAssistClassroom(ai, students, devices).Execute(ctx, req)
+		_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations).Execute(ctx, req)
 		if !errors.Is(err, providers.ErrValidation) {
 			t.Errorf("expected ErrValidation, got: %v", err)
 		}
 	})
 
 	t.Run("rejects empty message", func(t *testing.T) {
-		ai, students, devices := setupMocks("", nil)
+		ai, students, devices, conversations := setupMocks("", nil)
 		req := baseRequest
 		req.Message = ""
-		_, err := inclusion.NewAssistClassroom(ai, students, devices).Execute(ctx, req)
+		_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations).Execute(ctx, req)
 		if !errors.Is(err, providers.ErrValidation) {
 			t.Errorf("expected ErrValidation, got: %v", err)
+		}
+	})
+
+	t.Run("persists turn when user_id present", func(t *testing.T) {
+		ai, students, devices, conversations := setupMocks("Podrias usar pictogramas [DEVICE_ID:1]", nil)
+		var captured providers.AppendTurnParams
+		conversations.AppendTurnFn = func(_ context.Context, p providers.AppendTurnParams) (int64, error) {
+			captured = p
+			return 42, nil
+		}
+		req := baseRequest
+		req.UserID = 7
+
+		got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations).Execute(ctx, req)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got.ConversationID != 42 {
+			t.Errorf("expected conversation_id 42, got %d", got.ConversationID)
+		}
+		if captured.UserID != 7 {
+			t.Errorf("expected captured UserID 7, got %d", captured.UserID)
+		}
+		if captured.UserContent != baseRequest.Message {
+			t.Errorf("expected UserContent %q, got %q", baseRequest.Message, captured.UserContent)
+		}
+	})
+
+	t.Run("skips persistence when user_id missing", func(t *testing.T) {
+		ai, students, devices, conversations := setupMocks("ok", nil)
+		called := false
+		conversations.AppendTurnFn = func(_ context.Context, _ providers.AppendTurnParams) (int64, error) {
+			called = true
+			return 99, nil
+		}
+
+		_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations).Execute(ctx, baseRequest)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if called {
+			t.Error("AppendTurn should not be invoked without UserID")
 		}
 	})
 }

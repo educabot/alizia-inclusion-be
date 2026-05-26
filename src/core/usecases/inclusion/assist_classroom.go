@@ -3,6 +3,7 @@ package inclusion
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 
@@ -10,12 +11,14 @@ import (
 )
 
 type AssistClassroomRequest struct {
-	OrgID       uuid.UUID
-	ClassroomID int64
-	StudentID   *int64
-	Message     string
-	Mode        string
-	History     []providers.ChatMessage
+	OrgID          uuid.UUID
+	UserID         int64
+	ConversationID int64
+	ClassroomID    int64
+	StudentID      *int64
+	Message        string
+	Mode           string
+	History        []providers.ChatMessage
 }
 
 func (r AssistClassroomRequest) Validate() error {
@@ -30,6 +33,7 @@ func (r AssistClassroomRequest) Validate() error {
 
 type AssistClassroomResponse struct {
 	Response          string               `json:"response"`
+	ConversationID    int64                `json:"conversation_id"`
 	IdentifiedStudent *int64               `json:"identified_student,omitempty"`
 	RecommendedDevice *int64               `json:"recommended_device,omitempty"`
 	Adaptation        *GeneratedAdaptation `json:"adaptation,omitempty"`
@@ -40,13 +44,14 @@ type AssistClassroom interface {
 }
 
 type assistClassroomImpl struct {
-	ai       providers.AIClient
-	students providers.StudentProvider
-	devices  providers.DeviceProvider
+	ai            providers.AIClient
+	students      providers.StudentProvider
+	devices       providers.DeviceProvider
+	conversations providers.ConversationProvider
 }
 
-func NewAssistClassroom(ai providers.AIClient, students providers.StudentProvider, devices providers.DeviceProvider) AssistClassroom {
-	return &assistClassroomImpl{ai: ai, students: students, devices: devices}
+func NewAssistClassroom(ai providers.AIClient, students providers.StudentProvider, devices providers.DeviceProvider, conversations providers.ConversationProvider) AssistClassroom {
+	return &assistClassroomImpl{ai: ai, students: students, devices: devices, conversations: conversations}
 }
 
 func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomRequest) (*AssistClassroomResponse, error) {
@@ -82,10 +87,47 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	deviceID := extractDeviceID(resp.Content)
 	adaptation := extractAdaptationJSON(resp.Content)
 
+	convID, persistErr := uc.persistTurn(ctx, req, resp.Content, studentID, deviceID, adaptation)
+	if persistErr != nil {
+		slog.WarnContext(ctx, "assist_classroom: persist turn failed", "error", persistErr, "user_id", req.UserID, "mode", req.Mode)
+		convID = req.ConversationID
+	}
+
 	return &AssistClassroomResponse{
 		Response:          resp.Content,
+		ConversationID:    convID,
 		IdentifiedStudent: studentID,
 		RecommendedDevice: deviceID,
 		Adaptation:        adaptation,
 	}, nil
+}
+
+func (uc *assistClassroomImpl) persistTurn(ctx context.Context, req AssistClassroomRequest, assistantContent string, studentID, deviceID *int64, adaptation *GeneratedAdaptation) (int64, error) {
+	if uc.conversations == nil || req.UserID == 0 {
+		return req.ConversationID, nil
+	}
+	mode := req.Mode
+	if mode == "" {
+		mode = "assist"
+	}
+	metadata := map[string]any{}
+	if studentID != nil {
+		metadata["identified_student"] = *studentID
+	}
+	if deviceID != nil {
+		metadata["recommended_device"] = *deviceID
+	}
+	if adaptation != nil {
+		metadata["adaptation"] = adaptation
+	}
+	return uc.conversations.AppendTurn(ctx, providers.AppendTurnParams{
+		ConversationID:   req.ConversationID,
+		OrgID:            req.OrgID,
+		UserID:           req.UserID,
+		Mode:             mode,
+		StudentID:        req.StudentID,
+		UserContent:      req.Message,
+		AssistantContent: assistantContent,
+		Metadata:         metadata,
+	})
 }
