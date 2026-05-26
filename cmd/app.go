@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -19,6 +19,7 @@ import (
 
 	"github.com/educabot/alizia-inclusion-be/config"
 	appweb "github.com/educabot/alizia-inclusion-be/src/app/web"
+	appmw "github.com/educabot/alizia-inclusion-be/src/entrypoints/middleware"
 )
 
 type App struct {
@@ -28,6 +29,8 @@ type App struct {
 }
 
 func NewApp(cfg *config.Config) *App {
+	initLogger(cfg)
+
 	db := connectDB(cfg)
 
 	repos := NewRepositories(db, cfg)
@@ -35,6 +38,7 @@ func NewApp(cfg *config.Config) *App {
 	handlers := NewHandlers(usecases, cfg)
 
 	engine := gin.Default()
+	engine.Use(appmw.RequestLogger())
 	engine.Use(cors.New(cors.Config{
 		AllowOriginFunc: buildOriginChecker(cfg.AllowedOrigins),
 		AllowMethods:    []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -42,9 +46,7 @@ func NewApp(cfg *config.Config) *App {
 		AllowCredentials: true,
 	}))
 
-	engine.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
-	})
+	engine.GET("/health", healthHandler(db))
 
 	appweb.ConfigureMappings(engine, handlers, cfg)
 
@@ -65,9 +67,10 @@ func NewApp(cfg *config.Config) *App {
 
 func (a *App) Run() {
 	go func() {
-		log.Printf("[INFO] Server listening on %s", a.server.Addr)
+		slog.Info("server listening", "addr", a.server.Addr)
 		if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("[FATAL] Server error: %v", err)
+			slog.Error("server error", "error", err)
+			os.Exit(1)
 		}
 	}()
 
@@ -75,11 +78,11 @@ func (a *App) Run() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("[INFO] Shutting down...")
+	slog.Info("shutting down")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := a.server.Shutdown(ctx); err != nil {
-		log.Printf("[ERROR] Shutdown error: %v", err)
+		slog.Error("shutdown error", "error", err)
 	}
 }
 
@@ -118,17 +121,55 @@ func buildOriginChecker(allowed []string) func(string) bool {
 	}
 }
 
+func initLogger(cfg *config.Config) {
+	var handler slog.Handler
+	if cfg.Env == "local" || cfg.Env == "test" {
+		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
+	} else {
+		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
+	}
+	slog.SetDefault(slog.New(handler))
+}
+
+func healthHandler(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		sqlDB, err := db.DB()
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"status": "degraded",
+				"db":     "error",
+			})
+			return
+		}
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+		defer cancel()
+		if err := sqlDB.PingContext(ctx); err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"status": "degraded",
+				"db":     "unreachable",
+			})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"status": "ok",
+			"db":     "ok",
+		})
+	}
+}
+
 func connectDB(cfg *config.Config) *gorm.DB {
 	db, err := gorm.Open(postgres.Open(cfg.DatabaseURL), &gorm.Config{
 		Logger: gormlogger.Default.LogMode(gormlogger.Warn),
 	})
 	if err != nil {
-		log.Fatalf("[FATAL] Database connection failed: %v", err)
+		slog.Error("database connection failed", "error", err)
+		os.Exit(1)
 	}
 
 	sqlDB, err := db.DB()
 	if err != nil {
-		log.Fatalf("[FATAL] Failed to get sql.DB: %v", err)
+		slog.Error("failed to get sql.DB", "error", err)
+		os.Exit(1)
 	}
 
 	sqlDB.SetMaxOpenConns(cfg.DBMaxOpenConns)
@@ -136,6 +177,6 @@ func connectDB(cfg *config.Config) *gorm.DB {
 	sqlDB.SetConnMaxLifetime(cfg.DBConnMaxLifetime)
 	sqlDB.SetConnMaxIdleTime(cfg.DBConnMaxIdleTime)
 
-	log.Println("[INFO] Database connected")
+	slog.Info("database connected")
 	return db
 }

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"log/slog"
 
 	"gorm.io/gorm"
 
@@ -31,10 +31,10 @@ func NewRepositories(db *gorm.DB, cfg *config.Config) *Repositories {
 	var aiClient providers.AIClient
 	if cfg.AzureOpenAIKey != "" && cfg.AzureOpenAIEndpoint != "" && cfg.AzureOpenAIKey != "your-azure-openai-key" {
 		aiClient = air.NewAzureClient(cfg.AzureOpenAIEndpoint, cfg.AzureOpenAIKey, cfg.AzureOpenAIModel)
-		log.Printf("[INFO] Using Azure OpenAI client (endpoint: %s, model: %s)", cfg.AzureOpenAIEndpoint, cfg.AzureOpenAIModel)
+		slog.Info("using Azure OpenAI client", "endpoint", cfg.AzureOpenAIEndpoint, "model", cfg.AzureOpenAIModel)
 	} else {
 		aiClient = air.NewStubClient()
-		log.Println("[WARN] Using stub AI client — set AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT for real AI")
+		slog.Warn("using stub AI client, set AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT for real AI")
 	}
 
 	return &Repositories{
