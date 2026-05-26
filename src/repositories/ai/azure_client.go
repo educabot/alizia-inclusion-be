@@ -34,14 +34,41 @@ type azureMessage struct {
 	Content string `json:"content"`
 }
 
+type azureToolFunction struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Parameters  any    `json:"parameters,omitempty"`
+}
+
+type azureTool struct {
+	Type     string            `json:"type"`
+	Function azureToolFunction `json:"function"`
+}
+
 type azureRequest struct {
 	Messages    []azureMessage `json:"messages"`
 	Temperature *float32       `json:"temperature,omitempty"`
 	MaxTokens   *int           `json:"max_tokens,omitempty"`
+	Tools       []azureTool    `json:"tools,omitempty"`
+}
+
+type azureToolCall struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Function struct {
+		Name      string `json:"name"`
+		Arguments string `json:"arguments"`
+	} `json:"function"`
+}
+
+type azureRespMessage struct {
+	Role      string          `json:"role"`
+	Content   string          `json:"content"`
+	ToolCalls []azureToolCall `json:"tool_calls,omitempty"`
 }
 
 type azureChoice struct {
-	Message azureMessage `json:"message"`
+	Message azureRespMessage `json:"message"`
 }
 
 type azureResponse struct {
@@ -121,13 +148,28 @@ func (a *AzureClient) Chat(ctx context.Context, messages []providers.ChatMessage
 	return a.ChatWithTools(ctx, messages, nil)
 }
 
-func (a *AzureClient) ChatWithTools(ctx context.Context, messages []providers.ChatMessage, _ []providers.ToolDefinition) (*providers.ChatResponse, error) {
+func (a *AzureClient) ChatWithTools(ctx context.Context, messages []providers.ChatMessage, tools []providers.ToolDefinition) (*providers.ChatResponse, error) {
 	azMsgs := make([]azureMessage, 0, len(messages))
 	for _, m := range messages {
 		azMsgs = append(azMsgs, azureMessage{Role: m.Role, Content: m.Content})
 	}
 
-	resp, err := a.doRequest(ctx, azureRequest{Messages: azMsgs})
+	var azTools []azureTool
+	if len(tools) > 0 {
+		azTools = make([]azureTool, 0, len(tools))
+		for _, t := range tools {
+			azTools = append(azTools, azureTool{
+				Type: "function",
+				Function: azureToolFunction{
+					Name:        t.Name,
+					Description: t.Description,
+					Parameters:  t.Parameters,
+				},
+			})
+		}
+	}
+
+	resp, err := a.doRequest(ctx, azureRequest{Messages: azMsgs, Tools: azTools})
 	if err != nil {
 		return nil, err
 	}
@@ -136,5 +178,14 @@ func (a *AzureClient) ChatWithTools(ctx context.Context, messages []providers.Ch
 		return &providers.ChatResponse{Content: ""}, nil
 	}
 
-	return &providers.ChatResponse{Content: resp.Choices[0].Message.Content}, nil
+	msg := resp.Choices[0].Message
+	out := &providers.ChatResponse{Content: msg.Content}
+	for _, tc := range msg.ToolCalls {
+		out.ToolCalls = append(out.ToolCalls, providers.ToolCall{
+			ID:        tc.ID,
+			Name:      tc.Function.Name,
+			Arguments: tc.Function.Arguments,
+		})
+	}
+	return out, nil
 }

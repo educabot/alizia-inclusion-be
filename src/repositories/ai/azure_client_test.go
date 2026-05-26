@@ -199,6 +199,94 @@ func TestAzureClient_ChatWithTools(t *testing.T) {
 			t.Errorf("expected 'tool reply', got %q", resp.Content)
 		}
 	})
+
+	t.Run("sends tool definitions in openai function format", func(t *testing.T) {
+		var capturedBody map[string]any
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if err := json.NewDecoder(r.Body).Decode(&capturedBody); err != nil {
+				t.Errorf("decode request body: %v", err)
+			}
+			writeJSON(t, w, validAzureResponse("ok"))
+		}))
+		defer server.Close()
+
+		client := ai.NewAzureClient(server.URL, "test-key", "gpt-4o-mini")
+		_, err := client.ChatWithTools(
+			context.Background(),
+			[]providers.ChatMessage{{Role: "user", Content: "buscar dispositivos"}},
+			[]providers.ToolDefinition{{
+				Name:        "search_devices",
+				Description: "busca dispositivos",
+				Parameters:  map[string]any{"type": "object"},
+			}},
+		)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		tools, ok := capturedBody["tools"].([]any)
+		if !ok || len(tools) != 1 {
+			t.Fatalf("expected 1 tool in request body, got %v", capturedBody["tools"])
+		}
+		tool, ok := tools[0].(map[string]any)
+		if !ok {
+			t.Fatal("tool is not a map")
+		}
+		if tool["type"] != "function" {
+			t.Errorf("expected tool type 'function', got %v", tool["type"])
+		}
+		fn, ok := tool["function"].(map[string]any)
+		if !ok {
+			t.Fatal("tool.function is not a map")
+		}
+		if fn["name"] != "search_devices" {
+			t.Errorf("expected function name 'search_devices', got %v", fn["name"])
+		}
+	})
+
+	t.Run("parses tool_calls from response", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			writeJSON(t, w, map[string]any{
+				"choices": []map[string]any{
+					{"message": map[string]any{
+						"role":    "assistant",
+						"content": "",
+						"tool_calls": []map[string]any{
+							{
+								"id":   "call_1",
+								"type": "function",
+								"function": map[string]any{
+									"name":      "search_devices",
+									"arguments": `{"query":"timer"}`,
+								},
+							},
+						},
+					}},
+				},
+			})
+		}))
+		defer server.Close()
+
+		client := ai.NewAzureClient(server.URL, "test-key", "gpt-4o-mini")
+		resp, err := client.ChatWithTools(
+			context.Background(),
+			[]providers.ChatMessage{{Role: "user", Content: "buscar timer"}},
+			[]providers.ToolDefinition{{Name: "search_devices", Description: "busca"}},
+		)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(resp.ToolCalls) != 1 {
+			t.Fatalf("expected 1 tool call, got %d", len(resp.ToolCalls))
+		}
+		tc := resp.ToolCalls[0]
+		if tc.ID != "call_1" || tc.Name != "search_devices" {
+			t.Errorf("unexpected tool call: %+v", tc)
+		}
+		if tc.Arguments != `{"query":"timer"}` {
+			t.Errorf("unexpected arguments: %q", tc.Arguments)
+		}
+	})
 }
 
 // TestAzureClient_URLConstruction verifica que el endpoint se construye correctamente
