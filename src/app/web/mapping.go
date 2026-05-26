@@ -14,10 +14,12 @@ import (
 	"github.com/educabot/alizia-inclusion-be/src/entrypoints/rest"
 )
 
-func ConfigureMappings(engine *gin.Engine, h *entrypoints.WebHandlerContainer, _ *config.Config) {
+func ConfigureMappings(engine *gin.Engine, h *entrypoints.WebHandlerContainer, cfg *config.Config) {
 	api := engine.Group("/api/v1")
 	api.Use(webgin.AdaptMiddleware(h.AuthMiddleware))
 	api.Use(webgin.AdaptMiddleware(h.TenantMiddleware))
+
+	aiRateLimit := webgin.AdaptMiddleware(middleware.RateLimitMiddleware(cfg.AIRateLimitPerHour))
 
 	// Auth (authenticated)
 	api.GET("/auth/me", webgin.Adapt(h.Auth.HandleGetMe))
@@ -67,9 +69,9 @@ func ConfigureMappings(engine *gin.Engine, h *entrypoints.WebHandlerContainer, _
 	// Dashboard
 	api.GET("/dashboard/metrics", webgin.Adapt(h.Dashboard.HandleGetMetrics))
 
-	// AI endpoints
-	api.POST("/inclusion/recommend", webgin.Adapt(h.Inclusion.HandleRecommendDevice))
-	api.POST("/inclusion/assist", webgin.Adapt(h.Inclusion.HandleAssistClassroom))
+	// AI endpoints (rate-limited per organization)
+	api.POST("/inclusion/recommend", aiRateLimit, webgin.Adapt(h.Inclusion.HandleRecommendDevice))
+	api.POST("/inclusion/assist", aiRateLimit, webgin.Adapt(h.Inclusion.HandleAssistClassroom))
 }
 
 // exportAdaptationRoute serves a binary document download. It bypasses the

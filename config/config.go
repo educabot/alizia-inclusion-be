@@ -19,6 +19,14 @@ type Config struct {
 	DBMaxIdleConns    int
 	DBConnMaxLifetime time.Duration
 	DBConnMaxIdleTime time.Duration
+
+	// AIRateLimitPerHour caps AI requests per organization per hour. 0 = unlimited.
+	AIRateLimitPerHour int
+	// AICircuitFailureThreshold is the number of consecutive AI client failures
+	// that trip the circuit breaker open.
+	AICircuitFailureThreshold int
+	// AICircuitCooldown is how long the circuit stays open before allowing a trial call.
+	AICircuitCooldown time.Duration
 }
 
 func Load() *Config {
@@ -35,6 +43,10 @@ func Load() *Config {
 		DBMaxIdleConns:    boundedUintToInt(bcfg.GetEnvUint("DB_MAX_IDLE_CONNS", "10")),
 		DBConnMaxLifetime: time.Duration(boundedUintToInt(bcfg.GetEnvUint("DB_CONN_MAX_LIFETIME_MIN", "30"))) * time.Minute,
 		DBConnMaxIdleTime: time.Duration(boundedUintToInt(bcfg.GetEnvUint("DB_CONN_MAX_IDLE_TIME_MIN", "5"))) * time.Minute,
+
+		AIRateLimitPerHour:        boundedUintToInt(bcfg.GetEnvUint("AI_RATE_LIMIT_PER_HOUR", "0")),
+		AICircuitFailureThreshold: boundedUintToInt(bcfg.GetEnvUint("AI_CIRCUIT_FAILURE_THRESHOLD", "5")),
+		AICircuitCooldown:         time.Duration(boundedUintToInt(bcfg.GetEnvUint("AI_CIRCUIT_COOLDOWN_SEC", "30"))) * time.Second,
 	}
 }
 

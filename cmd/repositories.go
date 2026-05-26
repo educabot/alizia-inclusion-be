@@ -31,8 +31,18 @@ type Repositories struct {
 func NewRepositories(db *gorm.DB, cfg *config.Config) *Repositories {
 	var aiClient providers.AIClient
 	if cfg.AzureOpenAIKey != "" && cfg.AzureOpenAIEndpoint != "" && cfg.AzureOpenAIKey != "your-azure-openai-key" {
-		aiClient = air.NewAzureClient(cfg.AzureOpenAIEndpoint, cfg.AzureOpenAIKey, cfg.AzureOpenAIModel)
-		slog.Info("using Azure OpenAI client", "endpoint", cfg.AzureOpenAIEndpoint, "model", cfg.AzureOpenAIModel)
+		aiClient = air.NewCircuitBreaker(
+			air.NewAzureClient(cfg.AzureOpenAIEndpoint, cfg.AzureOpenAIKey, cfg.AzureOpenAIModel),
+			cfg.AICircuitFailureThreshold,
+			cfg.AICircuitCooldown,
+			nil,
+		)
+		slog.Info("using Azure OpenAI client with circuit breaker",
+			"endpoint", cfg.AzureOpenAIEndpoint,
+			"model", cfg.AzureOpenAIModel,
+			"circuit_failure_threshold", cfg.AICircuitFailureThreshold,
+			"circuit_cooldown", cfg.AICircuitCooldown,
+		)
 	} else {
 		aiClient = air.NewStubClient()
 		slog.Warn("using stub AI client, set AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT for real AI")
