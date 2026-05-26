@@ -1,11 +1,17 @@
 package web
 
 import (
+	"net/http"
+	"strconv"
+
 	webgin "github.com/educabot/team-ai-toolkit/web/gin"
 	"github.com/gin-gonic/gin"
 
 	"github.com/educabot/alizia-inclusion-be/config"
+	inclusionuc "github.com/educabot/alizia-inclusion-be/src/core/usecases/inclusion"
 	"github.com/educabot/alizia-inclusion-be/src/entrypoints"
+	"github.com/educabot/alizia-inclusion-be/src/entrypoints/middleware"
+	"github.com/educabot/alizia-inclusion-be/src/entrypoints/rest"
 )
 
 func ConfigureMappings(engine *gin.Engine, h *entrypoints.WebHandlerContainer, _ *config.Config) {
@@ -53,6 +59,7 @@ func ConfigureMappings(engine *gin.Engine, h *entrypoints.WebHandlerContainer, _
 	api.PUT("/adaptations/:id", webgin.Adapt(h.Inclusion.HandleUpdateAdaptation))
 	api.DELETE("/adaptations/:id", webgin.Adapt(h.Inclusion.HandleDeleteAdaptation))
 	api.GET("/adaptations/:id/resources", webgin.Adapt(h.Inclusion.HandleListAdaptationResources))
+	api.GET("/adaptations/:id/export", exportAdaptationRoute(h.Inclusion.ExportAdaptation))
 
 	// Chat history
 	api.GET("/chat/history/:contextId", webgin.Adapt(h.Inclusion.HandleGetChatHistory))
@@ -63,4 +70,38 @@ func ConfigureMappings(engine *gin.Engine, h *entrypoints.WebHandlerContainer, _
 	// AI endpoints
 	api.POST("/inclusion/recommend", webgin.Adapt(h.Inclusion.HandleRecommendDevice))
 	api.POST("/inclusion/assist", webgin.Adapt(h.Inclusion.HandleAssistClassroom))
+}
+
+// exportAdaptationRoute serves a binary document download. It bypasses the
+// JSON-only web.Response adapter so it can set Content-Type and
+// Content-Disposition headers directly on the gin response.
+func exportAdaptationRoute(uc inclusionuc.ExportAdaptation) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		req := webgin.NewRequest(c)
+
+		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": "invalid_id", "message": "invalid adaptation id"})
+			return
+		}
+
+		format := c.Query("format")
+		if format == "" {
+			format = inclusionuc.ExportFormatPDF
+		}
+
+		doc, err := uc.Execute(req.Context(), inclusionuc.ExportAdaptationRequest{
+			OrgID:        middleware.OrgID(req),
+			AdaptationID: id,
+			Format:       format,
+		})
+		if err != nil {
+			resp := rest.HandleError(err)
+			c.JSON(resp.Status, resp.Body)
+			return
+		}
+
+		c.Header("Content-Disposition", `attachment; filename="`+doc.Filename+`"`)
+		c.Data(http.StatusOK, doc.ContentType, doc.Data)
+	}
 }

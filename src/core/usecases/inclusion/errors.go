@@ -18,4 +18,5 @@ var (
 	errModeRequired         = fmt.Errorf("%w: mode is required", providers.ErrValidation)
 	errUserIDRequired       = fmt.Errorf("%w: user_id is required", providers.ErrValidation)
 	errInvalidStatus        = fmt.Errorf("%w: status must be one of: en_curso, probado, funciono, para_ajustar", providers.ErrValidation)
+	errInvalidExportFormat  = fmt.Errorf("%w: format must be one of: md, pdf", providers.ErrValidation)
 )
