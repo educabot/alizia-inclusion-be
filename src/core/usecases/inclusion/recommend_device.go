@@ -81,6 +81,7 @@ func (uc *recommendDeviceImpl) Execute(ctx context.Context, req RecommendDeviceR
 	messages = append(messages, providers.ChatMessage{Role: "system", Content: systemPrompt})
 	messages = append(messages, req.History...)
 	messages = append(messages, providers.ChatMessage{Role: "user", Content: userPrompt})
+	messages = capMessages(messages, defaultMaxHistoryTokens)
 
 	resp, err := uc.ai.Chat(ctx, messages)
 	if err != nil {

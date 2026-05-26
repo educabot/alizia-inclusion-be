@@ -77,6 +77,7 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	messages = append(messages, providers.ChatMessage{Role: "system", Content: systemPrompt})
 	messages = append(messages, req.History...)
 	messages = append(messages, providers.ChatMessage{Role: "user", Content: req.Message})
+	messages = capMessages(messages, defaultMaxHistoryTokens)
 
 	resp, err := uc.ai.Chat(ctx, messages)
 	if err != nil {
