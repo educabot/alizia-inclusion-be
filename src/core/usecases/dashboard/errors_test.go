@@ -8,8 +8,6 @@ import (
 	"github.com/educabot/alizia-inclusion-be/src/core/usecases/dashboard"
 )
 
-var errDB = errors.New("db error")
-
 func TestValidationErrors(t *testing.T) {
 	tests := []struct {
 		name string

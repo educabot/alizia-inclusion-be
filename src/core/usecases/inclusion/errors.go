@@ -12,7 +12,6 @@ var (
 	errClassroomIDRequired = fmt.Errorf("%w: classroom_id is required", providers.ErrValidation)
 	errMessageRequired     = fmt.Errorf("%w: message is required", providers.ErrValidation)
 	errSubjectRequired     = fmt.Errorf("%w: subject is required", providers.ErrValidation)
-	errObjectiveRequired     = fmt.Errorf("%w: objective is required", providers.ErrValidation)
 	errNameRequired          = fmt.Errorf("%w: name is required", providers.ErrValidation)
 	errTeacherIDRequired     = fmt.Errorf("%w: teacher_id is required", providers.ErrValidation)
 	errAdaptationIDRequired  = fmt.Errorf("%w: adaptation_id is required", providers.ErrValidation)

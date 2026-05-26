@@ -9,10 +9,7 @@ import (
 	"github.com/educabot/alizia-inclusion-be/src/core/usecases/auth"
 )
 
-var (
-	errDB           = errors.New("db error")
-	errUserNotFound = fmt.Errorf("%w: user 99", providers.ErrNotFound)
-)
+var errUserNotFound = fmt.Errorf("%w: user 99", providers.ErrNotFound)
 
 func TestValidationErrors(t *testing.T) {
 	tests := []struct {

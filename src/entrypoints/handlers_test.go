@@ -81,13 +81,6 @@ func (m *mockCreateClassroom) Execute(ctx context.Context, req mgmtuc.CreateClas
 	return m.fn(ctx, req)
 }
 
-type mockUpdateClassroom struct {
-	fn func(ctx context.Context, req mgmtuc.UpdateClassroomRequest) (*entities.Classroom, error)
-}
-func (m *mockUpdateClassroom) Execute(ctx context.Context, req mgmtuc.UpdateClassroomRequest) (*entities.Classroom, error) {
-	return m.fn(ctx, req)
-}
-
 type mockDeleteClassroom struct {
 	fn func(ctx context.Context, req mgmtuc.DeleteClassroomRequest) error
 }
