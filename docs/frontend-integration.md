@@ -1,7 +1,7 @@
 # Frontend Integration — Alizia Inclusión
 
 Qué debe construir el frontend para consumir las funcionalidades del backend.
-Contratos verificados contra el código en `src/entrypoints/` al 2026-05-26.
+Contratos verificados contra el código en `src/entrypoints/` al 2026-05-27.
 
 Base URL: `/api/v1`. Todas las rutas requieren autenticación.
 
@@ -148,6 +148,45 @@ cargar `messages` y setear `conversation_id` para continuarla.
 
 ---
 
+## 2.1 Adaptaciones — estados y recursos descargables (LISTO en backend)
+
+### Enum de `status`
+
+`GET /api/v1/adaptations` y `GET /api/v1/adaptations/:id` devuelven `status` con
+**exactamente uno** de estos valores (no existen `draft`/`active`):
+
+| Valor | Label sugerido |
+|-------|----------------|
+| `en_curso` | En curso (default al crear) |
+| `probado` | Probado |
+| `funciono` | Funcionó |
+| `para_ajustar` | Para ajustar |
+
+`PUT /api/v1/adaptations/:id` valida contra esta misma lista — cualquier otro
+valor responde `400` con `code: "validation"`.
+
+### `GET /api/v1/adaptations/:id/resources`
+
+Archivos descargables asociados a una adaptación. Response `200`:
+
+```jsonc
+[
+  {
+    "id": 1,
+    "adaptation_id": 8,
+    "title": "Ficha imprimible",
+    "file_url": "/files/8/ficha.pdf",
+    "file_type": "pdf",
+    "created_at": "2026-05-27T10:00:00Z"
+  }
+]
+```
+
+Si la adaptación no tiene recursos cargados, devuelve `[]` (la sección "Recursos
+para descargar" queda vacía, no es error).
+
+---
+
 ## 3. Exportar adaptación (LISTO en backend)
 
 ### `GET /api/v1/adaptations/:id/export?format=pdf|md`
@@ -171,7 +210,7 @@ Como requiere header `Authorization`, no usar un `<a href>` directo: hacer
   "total_students": 120,
   "students_with_profiles": 80,
   "total_adaptations": 45,
-  "adaptations_by_status": { "draft": 10, "active": 35 },
+  "adaptations_by_status": { "en_curso": 10, "probado": 20, "funciono": 12, "para_ajustar": 3 },
   "adaptations_by_type": { "actividad_adaptada": 20 },
   "top_used_devices": [
     { "device_id": 1, "device_name": "Timer Visual", "count": 12 }
