@@ -2,6 +2,7 @@ package entrypoints
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/educabot/team-ai-toolkit/web"
 
@@ -11,23 +12,32 @@ import (
 	"github.com/educabot/alizia-inclusion-be/src/entrypoints/rest"
 )
 
+type deviceDownloadResponse struct {
+	ID        int64  `json:"id"`
+	Title     string `json:"title"`
+	FileURL   string `json:"file_url"`
+	FileType  string `json:"file_type"`
+	CreatedAt string `json:"created_at"`
+}
+
 type deviceResponse struct {
-	ID                 int64   `json:"id"`
-	RampID             int64   `json:"ramp_id"`
-	Name               string  `json:"name"`
-	Description        *string `json:"description,omitempty"`
-	ImageURL           *string `json:"image_url,omitempty"`
-	QRCode             *string `json:"qr_code,omitempty"`
-	HowToUse           *string `json:"how_to_use,omitempty"`
-	Recommendations    *string `json:"recommendations,omitempty"`
-	Rationale          *string `json:"rationale,omitempty"`
-	ClassroomBenefit   *string `json:"classroom_benefit,omitempty"`
-	NeedsDescription   *string `json:"needs_description,omitempty"`
-	UsefulWhen         *string `json:"useful_when,omitempty"`
-	EvaluationCriteria *string `json:"evaluation_criteria,omitempty"`
-	Quantity           int     `json:"quantity"`
-	SortOrder          int     `json:"sort_order"`
-	RampName           string  `json:"ramp_name,omitempty"`
+	ID                 int64                    `json:"id"`
+	RampID             int64                    `json:"ramp_id"`
+	Name               string                   `json:"name"`
+	Description        *string                  `json:"description,omitempty"`
+	ImageURL           *string                  `json:"image_url,omitempty"`
+	QRCode             *string                  `json:"qr_code,omitempty"`
+	HowToUse           *string                  `json:"how_to_use,omitempty"`
+	Recommendations    *string                  `json:"recommendations,omitempty"`
+	Rationale          *string                  `json:"rationale,omitempty"`
+	ClassroomBenefit   *string                  `json:"classroom_benefit,omitempty"`
+	NeedsDescription   *string                  `json:"needs_description,omitempty"`
+	UsefulWhen         *string                  `json:"useful_when,omitempty"`
+	EvaluationCriteria *string                  `json:"evaluation_criteria,omitempty"`
+	Quantity           int                      `json:"quantity"`
+	SortOrder          int                      `json:"sort_order"`
+	RampName           string                   `json:"ramp_name,omitempty"`
+	Downloads          []deviceDownloadResponse `json:"downloads,omitempty"`
 }
 
 func mapDevice(d entities.Device) deviceResponse {
@@ -50,6 +60,15 @@ func mapDevice(d entities.Device) deviceResponse {
 	}
 	if d.Ramp != nil {
 		resp.RampName = d.Ramp.Name
+	}
+	for _, r := range d.Resources {
+		resp.Downloads = append(resp.Downloads, deviceDownloadResponse{
+			ID:        r.ID,
+			Title:     r.Title,
+			FileURL:   r.FileURL,
+			FileType:  r.FileType,
+			CreatedAt: r.CreatedAt.Format(time.RFC3339),
+		})
 	}
 	return resp
 }

@@ -23,6 +23,7 @@ func (r *deviceRepo) ListDevices(ctx context.Context, orgID uuid.UUID, rampID *i
 	var devices []entities.Device
 	q := r.db.WithContext(ctx).
 		Preload("Ramp").
+		Preload("Resources").
 		Where("organization_id = ?", orgID)
 
 	if rampID != nil {
@@ -40,6 +41,7 @@ func (r *deviceRepo) GetDevice(ctx context.Context, orgID uuid.UUID, id int64) (
 	var device entities.Device
 	err := r.db.WithContext(ctx).
 		Preload("Ramp").
+		Preload("Resources").
 		Where("organization_id = ? AND id = ?", orgID, id).
 		First(&device).Error
 	if err != nil {
