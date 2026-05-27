@@ -165,7 +165,13 @@ VALUES
   (5, 'Ficha pedagógica: Time Timer', '/resources/fichas/time-timer.pdf', 'pdf'),
   (5, 'Estrategia: Desbloquear el inicio de la tarea', '/resources/estrategias/desbloquear-inicio.pdf', 'pdf'),
   (6, 'Ficha pedagógica: Tijeras adaptadas', '/resources/fichas/tijeras-adaptadas.pdf', 'pdf'),
-  (7, 'Ficha pedagógica: Teclado CLEVY', '/resources/fichas/teclado-clevy.pdf', 'pdf');
+  (7, 'Ficha pedagógica: Teclado CLEVY', '/resources/fichas/teclado-clevy.pdf', 'pdf'),
+  (8, 'Ficha pedagógica: Elástico para silla', '/resources/fichas/elastico-silla.pdf', 'pdf'),
+  (8, 'Estrategia: Rol activo durante espera en clase', '/resources/estrategias/rol-activo-espera.pdf', 'pdf'),
+  (9, 'Ficha pedagógica: Mouse trackball', '/resources/fichas/mouse-trackball.pdf', 'pdf'),
+  (9, 'Guía de configuración: Accesibilidad en computadora', '/resources/guias/accesibilidad-computadora.pdf', 'pdf'),
+  (10, 'Ficha pedagógica: Pelota antiestrés de gel', '/resources/fichas/pelota-antiestres.pdf', 'pdf'),
+  (10, 'Protocolo de desregulación emocional en el aula', '/resources/estrategias/protocolo-desregulacion.pdf', 'pdf');
 
 -- =============================================================================
 -- 5. Conversaciones de demo (flujo "Modo Planificador" del PDF)
