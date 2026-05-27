@@ -15,12 +15,15 @@ type CreateAdaptationRequest struct {
 	TeacherID           int64
 	DeviceID            *int64
 	DeviceIDs           []int64
+	Title               string
 	Subject             string
 	ActivityDescription *string
 	AdaptationStrategy  *string
 	AdaptationType      string
 	Notes               *string
 }
+
+const defaultAdaptationType = "actividad_adaptada"
 
 func (r CreateAdaptationRequest) Validate() error {
 	if r.OrgID == uuid.Nil {
@@ -55,15 +58,21 @@ func (uc *createAdaptationImpl) Execute(ctx context.Context, req CreateAdaptatio
 		return nil, err
 	}
 
+	adaptationType := req.AdaptationType
+	if adaptationType == "" {
+		adaptationType = defaultAdaptationType
+	}
+
 	adaptation := &entities.Adaptation{
 		OrganizationID:      req.OrgID,
 		StudentID:           req.StudentID,
 		TeacherID:           req.TeacherID,
 		DeviceID:            req.DeviceID,
+		Title:               req.Title,
 		Subject:             req.Subject,
 		ActivityDescription: req.ActivityDescription,
 		AdaptationStrategy:  req.AdaptationStrategy,
-		AdaptationType:      req.AdaptationType,
+		AdaptationType:      adaptationType,
 		Notes:               req.Notes,
 		Status:              "en_curso",
 	}

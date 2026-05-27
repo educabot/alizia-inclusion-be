@@ -23,6 +23,7 @@ type adaptationResponse struct {
 	DeviceName          *string  `json:"device_name,omitempty"`
 	DeviceIDs           []int64  `json:"device_ids"`
 	DeviceNames         []string `json:"device_names"`
+	Title               string   `json:"title"`
 	Subject             string   `json:"subject"`
 	ActivityDescription *string  `json:"activity_description,omitempty"`
 	AdaptationStrategy  *string  `json:"adaptation_strategy,omitempty"`
@@ -40,6 +41,7 @@ func mapAdaptation(a entities.Adaptation) adaptationResponse {
 		StudentID:           a.StudentID,
 		TeacherID:           a.TeacherID,
 		DeviceID:            a.DeviceID,
+		Title:               a.Title,
 		Subject:             a.Subject,
 		ActivityDescription: a.ActivityDescription,
 		AdaptationStrategy:  a.AdaptationStrategy,
@@ -81,6 +83,7 @@ type createAdaptationBody struct {
 	StudentID           int64   `json:"student_id"`
 	DeviceID            *int64  `json:"device_id"`
 	DeviceIDs           []int64 `json:"device_ids"`
+	Title               *string `json:"title"`
 	Subject             string  `json:"subject"`
 	ActivityDescription *string `json:"activity_description"`
 	AdaptationStrategy  *string `json:"adaptation_strategy"`
@@ -91,6 +94,7 @@ type createAdaptationBody struct {
 type updateAdaptationBody struct {
 	DeviceID            *int64   `json:"device_id"`
 	DeviceIDs           *[]int64 `json:"device_ids"`
+	Title               *string  `json:"title"`
 	Subject             *string  `json:"subject"`
 	ActivityDescription *string  `json:"activity_description"`
 	AdaptationStrategy  *string  `json:"adaptation_strategy"`
@@ -142,12 +146,18 @@ func (c *InclusionContainer) HandleCreateAdaptation(req web.Request) web.Respons
 		return rest.HandleError(err)
 	}
 
+	title := ""
+	if body.Title != nil {
+		title = *body.Title
+	}
+
 	result, err := c.CreateAdaptation.Execute(req.Context(), inclusion.CreateAdaptationRequest{
 		OrgID:               middleware.OrgID(req),
 		StudentID:           body.StudentID,
 		TeacherID:           middleware.UserID(req),
 		DeviceID:            body.DeviceID,
 		DeviceIDs:           body.DeviceIDs,
+		Title:               title,
 		Subject:             body.Subject,
 		ActivityDescription: body.ActivityDescription,
 		AdaptationStrategy:  body.AdaptationStrategy,
@@ -176,6 +186,7 @@ func (c *InclusionContainer) HandleUpdateAdaptation(req web.Request) web.Respons
 		AdaptationID:        id,
 		DeviceID:            body.DeviceID,
 		DeviceIDs:           body.DeviceIDs,
+		Title:               body.Title,
 		Subject:             body.Subject,
 		ActivityDescription: body.ActivityDescription,
 		AdaptationStrategy:  body.AdaptationStrategy,

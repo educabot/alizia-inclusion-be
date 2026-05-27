@@ -8,6 +8,7 @@ type Adaptation struct {
 	StudentID           int64     `json:"student_id"`
 	TeacherID           int64     `json:"teacher_id"`
 	DeviceID            *int64    `json:"device_id,omitempty"`
+	Title               string    `json:"title" gorm:"default:''"`
 	Subject             string    `json:"subject"`
 	ActivityDescription *string   `json:"activity_description,omitempty"`
 	AdaptationStrategy  *string   `json:"adaptation_strategy,omitempty"`

@@ -14,6 +14,7 @@ type UpdateAdaptationRequest struct {
 	AdaptationID        int64
 	DeviceID            *int64
 	DeviceIDs           *[]int64
+	Title               *string
 	Subject             *string
 	ActivityDescription *string
 	AdaptationStrategy  *string
@@ -67,6 +68,9 @@ func (uc *updateAdaptationImpl) Execute(ctx context.Context, req UpdateAdaptatio
 
 	if req.DeviceID != nil {
 		existing.DeviceID = req.DeviceID
+	}
+	if req.Title != nil {
+		existing.Title = *req.Title
 	}
 	if req.Subject != nil {
 		existing.Subject = *req.Subject

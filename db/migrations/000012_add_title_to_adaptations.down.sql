@@ -1,0 +1,1 @@
+ALTER TABLE adaptations DROP COLUMN IF EXISTS title;

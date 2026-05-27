@@ -66,6 +66,41 @@ func TestUpdateAdaptation(t *testing.T) {
 		}
 	})
 
+	t.Run("applies title when provided", func(t *testing.T) {
+		// Arrange
+		existing := testutil.NewAdaptation(1, 1, 1)
+		var captured *entities.Adaptation
+		mock := &mocks.MockAdaptationProvider{
+			GetFn: func(_ context.Context, _ uuid.UUID, _ int64) (*entities.Adaptation, error) {
+				return &existing, nil
+			},
+			UpdateFn: func(_ context.Context, a *entities.Adaptation) error {
+				captured = a
+				return nil
+			},
+		}
+
+		req := inclusion.UpdateAdaptationRequest{
+			OrgID:        testutil.TestOrgID,
+			AdaptationID: 1,
+			Title:        testutil.Ptr("Secuencia con apoyos visuales"),
+		}
+
+		// Act
+		_, err := inclusion.NewUpdateAdaptation(mock).Execute(ctx, req)
+
+		// Assert
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if captured == nil {
+			t.Fatal("expected Update to be called")
+		}
+		if captured.Title != "Secuencia con apoyos visuales" {
+			t.Errorf("got Title %q, want %q", captured.Title, "Secuencia con apoyos visuales")
+		}
+	})
+
 	t.Run("rejects nil org_id", func(t *testing.T) {
 		// Arrange
 		called := false

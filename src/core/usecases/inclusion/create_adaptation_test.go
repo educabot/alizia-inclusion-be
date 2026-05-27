@@ -95,6 +95,48 @@ func TestCreateAdaptation(t *testing.T) {
 		}
 	})
 
+	t.Run("defaults adaptation_type and persists title when type omitted", func(t *testing.T) {
+		// Arrange
+		var captured *entities.Adaptation
+		mock := &mocks.MockAdaptationProvider{
+			CreateFn: func(_ context.Context, a *entities.Adaptation) error {
+				captured = a
+				a.ID = 1
+				return nil
+			},
+			GetFn: func(_ context.Context, _ uuid.UUID, id int64) (*entities.Adaptation, error) {
+				a := testutil.NewAdaptation(id, 1, 1)
+				return &a, nil
+			},
+		}
+
+		req := inclusion.CreateAdaptationRequest{
+			OrgID:          testutil.TestOrgID,
+			StudentID:      1,
+			TeacherID:      1,
+			Title:          "Secuencia con apoyos visuales",
+			Subject:        "Matematicas",
+			AdaptationType: "",
+		}
+
+		// Act
+		_, err := inclusion.NewCreateAdaptation(mock).Execute(ctx, req)
+
+		// Assert
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if captured == nil {
+			t.Fatal("expected Create to be called")
+		}
+		if captured.AdaptationType != "actividad_adaptada" {
+			t.Errorf("got AdaptationType %q, want %q", captured.AdaptationType, "actividad_adaptada")
+		}
+		if captured.Title != "Secuencia con apoyos visuales" {
+			t.Errorf("got Title %q, want %q", captured.Title, "Secuencia con apoyos visuales")
+		}
+	})
+
 	t.Run("rejects nil org_id", func(t *testing.T) {
 		// Arrange
 		called := false
