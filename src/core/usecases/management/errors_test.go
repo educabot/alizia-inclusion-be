@@ -27,14 +27,13 @@ func TestValidationErrors(t *testing.T) {
 		{"ListTeachers_empty", management.ListTeachersRequest{}},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.req.Validate()
-			if err == nil {
-				t.Fatal("expected validation error, got nil")
-			}
-			if !errors.Is(err, providers.ErrValidation) {
-				t.Errorf("expected ErrValidation, got: %v", err)
-			}
-		})
+		err := tt.req.Validate()
+		if err == nil {
+			t.Errorf("%s: expected validation error, got nil", tt.name)
+			continue
+		}
+		if !errors.Is(err, providers.ErrValidation) {
+			t.Errorf("%s: expected ErrValidation, got: %v", tt.name, err)
+		}
 	}
 }

@@ -58,14 +58,12 @@ func TestPagination_Normalize(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			got := tc.input.Normalize()
-			if got.Limit != tc.expectedLimit {
-				t.Errorf("limit: expected %d, got %d", tc.expectedLimit, got.Limit)
-			}
-			if got.Offset != tc.expectedOffset {
-				t.Errorf("offset: expected %d, got %d", tc.expectedOffset, got.Offset)
-			}
-		})
+		got := tc.input.Normalize()
+		if got.Limit != tc.expectedLimit {
+			t.Errorf("%s: limit: expected %d, got %d", tc.name, tc.expectedLimit, got.Limit)
+		}
+		if got.Offset != tc.expectedOffset {
+			t.Errorf("%s: offset: expected %d, got %d", tc.name, tc.expectedOffset, got.Offset)
+		}
 	}
 }

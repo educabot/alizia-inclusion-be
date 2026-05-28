@@ -39,11 +39,9 @@ func TestBoundedUintToInt(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			got := boundedUintToInt(tc.input)
-			if got != tc.expected {
-				t.Errorf("boundedUintToInt(%d) = %d, want %d", tc.input, got, tc.expected)
-			}
-		})
+		got := boundedUintToInt(tc.input)
+		if got != tc.expected {
+			t.Errorf("%s: boundedUintToInt(%d) = %d, want %d", tc.name, tc.input, got, tc.expected)
+		}
 	}
 }

@@ -13,47 +13,53 @@ import (
 	"github.com/educabot/alizia-inclusion-be/src/testutil"
 )
 
-func TestDeleteStudent(t *testing.T) {
+func TestDeleteStudent_DeletesStudent(t *testing.T) {
 	ctx := context.Background()
+	var calledWith int64
+	mock := &mocks.MockStudentProvider{
+		DeleteFn: func(_ context.Context, _ uuid.UUID, id int64) error {
+			calledWith = id
+			return nil
+		},
+	}
 
-	t.Run("deletes student", func(t *testing.T) {
-		var calledWith int64
-		mock := &mocks.MockStudentProvider{
-			DeleteFn: func(_ context.Context, _ uuid.UUID, id int64) error {
-				calledWith = id
-				return nil
-			},
-		}
-
-		err := inclusion.NewDeleteStudent(mock).Execute(ctx, inclusion.DeleteStudentRequest{
-			OrgID:     testutil.TestOrgID,
-			StudentID: 5,
-		})
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if calledWith != 5 {
-			t.Errorf("expected delete called with ID 5, got %d", calledWith)
-		}
+	err := inclusion.NewDeleteStudent(mock).Execute(ctx, inclusion.DeleteStudentRequest{
+		OrgID:     testutil.TestOrgID,
+		StudentID: 5,
 	})
 
-	t.Run("rejects nil org_id", func(t *testing.T) {
-		mock := &mocks.MockStudentProvider{}
-		err := inclusion.NewDeleteStudent(mock).Execute(ctx, inclusion.DeleteStudentRequest{
-			OrgID: uuid.Nil, StudentID: 1,
-		})
-		if !errors.Is(err, providers.ErrValidation) {
-			t.Errorf("expected ErrValidation, got: %v", err)
-		}
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if calledWith != 5 {
+		t.Errorf("expected delete called with ID 5, got %d", calledWith)
+	}
+}
+
+func TestDeleteStudent_RejectsNilOrgID(t *testing.T) {
+	ctx := context.Background()
+	mock := &mocks.MockStudentProvider{}
+
+	err := inclusion.NewDeleteStudent(mock).Execute(ctx, inclusion.DeleteStudentRequest{
+		OrgID:     uuid.Nil,
+		StudentID: 1,
 	})
 
-	t.Run("rejects zero student_id", func(t *testing.T) {
-		mock := &mocks.MockStudentProvider{}
-		err := inclusion.NewDeleteStudent(mock).Execute(ctx, inclusion.DeleteStudentRequest{
-			OrgID: testutil.TestOrgID, StudentID: 0,
-		})
-		if !errors.Is(err, providers.ErrValidation) {
-			t.Errorf("expected ErrValidation, got: %v", err)
-		}
+	if !errors.Is(err, providers.ErrValidation) {
+		t.Errorf("expected ErrValidation, got: %v", err)
+	}
+}
+
+func TestDeleteStudent_RejectsZeroStudentID(t *testing.T) {
+	ctx := context.Background()
+	mock := &mocks.MockStudentProvider{}
+
+	err := inclusion.NewDeleteStudent(mock).Execute(ctx, inclusion.DeleteStudentRequest{
+		OrgID:     testutil.TestOrgID,
+		StudentID: 0,
 	})
+
+	if !errors.Is(err, providers.ErrValidation) {
+		t.Errorf("expected ErrValidation, got: %v", err)
+	}
 }

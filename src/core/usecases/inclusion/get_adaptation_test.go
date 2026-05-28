@@ -14,108 +14,96 @@ import (
 	"github.com/educabot/alizia-inclusion-be/src/testutil"
 )
 
-func TestGetAdaptation(t *testing.T) {
+func TestGetAdaptation_ReturnsAdaptation(t *testing.T) {
 	ctx := context.Background()
+	expected := testutil.NewAdaptation(1, 1, 1)
+	mock := &mocks.MockAdaptationProvider{
+		GetFn: func(_ context.Context, orgID uuid.UUID, id int64) (*entities.Adaptation, error) {
+			return &expected, nil
+		},
+	}
 
-	t.Run("returns adaptation", func(t *testing.T) {
-		// Arrange
-		expected := testutil.NewAdaptation(1, 1, 1)
-		mock := &mocks.MockAdaptationProvider{
-			GetFn: func(_ context.Context, orgID uuid.UUID, id int64) (*entities.Adaptation, error) {
-				return &expected, nil
-			},
-		}
+	req := inclusion.GetAdaptationRequest{OrgID: testutil.TestOrgID, AdaptationID: 1}
 
-		req := inclusion.GetAdaptationRequest{OrgID: testutil.TestOrgID, AdaptationID: 1}
+	got, err := inclusion.NewGetAdaptation(mock).Execute(ctx, req)
 
-		// Act
-		got, err := inclusion.NewGetAdaptation(mock).Execute(ctx, req)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if got == nil {
+		t.Fatal("expected adaptation, got nil")
+	}
+	if got.ID != expected.ID {
+		t.Errorf("got ID %d, want %d", got.ID, expected.ID)
+	}
+}
 
-		// Assert
-		if err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-		if got == nil {
-			t.Fatal("expected adaptation, got nil")
-		}
-		if got.ID != expected.ID {
-			t.Errorf("got ID %d, want %d", got.ID, expected.ID)
-		}
-	})
+func TestGetAdaptation_RejectsNilOrgID(t *testing.T) {
+	ctx := context.Background()
+	called := false
+	mock := &mocks.MockAdaptationProvider{
+		GetFn: func(_ context.Context, _ uuid.UUID, _ int64) (*entities.Adaptation, error) {
+			called = true
+			return nil, nil
+		},
+	}
 
-	t.Run("rejects nil org_id", func(t *testing.T) {
-		// Arrange
-		called := false
-		mock := &mocks.MockAdaptationProvider{
-			GetFn: func(_ context.Context, _ uuid.UUID, _ int64) (*entities.Adaptation, error) {
-				called = true
-				return nil, nil
-			},
-		}
+	req := inclusion.GetAdaptationRequest{OrgID: uuid.Nil, AdaptationID: 1}
 
-		req := inclusion.GetAdaptationRequest{OrgID: uuid.Nil, AdaptationID: 1}
+	_, err := inclusion.NewGetAdaptation(mock).Execute(ctx, req)
 
-		// Act
-		_, err := inclusion.NewGetAdaptation(mock).Execute(ctx, req)
+	if err == nil {
+		t.Error("expected validation error, got nil")
+	}
+	if !errors.Is(err, providers.ErrValidation) {
+		t.Errorf("expected ErrValidation, got: %v", err)
+	}
+	if called {
+		t.Error("mock should not have been called for invalid request")
+	}
+}
 
-		// Assert
-		if err == nil {
-			t.Error("expected validation error, got nil")
-		}
-		if !errors.Is(err, providers.ErrValidation) {
-			t.Errorf("expected ErrValidation, got: %v", err)
-		}
-		if called {
-			t.Error("mock should not have been called for invalid request")
-		}
-	})
+func TestGetAdaptation_RejectsZeroAdaptationID(t *testing.T) {
+	ctx := context.Background()
+	called := false
+	mock := &mocks.MockAdaptationProvider{
+		GetFn: func(_ context.Context, _ uuid.UUID, _ int64) (*entities.Adaptation, error) {
+			called = true
+			return nil, nil
+		},
+	}
 
-	t.Run("rejects zero adaptation_id", func(t *testing.T) {
-		// Arrange
-		called := false
-		mock := &mocks.MockAdaptationProvider{
-			GetFn: func(_ context.Context, _ uuid.UUID, _ int64) (*entities.Adaptation, error) {
-				called = true
-				return nil, nil
-			},
-		}
+	req := inclusion.GetAdaptationRequest{OrgID: testutil.TestOrgID, AdaptationID: 0}
 
-		req := inclusion.GetAdaptationRequest{OrgID: testutil.TestOrgID, AdaptationID: 0}
+	_, err := inclusion.NewGetAdaptation(mock).Execute(ctx, req)
 
-		// Act
-		_, err := inclusion.NewGetAdaptation(mock).Execute(ctx, req)
+	if err == nil {
+		t.Error("expected validation error, got nil")
+	}
+	if !errors.Is(err, providers.ErrValidation) {
+		t.Errorf("expected ErrValidation, got: %v", err)
+	}
+	if called {
+		t.Error("mock should not have been called for invalid request")
+	}
+}
 
-		// Assert
-		if err == nil {
-			t.Error("expected validation error, got nil")
-		}
-		if !errors.Is(err, providers.ErrValidation) {
-			t.Errorf("expected ErrValidation, got: %v", err)
-		}
-		if called {
-			t.Error("mock should not have been called for invalid request")
-		}
-	})
+func TestGetAdaptation_ReturnsNotFound(t *testing.T) {
+	ctx := context.Background()
+	mock := &mocks.MockAdaptationProvider{
+		GetFn: func(_ context.Context, _ uuid.UUID, _ int64) (*entities.Adaptation, error) {
+			return nil, errAdaptationNotFound
+		},
+	}
 
-	t.Run("returns not found", func(t *testing.T) {
-		// Arrange
-		mock := &mocks.MockAdaptationProvider{
-			GetFn: func(_ context.Context, _ uuid.UUID, _ int64) (*entities.Adaptation, error) {
-				return nil, errAdaptationNotFound
-			},
-		}
+	req := inclusion.GetAdaptationRequest{OrgID: testutil.TestOrgID, AdaptationID: 99}
 
-		req := inclusion.GetAdaptationRequest{OrgID: testutil.TestOrgID, AdaptationID: 99}
+	_, err := inclusion.NewGetAdaptation(mock).Execute(ctx, req)
 
-		// Act
-		_, err := inclusion.NewGetAdaptation(mock).Execute(ctx, req)
-
-		// Assert
-		if err == nil {
-			t.Error("expected error, got nil")
-		}
-		if !errors.Is(err, providers.ErrNotFound) {
-			t.Errorf("expected ErrNotFound, got: %v", err)
-		}
-	})
+	if err == nil {
+		t.Error("expected error, got nil")
+	}
+	if !errors.Is(err, providers.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got: %v", err)
+	}
 }

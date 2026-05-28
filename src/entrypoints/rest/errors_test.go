@@ -68,11 +68,9 @@ func TestHandleError(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			resp := rest.HandleError(tc.err)
-			if resp.Status != tc.expectedStatus {
-				t.Errorf("expected status %d, got %d", tc.expectedStatus, resp.Status)
-			}
-		})
+		resp := rest.HandleError(tc.err)
+		if resp.Status != tc.expectedStatus {
+			t.Errorf("%s: expected status %d, got %d", tc.name, tc.expectedStatus, resp.Status)
+		}
 	}
 }

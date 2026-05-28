@@ -66,15 +66,12 @@ func newBreaker(client providers.AIClient, clock *fakeClock) *ai.CircuitBreaker 
 // wrapped client and the response is returned unchanged while the circuit is
 // closed.
 func TestCircuitBreaker_PassThrough_WhenClosed(t *testing.T) {
-	// Arrange
 	fake := &fakeAIClient{}
 	clock := &fakeClock{t: time.Now()}
 	cb := newBreaker(fake, clock)
 
-	// Act
 	result, err := cb.Generate(context.Background(), providers.GenerateParams{UserPrompt: "hello"})
 
-	// Assert
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -90,13 +87,11 @@ func TestCircuitBreaker_PassThrough_WhenClosed(t *testing.T) {
 // failureThreshold consecutive failures the circuit opens and subsequent calls
 // are short-circuited (the wrapped client is NOT called again).
 func TestCircuitBreaker_OpensAfterThresholdFailures(t *testing.T) {
-	// Arrange
 	upstreamErr := fmt.Errorf("upstream down")
 	fake := &fakeAIClient{generateErr: upstreamErr}
 	clock := &fakeClock{t: time.Now()}
 	cb := newBreaker(fake, clock)
 
-	// Act — exhaust the threshold
 	for i := 0; i < threshold; i++ {
 		if _, err := cb.Generate(context.Background(), providers.GenerateParams{}); err == nil {
 			t.Fatalf("call %d: expected error, got nil", i+1)
@@ -104,17 +99,14 @@ func TestCircuitBreaker_OpensAfterThresholdFailures(t *testing.T) {
 	}
 	callsAfterOpen := fake.calls
 
-	// One more call — circuit should now be open
 	_, err := cb.Generate(context.Background(), providers.GenerateParams{})
 
-	// Assert
 	if err == nil {
 		t.Fatal("expected error when circuit open")
 	}
 	if !errors.Is(err, providers.ErrServiceUnavailable) {
 		t.Errorf("expected ErrServiceUnavailable, got: %v", err)
 	}
-	// The wrapped client must NOT have been called again after opening.
 	if fake.calls != callsAfterOpen {
 		t.Errorf("wrapped client should not be called when circuit is open: got %d, want %d", fake.calls, callsAfterOpen)
 	}
@@ -124,34 +116,27 @@ func TestCircuitBreaker_OpensAfterThresholdFailures(t *testing.T) {
 // the consecutive-failure counter so that the circuit does not open prematurely
 // when failures stay below the threshold between successes.
 func TestCircuitBreaker_SuccessResetsFailureCounter(t *testing.T) {
-	// Arrange — fail threshold-1 times, then succeed, then fail threshold-1
-	// times again. The circuit must remain closed throughout.
 	fake := &fakeAIClient{generateErr: fmt.Errorf("transient")}
 	clock := &fakeClock{t: time.Now()}
 	cb := newBreaker(fake, clock)
 
-	// Act — first batch of failures (below threshold)
 	for i := 0; i < threshold-1; i++ {
 		_, _ = cb.Generate(context.Background(), providers.GenerateParams{})
 	}
 
-	// Success resets the counter
 	fake.generateErr = nil
 	if _, err := cb.Generate(context.Background(), providers.GenerateParams{}); err != nil {
 		t.Fatalf("call after partial failures should succeed: %v", err)
 	}
 
-	// Second batch of failures (below threshold again)
 	fake.generateErr = fmt.Errorf("transient again")
 	for i := 0; i < threshold-1; i++ {
 		_, _ = cb.Generate(context.Background(), providers.GenerateParams{})
 	}
 
-	// One more success to confirm circuit is still closed
 	fake.generateErr = nil
 	_, finalErr := cb.Generate(context.Background(), providers.GenerateParams{})
 
-	// Assert
 	if finalErr != nil {
 		t.Fatalf("circuit must remain closed when failures never reach threshold consecutively: %v", finalErr)
 	}
@@ -161,7 +146,6 @@ func TestCircuitBreaker_SuccessResetsFailureCounter(t *testing.T) {
 // elapses, one trial call is allowed; if it succeeds the circuit closes and
 // normal traffic resumes.
 func TestCircuitBreaker_TrialCallClosesCircuit(t *testing.T) {
-	// Arrange — open the circuit
 	fake := &fakeAIClient{chatErr: fmt.Errorf("down")}
 	clock := &fakeClock{t: time.Now()}
 	cb := newBreaker(fake, clock)
@@ -171,7 +155,6 @@ func TestCircuitBreaker_TrialCallClosesCircuit(t *testing.T) {
 	}
 	callsWhenOpen := fake.calls
 
-	// Confirm it is open (before cooldown)
 	if _, err := cb.Chat(context.Background(), nil); !errors.Is(err, providers.ErrServiceUnavailable) {
 		t.Fatalf("expected ErrServiceUnavailable while open, got: %v", err)
 	}
@@ -179,14 +162,12 @@ func TestCircuitBreaker_TrialCallClosesCircuit(t *testing.T) {
 		t.Errorf("no calls expected while open: got %d, want %d", fake.calls, callsWhenOpen)
 	}
 
-	// Act — advance clock past cooldown, make the trial call succeed
 	clock.Advance(cooldown)
 	fake.chatErr = nil
 	if _, err := cb.Chat(context.Background(), nil); err != nil {
 		t.Fatalf("trial call should succeed: %v", err)
 	}
 
-	// Assert — the circuit should now be closed; subsequent calls must reach the client.
 	callsAfterClose := fake.calls
 	if _, err := cb.Chat(context.Background(), nil); err != nil {
 		t.Fatalf("unexpected error after close: %v", err)
@@ -199,7 +180,6 @@ func TestCircuitBreaker_TrialCallClosesCircuit(t *testing.T) {
 // TestCircuitBreaker_FailingTrialReopensCircuit verifies that a trial call that
 // fails re-opens the circuit and restarts the cooldown.
 func TestCircuitBreaker_FailingTrialReopensCircuit(t *testing.T) {
-	// Arrange — open the circuit
 	fake := &fakeAIClient{chatErr: fmt.Errorf("down")}
 	clock := &fakeClock{t: time.Now()}
 	cb := newBreaker(fake, clock)
@@ -208,13 +188,11 @@ func TestCircuitBreaker_FailingTrialReopensCircuit(t *testing.T) {
 		_, _ = cb.Chat(context.Background(), nil)
 	}
 
-	// Act — advance past cooldown; trial call also fails
 	clock.Advance(cooldown)
 	if _, err := cb.Chat(context.Background(), nil); err == nil {
 		t.Fatal("trial call must propagate the upstream error")
 	}
 
-	// Assert — circuit is open again; next call must short-circuit
 	callsAfterTrial := fake.calls
 	if _, err := cb.Chat(context.Background(), nil); !errors.Is(err, providers.ErrServiceUnavailable) {
 		t.Errorf("circuit must be open after failing trial, got: %v", err)
@@ -223,7 +201,6 @@ func TestCircuitBreaker_FailingTrialReopensCircuit(t *testing.T) {
 		t.Errorf("wrapped client must not be called when re-opened: got %d, want %d", fake.calls, callsAfterTrial)
 	}
 
-	// Advance cooldown again and confirm a successful trial now closes it
 	clock.Advance(cooldown)
 	fake.chatErr = nil
 	if _, err := cb.Chat(context.Background(), nil); err != nil {

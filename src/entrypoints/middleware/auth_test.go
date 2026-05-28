@@ -57,99 +57,115 @@ func signAuthServiceToken(t *testing.T, privKey *rsa.PrivateKey, userID int64, o
 	return signed
 }
 
-func TestRS256AuthMiddleware_TestEnv(t *testing.T) {
+func TestRS256AuthMiddleware_TestEnv_InjectsMockClaims(t *testing.T) {
 	interceptor := mw.RS256AuthMiddleware("", bcfg.Test)
+	req := web.NewMockRequest()
 
-	t.Run("injects mock claims", func(t *testing.T) {
-		req := web.NewMockRequest()
-		resp := interceptor(req)
-		if resp.Status != 0 {
-			t.Fatalf("expected pass-through, got status %d", resp.Status)
-		}
+	resp := interceptor(req)
 
-		claims := tokens.GetClaims(req)
-		if claims == nil {
-			t.Fatal("expected claims to be set")
-		}
-		if claims.ID != "1" {
-			t.Errorf("expected mock user_id '1', got %q", claims.ID)
-		}
-		if claims.Email != "test@educabot.com" {
-			t.Errorf("expected mock email 'test@educabot.com', got %q", claims.Email)
-		}
-	})
+	if resp.Status != 0 {
+		t.Fatalf("expected pass-through, got status %d", resp.Status)
+	}
+
+	claims := tokens.GetClaims(req)
+	if claims == nil {
+		t.Fatal("expected claims to be set")
+	}
+	if claims.ID != "1" {
+		t.Errorf("expected mock user_id '1', got %q", claims.ID)
+	}
+	if claims.Email != "test@educabot.com" {
+		t.Errorf("expected mock email 'test@educabot.com', got %q", claims.Email)
+	}
 }
 
-func TestRS256AuthMiddleware_Prod(t *testing.T) {
+func TestRS256AuthMiddleware_Prod_AcceptsValidRS256Token(t *testing.T) {
 	privKey, pubPEM := generateRSAKeyPair(t)
 	interceptor := mw.RS256AuthMiddleware(pubPEM, bcfg.Production)
 	orgUUID := "00000000-0000-0000-0000-000000000001"
 
-	t.Run("accepts valid RS256 token", func(t *testing.T) {
-		tokenStr := signAuthServiceToken(t, privKey, 42, orgUUID, false)
-		req := web.NewMockRequest()
-		req.Headers["Authorization"] = "Bearer " + tokenStr
+	tokenStr := signAuthServiceToken(t, privKey, 42, orgUUID, false)
+	req := web.NewMockRequest()
+	req.Headers["Authorization"] = "Bearer " + tokenStr
 
-		resp := interceptor(req)
-		if resp.Status != 0 {
-			t.Fatalf("expected pass-through, got status %d", resp.Status)
-		}
+	resp := interceptor(req)
 
-		claims := tokens.GetClaims(req)
-		if claims == nil {
-			t.Fatal("expected claims to be set")
-		}
-		userID, err := strconv.ParseInt(claims.ID, 10, 64)
-		if err != nil {
-			t.Fatalf("parse user_id: %v", err)
-		}
-		if userID != 42 {
-			t.Errorf("expected user_id 42, got %d", userID)
-		}
-		if len(claims.Audience) == 0 || claims.Audience[0] != orgUUID {
-			t.Errorf("expected audience %q, got %v", orgUUID, claims.Audience)
-		}
-	})
+	if resp.Status != 0 {
+		t.Fatalf("expected pass-through, got status %d", resp.Status)
+	}
 
-	t.Run("rejects missing bearer token", func(t *testing.T) {
-		req := web.NewMockRequest()
-		resp := interceptor(req)
-		if resp.Status != 401 {
-			t.Errorf("expected 401, got %d", resp.Status)
-		}
-	})
+	claims := tokens.GetClaims(req)
+	if claims == nil {
+		t.Fatal("expected claims to be set")
+	}
+	userID, err := strconv.ParseInt(claims.ID, 10, 64)
+	if err != nil {
+		t.Fatalf("parse user_id: %v", err)
+	}
+	if userID != 42 {
+		t.Errorf("expected user_id 42, got %d", userID)
+	}
+	if len(claims.Audience) == 0 || claims.Audience[0] != orgUUID {
+		t.Errorf("expected audience %q, got %v", orgUUID, claims.Audience)
+	}
+}
 
-	t.Run("rejects malformed authorization header", func(t *testing.T) {
-		req := web.NewMockRequest()
-		req.Headers["Authorization"] = "Basic dGVzdDp0ZXN0"
-		resp := interceptor(req)
-		if resp.Status != 401 {
-			t.Errorf("expected 401 for non-bearer, got %d", resp.Status)
-		}
-	})
+func TestRS256AuthMiddleware_Prod_RejectsMissingBearerToken(t *testing.T) {
+	_, pubPEM := generateRSAKeyPair(t)
+	interceptor := mw.RS256AuthMiddleware(pubPEM, bcfg.Production)
+	req := web.NewMockRequest()
 
-	t.Run("rejects expired token", func(t *testing.T) {
-		tokenStr := signAuthServiceToken(t, privKey, 42, orgUUID, true)
-		req := web.NewMockRequest()
-		req.Headers["Authorization"] = "Bearer " + tokenStr
+	resp := interceptor(req)
 
-		resp := interceptor(req)
-		if resp.Status != 401 {
-			t.Errorf("expected 401 for expired token, got %d", resp.Status)
-		}
-	})
+	if resp.Status != 401 {
+		t.Errorf("expected 401, got %d", resp.Status)
+	}
+}
 
-	t.Run("rejects token signed with wrong key", func(t *testing.T) {
-		wrongKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-		tokenStr := signAuthServiceToken(t, wrongKey, 42, orgUUID, false)
-		req := web.NewMockRequest()
-		req.Headers["Authorization"] = "Bearer " + tokenStr
+func TestRS256AuthMiddleware_Prod_RejectsMalformedAuthorizationHeader(t *testing.T) {
+	_, pubPEM := generateRSAKeyPair(t)
+	interceptor := mw.RS256AuthMiddleware(pubPEM, bcfg.Production)
+	req := web.NewMockRequest()
+	req.Headers["Authorization"] = "Basic dGVzdDp0ZXN0"
 
-		resp := interceptor(req)
-		if resp.Status != 401 {
-			t.Errorf("expected 401 for wrong signing key, got %d", resp.Status)
-		}
-	})
+	resp := interceptor(req)
+
+	if resp.Status != 401 {
+		t.Errorf("expected 401 for non-bearer, got %d", resp.Status)
+	}
+}
+
+func TestRS256AuthMiddleware_Prod_RejectsExpiredToken(t *testing.T) {
+	privKey, pubPEM := generateRSAKeyPair(t)
+	interceptor := mw.RS256AuthMiddleware(pubPEM, bcfg.Production)
+	orgUUID := "00000000-0000-0000-0000-000000000001"
+
+	tokenStr := signAuthServiceToken(t, privKey, 42, orgUUID, true)
+	req := web.NewMockRequest()
+	req.Headers["Authorization"] = "Bearer " + tokenStr
+
+	resp := interceptor(req)
+
+	if resp.Status != 401 {
+		t.Errorf("expected 401 for expired token, got %d", resp.Status)
+	}
+}
+
+func TestRS256AuthMiddleware_Prod_RejectsTokenSignedWithWrongKey(t *testing.T) {
+	_, pubPEM := generateRSAKeyPair(t)
+	interceptor := mw.RS256AuthMiddleware(pubPEM, bcfg.Production)
+	orgUUID := "00000000-0000-0000-0000-000000000001"
+
+	wrongKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+	tokenStr := signAuthServiceToken(t, wrongKey, 42, orgUUID, false)
+	req := web.NewMockRequest()
+	req.Headers["Authorization"] = "Bearer " + tokenStr
+
+	resp := interceptor(req)
+
+	if resp.Status != 401 {
+		t.Errorf("expected 401 for wrong signing key, got %d", resp.Status)
+	}
 }
 
 func TestRS256AuthMiddleware_PanicsOnInvalidKey(t *testing.T) {

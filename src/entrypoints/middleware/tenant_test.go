@@ -12,104 +12,113 @@ import (
 	mw "github.com/educabot/alizia-inclusion-be/src/entrypoints/middleware"
 )
 
-func TestTenantMiddleware(t *testing.T) {
+func TestTenantMiddleware_SetsOrgIDAndUserIDFromValidClaims(t *testing.T) {
 	interceptor := mw.TenantMiddleware()
+	orgUUID := uuid.New()
+	req := web.NewMockRequest()
+	req.Values[tokens.ClaimsKey] = &tokens.Claims{
+		ID: "42",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience: jwt.ClaimStrings{orgUUID.String()},
+		},
+	}
 
-	t.Run("sets org_id and user_id from valid claims", func(t *testing.T) {
-		orgUUID := uuid.New()
-		req := web.NewMockRequest()
-		req.Values[tokens.ClaimsKey] = &tokens.Claims{
-			ID: "42",
-			RegisteredClaims: jwt.RegisteredClaims{
-				Audience: jwt.ClaimStrings{orgUUID.String()},
-			},
-		}
+	resp := interceptor(req)
 
-		resp := interceptor(req)
-		if resp.Status != 0 {
-			t.Fatalf("expected pass-through (status 0), got %d", resp.Status)
-		}
+	if resp.Status != 0 {
+		t.Fatalf("expected pass-through (status 0), got %d", resp.Status)
+	}
 
-		gotOrg := mw.OrgID(req)
-		if gotOrg != orgUUID {
-			t.Errorf("expected org_id %s, got %s", orgUUID, gotOrg)
-		}
+	gotOrg := mw.OrgID(req)
+	if gotOrg != orgUUID {
+		t.Errorf("expected org_id %s, got %s", orgUUID, gotOrg)
+	}
 
-		gotUser := mw.UserID(req)
-		if gotUser != 42 {
-			t.Errorf("expected user_id 42, got %d", gotUser)
-		}
-	})
+	gotUser := mw.UserID(req)
+	if gotUser != 42 {
+		t.Errorf("expected user_id 42, got %d", gotUser)
+	}
+}
 
-	t.Run("rejects missing claims", func(t *testing.T) {
-		req := web.NewMockRequest()
-		resp := interceptor(req)
-		if resp.Status != 401 {
-			t.Errorf("expected 401, got %d", resp.Status)
-		}
-	})
+func TestTenantMiddleware_RejectsMissingClaims(t *testing.T) {
+	interceptor := mw.TenantMiddleware()
+	req := web.NewMockRequest()
 
-	t.Run("rejects empty audience", func(t *testing.T) {
-		req := web.NewMockRequest()
-		req.Values[tokens.ClaimsKey] = &tokens.Claims{
-			ID: "1",
-			RegisteredClaims: jwt.RegisteredClaims{
-				Audience: jwt.ClaimStrings{},
-			},
-		}
+	resp := interceptor(req)
 
-		resp := interceptor(req)
-		if resp.Status != 401 {
-			t.Errorf("expected 401 for empty audience, got %d", resp.Status)
-		}
-	})
+	if resp.Status != 401 {
+		t.Errorf("expected 401, got %d", resp.Status)
+	}
+}
 
-	t.Run("rejects invalid UUID in audience", func(t *testing.T) {
-		req := web.NewMockRequest()
-		req.Values[tokens.ClaimsKey] = &tokens.Claims{
-			ID: "1",
-			RegisteredClaims: jwt.RegisteredClaims{
-				Audience: jwt.ClaimStrings{"not-a-uuid"},
-			},
-		}
+func TestTenantMiddleware_RejectsEmptyAudience(t *testing.T) {
+	interceptor := mw.TenantMiddleware()
+	req := web.NewMockRequest()
+	req.Values[tokens.ClaimsKey] = &tokens.Claims{
+		ID: "1",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience: jwt.ClaimStrings{},
+		},
+	}
 
-		resp := interceptor(req)
-		if resp.Status != 401 {
-			t.Errorf("expected 401 for invalid UUID, got %d", resp.Status)
-		}
-	})
+	resp := interceptor(req)
 
-	t.Run("rejects non-numeric user_id", func(t *testing.T) {
-		orgUUID := uuid.New()
-		req := web.NewMockRequest()
-		req.Values[tokens.ClaimsKey] = &tokens.Claims{
-			ID: "abc",
-			RegisteredClaims: jwt.RegisteredClaims{
-				Audience: jwt.ClaimStrings{orgUUID.String()},
-			},
-		}
+	if resp.Status != 401 {
+		t.Errorf("expected 401 for empty audience, got %d", resp.Status)
+	}
+}
 
-		resp := interceptor(req)
-		if resp.Status != 401 {
-			t.Errorf("expected 401 for non-numeric user_id, got %d", resp.Status)
-		}
-	})
+func TestTenantMiddleware_RejectsInvalidUUIDInAudience(t *testing.T) {
+	interceptor := mw.TenantMiddleware()
+	req := web.NewMockRequest()
+	req.Values[tokens.ClaimsKey] = &tokens.Claims{
+		ID: "1",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience: jwt.ClaimStrings{"not-a-uuid"},
+		},
+	}
 
-	t.Run("rejects zero user_id", func(t *testing.T) {
-		orgUUID := uuid.New()
-		req := web.NewMockRequest()
-		req.Values[tokens.ClaimsKey] = &tokens.Claims{
-			ID: "0",
-			RegisteredClaims: jwt.RegisteredClaims{
-				Audience: jwt.ClaimStrings{orgUUID.String()},
-			},
-		}
+	resp := interceptor(req)
 
-		resp := interceptor(req)
-		if resp.Status != 401 {
-			t.Errorf("expected 401 for zero user_id, got %d", resp.Status)
-		}
-	})
+	if resp.Status != 401 {
+		t.Errorf("expected 401 for invalid UUID, got %d", resp.Status)
+	}
+}
+
+func TestTenantMiddleware_RejectsNonNumericUserID(t *testing.T) {
+	interceptor := mw.TenantMiddleware()
+	orgUUID := uuid.New()
+	req := web.NewMockRequest()
+	req.Values[tokens.ClaimsKey] = &tokens.Claims{
+		ID: "abc",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience: jwt.ClaimStrings{orgUUID.String()},
+		},
+	}
+
+	resp := interceptor(req)
+
+	if resp.Status != 401 {
+		t.Errorf("expected 401 for non-numeric user_id, got %d", resp.Status)
+	}
+}
+
+func TestTenantMiddleware_RejectsZeroUserID(t *testing.T) {
+	interceptor := mw.TenantMiddleware()
+	orgUUID := uuid.New()
+	req := web.NewMockRequest()
+	req.Values[tokens.ClaimsKey] = &tokens.Claims{
+		ID: "0",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience: jwt.ClaimStrings{orgUUID.String()},
+		},
+	}
+
+	resp := interceptor(req)
+
+	if resp.Status != 401 {
+		t.Errorf("expected 401 for zero user_id, got %d", resp.Status)
+	}
 }
 
 func TestOrgID_ReturnsNilWhenNotSet(t *testing.T) {
