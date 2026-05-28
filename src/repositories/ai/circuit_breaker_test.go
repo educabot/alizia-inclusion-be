@@ -2,10 +2,12 @@ package ai_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
 	ai "github.com/educabot/alizia-inclusion-be/src/repositories/ai"
@@ -72,15 +74,9 @@ func TestCircuitBreaker_PassThrough_WhenClosed(t *testing.T) {
 
 	result, err := cb.Generate(context.Background(), providers.GenerateParams{UserPrompt: "hello"})
 
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if result != "ok" {
-		t.Errorf("expected result %q, got %q", "ok", result)
-	}
-	if fake.calls != 1 {
-		t.Errorf("expected 1 call, got %d", fake.calls)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "ok", result)
+	assert.Equal(t, 1, fake.calls)
 }
 
 // TestCircuitBreaker_OpensAfterThresholdFailures verifies that after
@@ -93,23 +89,16 @@ func TestCircuitBreaker_OpensAfterThresholdFailures(t *testing.T) {
 	cb := newBreaker(fake, clock)
 
 	for i := 0; i < threshold; i++ {
-		if _, err := cb.Generate(context.Background(), providers.GenerateParams{}); err == nil {
-			t.Fatalf("call %d: expected error, got nil", i+1)
-		}
+		_, err := cb.Generate(context.Background(), providers.GenerateParams{})
+		require.Error(t, err, "call %d: expected error, got nil", i+1)
 	}
 	callsAfterOpen := fake.calls
 
 	_, err := cb.Generate(context.Background(), providers.GenerateParams{})
 
-	if err == nil {
-		t.Fatal("expected error when circuit open")
-	}
-	if !errors.Is(err, providers.ErrServiceUnavailable) {
-		t.Errorf("expected ErrServiceUnavailable, got: %v", err)
-	}
-	if fake.calls != callsAfterOpen {
-		t.Errorf("wrapped client should not be called when circuit is open: got %d, want %d", fake.calls, callsAfterOpen)
-	}
+	require.Error(t, err)
+	assert.ErrorIs(t, err, providers.ErrServiceUnavailable)
+	assert.Equal(t, callsAfterOpen, fake.calls)
 }
 
 // TestCircuitBreaker_SuccessResetsFailureCounter verifies that a success resets
@@ -125,9 +114,8 @@ func TestCircuitBreaker_SuccessResetsFailureCounter(t *testing.T) {
 	}
 
 	fake.generateErr = nil
-	if _, err := cb.Generate(context.Background(), providers.GenerateParams{}); err != nil {
-		t.Fatalf("call after partial failures should succeed: %v", err)
-	}
+	_, err := cb.Generate(context.Background(), providers.GenerateParams{})
+	require.NoError(t, err, "call after partial failures should succeed")
 
 	fake.generateErr = fmt.Errorf("transient again")
 	for i := 0; i < threshold-1; i++ {
@@ -137,9 +125,7 @@ func TestCircuitBreaker_SuccessResetsFailureCounter(t *testing.T) {
 	fake.generateErr = nil
 	_, finalErr := cb.Generate(context.Background(), providers.GenerateParams{})
 
-	if finalErr != nil {
-		t.Fatalf("circuit must remain closed when failures never reach threshold consecutively: %v", finalErr)
-	}
+	assert.NoError(t, finalErr, "circuit must remain closed when failures never reach threshold consecutively")
 }
 
 // TestCircuitBreaker_TrialCallClosesCircuit verifies that after the cooldown
@@ -155,26 +141,19 @@ func TestCircuitBreaker_TrialCallClosesCircuit(t *testing.T) {
 	}
 	callsWhenOpen := fake.calls
 
-	if _, err := cb.Chat(context.Background(), nil); !errors.Is(err, providers.ErrServiceUnavailable) {
-		t.Fatalf("expected ErrServiceUnavailable while open, got: %v", err)
-	}
-	if fake.calls != callsWhenOpen {
-		t.Errorf("no calls expected while open: got %d, want %d", fake.calls, callsWhenOpen)
-	}
+	_, err := cb.Chat(context.Background(), nil)
+	assert.ErrorIs(t, err, providers.ErrServiceUnavailable)
+	assert.Equal(t, callsWhenOpen, fake.calls)
 
 	clock.Advance(cooldown)
 	fake.chatErr = nil
-	if _, err := cb.Chat(context.Background(), nil); err != nil {
-		t.Fatalf("trial call should succeed: %v", err)
-	}
+	_, err = cb.Chat(context.Background(), nil)
+	require.NoError(t, err, "trial call should succeed")
 
 	callsAfterClose := fake.calls
-	if _, err := cb.Chat(context.Background(), nil); err != nil {
-		t.Fatalf("unexpected error after close: %v", err)
-	}
-	if fake.calls != callsAfterClose+1 {
-		t.Errorf("circuit must be closed after successful trial: got %d, want %d", fake.calls, callsAfterClose+1)
-	}
+	_, err = cb.Chat(context.Background(), nil)
+	require.NoError(t, err, "unexpected error after close")
+	assert.Equal(t, callsAfterClose+1, fake.calls, "circuit must be closed after successful trial")
 }
 
 // TestCircuitBreaker_FailingTrialReopensCircuit verifies that a trial call that
@@ -189,21 +168,16 @@ func TestCircuitBreaker_FailingTrialReopensCircuit(t *testing.T) {
 	}
 
 	clock.Advance(cooldown)
-	if _, err := cb.Chat(context.Background(), nil); err == nil {
-		t.Fatal("trial call must propagate the upstream error")
-	}
+	_, err := cb.Chat(context.Background(), nil)
+	require.Error(t, err, "trial call must propagate the upstream error")
 
 	callsAfterTrial := fake.calls
-	if _, err := cb.Chat(context.Background(), nil); !errors.Is(err, providers.ErrServiceUnavailable) {
-		t.Errorf("circuit must be open after failing trial, got: %v", err)
-	}
-	if fake.calls != callsAfterTrial {
-		t.Errorf("wrapped client must not be called when re-opened: got %d, want %d", fake.calls, callsAfterTrial)
-	}
+	_, err = cb.Chat(context.Background(), nil)
+	assert.ErrorIs(t, err, providers.ErrServiceUnavailable, "circuit must be open after failing trial")
+	assert.Equal(t, callsAfterTrial, fake.calls, "wrapped client must not be called when re-opened")
 
 	clock.Advance(cooldown)
 	fake.chatErr = nil
-	if _, err := cb.Chat(context.Background(), nil); err != nil {
-		t.Fatalf("unexpected error after second trial: %v", err)
-	}
+	_, err = cb.Chat(context.Background(), nil)
+	assert.NoError(t, err, "unexpected error after second trial")
 }

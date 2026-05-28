@@ -1,9 +1,10 @@
 package auth_test
 
 import (
-	"errors"
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
 	"github.com/educabot/alizia-inclusion-be/src/core/usecases/auth"
@@ -20,12 +21,7 @@ func TestValidationErrors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		err := tt.req.Validate()
-		if err == nil {
-			t.Errorf("%s: expected validation error, got nil", tt.name)
-			continue
-		}
-		if !errors.Is(err, providers.ErrValidation) {
-			t.Errorf("%s: expected ErrValidation, got: %v", tt.name, err)
-		}
+		assert.Error(t, err, tt.name)
+		assert.ErrorIs(t, err, providers.ErrValidation, tt.name)
 	}
 }

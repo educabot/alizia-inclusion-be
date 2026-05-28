@@ -1,0 +1,28 @@
+package mocks
+
+import (
+	"context"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/mock"
+
+	"github.com/educabot/alizia-inclusion-be/src/core/entities"
+	"github.com/educabot/alizia-inclusion-be/src/core/providers"
+)
+
+type MockConversationProvider struct {
+	mock.Mock
+}
+
+func (m *MockConversationProvider) ListByUser(ctx context.Context, orgID uuid.UUID, userID int64, mode string) ([]entities.Conversation, error) {
+	args := m.Called(ctx, orgID, userID, mode)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]entities.Conversation), args.Error(1)
+}
+
+func (m *MockConversationProvider) AppendTurn(ctx context.Context, params providers.AppendTurnParams) (int64, error) {
+	args := m.Called(ctx, params)
+	return args.Get(0).(int64), args.Error(1)
+}

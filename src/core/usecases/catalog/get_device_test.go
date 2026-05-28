@@ -2,14 +2,14 @@ package catalog_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
-	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
-	"github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
+	mockproviders "github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
 	"github.com/educabot/alizia-inclusion-be/src/core/usecases/catalog"
 	"github.com/educabot/alizia-inclusion-be/src/testutil"
 )
@@ -17,68 +17,54 @@ import (
 func TestGetDevice_ReturnsDevice(t *testing.T) {
 	ctx := context.Background()
 	expected := testutil.NewDevice(1, 1, "Timer Visual")
-	mock := &mocks.MockDeviceProvider{
-		GetDeviceFn: func(_ context.Context, _ uuid.UUID, id int64) (*entities.Device, error) {
-			d := expected
-			return &d, nil
-		},
-	}
+	devices := new(mockproviders.MockDeviceProvider)
+	devices.On("GetDevice", ctx, testutil.TestOrgID, int64(1)).Return(&expected, nil)
 
-	got, err := catalog.NewGetDevice(mock).Execute(ctx, catalog.GetDeviceRequest{
+	got, err := catalog.NewGetDevice(devices).Execute(ctx, catalog.GetDeviceRequest{
 		OrgID:    testutil.TestOrgID,
 		DeviceID: 1,
 	})
 
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got.ID != expected.ID || got.Name != expected.Name {
-		t.Errorf("got {ID:%d Name:%q}, want {ID:%d Name:%q}", got.ID, got.Name, expected.ID, expected.Name)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, &expected, got)
+	devices.AssertExpectations(t)
 }
 
 func TestGetDevice_RejectsNilOrgID(t *testing.T) {
-	ctx := context.Background()
-	mock := &mocks.MockDeviceProvider{}
+	devices := new(mockproviders.MockDeviceProvider)
 
-	_, err := catalog.NewGetDevice(mock).Execute(ctx, catalog.GetDeviceRequest{
+	_, err := catalog.NewGetDevice(devices).Execute(context.Background(), catalog.GetDeviceRequest{
 		OrgID:    uuid.Nil,
 		DeviceID: 1,
 	})
 
-	if !errors.Is(err, providers.ErrValidation) {
-		t.Errorf("expected ErrValidation, got: %v", err)
-	}
+	assert.ErrorIs(t, err, providers.ErrValidation)
+	devices.AssertNotCalled(t, "GetDevice", mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestGetDevice_RejectsZeroDeviceID(t *testing.T) {
-	ctx := context.Background()
-	mock := &mocks.MockDeviceProvider{}
+	devices := new(mockproviders.MockDeviceProvider)
 
-	_, err := catalog.NewGetDevice(mock).Execute(ctx, catalog.GetDeviceRequest{
+	_, err := catalog.NewGetDevice(devices).Execute(context.Background(), catalog.GetDeviceRequest{
 		OrgID:    testutil.TestOrgID,
 		DeviceID: 0,
 	})
 
-	if !errors.Is(err, providers.ErrValidation) {
-		t.Errorf("expected ErrValidation, got: %v", err)
-	}
+	assert.ErrorIs(t, err, providers.ErrValidation)
+	devices.AssertNotCalled(t, "GetDevice", mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestGetDevice_ReturnsNotFound(t *testing.T) {
 	ctx := context.Background()
-	mock := &mocks.MockDeviceProvider{
-		GetDeviceFn: func(_ context.Context, _ uuid.UUID, _ int64) (*entities.Device, error) {
-			return nil, errDevNotFound
-		},
-	}
+	devices := new(mockproviders.MockDeviceProvider)
+	devices.On("GetDevice", ctx, testutil.TestOrgID, int64(999)).Return(nil, errDevNotFound)
 
-	_, err := catalog.NewGetDevice(mock).Execute(ctx, catalog.GetDeviceRequest{
+	got, err := catalog.NewGetDevice(devices).Execute(ctx, catalog.GetDeviceRequest{
 		OrgID:    testutil.TestOrgID,
 		DeviceID: 999,
 	})
 
-	if !errors.Is(err, providers.ErrNotFound) {
-		t.Errorf("expected ErrNotFound, got: %v", err)
-	}
+	assert.ErrorIs(t, err, providers.ErrNotFound)
+	assert.Nil(t, got)
+	devices.AssertExpectations(t)
 }

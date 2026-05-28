@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
 	"github.com/educabot/alizia-inclusion-be/src/entrypoints/rest"
 )
@@ -69,8 +71,6 @@ func TestHandleError(t *testing.T) {
 
 	for _, tc := range tests {
 		resp := rest.HandleError(tc.err)
-		if resp.Status != tc.expectedStatus {
-			t.Errorf("%s: expected status %d, got %d", tc.name, tc.expectedStatus, resp.Status)
-		}
+		assert.Equal(t, tc.expectedStatus, resp.Status, tc.name)
 	}
 }

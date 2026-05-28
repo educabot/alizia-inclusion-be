@@ -2,95 +2,70 @@ package management_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
-	"github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
+	mockproviders "github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
 	"github.com/educabot/alizia-inclusion-be/src/core/usecases/management"
 	"github.com/educabot/alizia-inclusion-be/src/testutil"
 )
 
 func TestDeleteClassroom_DeletesClassroom(t *testing.T) {
 	ctx := context.Background()
-	called := false
-	mock := &mocks.MockClassroomProvider{
-		DeleteFn: func(ctx context.Context, orgID uuid.UUID, id int64) error {
-			called = true
-			return nil
-		},
-	}
+	classrooms := new(mockproviders.MockClassroomProvider)
+	classrooms.On("Delete", ctx, testutil.TestOrgID, int64(1)).Return(nil)
 
-	uc := management.NewDeleteClassroom(mock)
+	uc := management.NewDeleteClassroom(classrooms)
 	err := uc.Execute(ctx, management.DeleteClassroomRequest{
 		OrgID:       testutil.TestOrgID,
 		ClassroomID: 1,
 	})
 
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if !called {
-		t.Error("expected DeleteFn to be called, but it was not")
-	}
+	assert.NoError(t, err)
+	classrooms.AssertExpectations(t)
 }
 
 func TestDeleteClassroom_RejectsNilOrgID(t *testing.T) {
-	ctx := context.Background()
-	mock := &mocks.MockClassroomProvider{}
+	classrooms := new(mockproviders.MockClassroomProvider)
+	uc := management.NewDeleteClassroom(classrooms)
 
-	uc := management.NewDeleteClassroom(mock)
-	err := uc.Execute(ctx, management.DeleteClassroomRequest{
+	err := uc.Execute(context.Background(), management.DeleteClassroomRequest{
 		OrgID:       uuid.Nil,
 		ClassroomID: 1,
 	})
 
-	if err == nil {
-		t.Fatal("expected validation error, got nil")
-	}
-	if !errors.Is(err, providers.ErrValidation) {
-		t.Errorf("expected ErrValidation, got %v", err)
-	}
+	assert.ErrorIs(t, err, providers.ErrValidation)
+	classrooms.AssertNotCalled(t, "Delete", mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestDeleteClassroom_RejectsZeroClassroomID(t *testing.T) {
-	ctx := context.Background()
-	mock := &mocks.MockClassroomProvider{}
+	classrooms := new(mockproviders.MockClassroomProvider)
+	uc := management.NewDeleteClassroom(classrooms)
 
-	uc := management.NewDeleteClassroom(mock)
-	err := uc.Execute(ctx, management.DeleteClassroomRequest{
+	err := uc.Execute(context.Background(), management.DeleteClassroomRequest{
 		OrgID:       testutil.TestOrgID,
 		ClassroomID: 0,
 	})
 
-	if err == nil {
-		t.Fatal("expected validation error, got nil")
-	}
-	if !errors.Is(err, providers.ErrValidation) {
-		t.Errorf("expected ErrValidation, got %v", err)
-	}
+	assert.ErrorIs(t, err, providers.ErrValidation)
+	classrooms.AssertNotCalled(t, "Delete", mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestDeleteClassroom_ReturnsNotFound(t *testing.T) {
 	ctx := context.Background()
-	mock := &mocks.MockClassroomProvider{
-		DeleteFn: func(ctx context.Context, orgID uuid.UUID, id int64) error {
-			return errClassroomNotFound
-		},
-	}
+	classrooms := new(mockproviders.MockClassroomProvider)
+	classrooms.On("Delete", ctx, testutil.TestOrgID, int64(99)).Return(errClassroomNotFound)
 
-	uc := management.NewDeleteClassroom(mock)
+	uc := management.NewDeleteClassroom(classrooms)
 	err := uc.Execute(ctx, management.DeleteClassroomRequest{
 		OrgID:       testutil.TestOrgID,
 		ClassroomID: 99,
 	})
 
-	if err == nil {
-		t.Fatal("expected not found error, got nil")
-	}
-	if !errors.Is(err, providers.ErrNotFound) {
-		t.Errorf("expected ErrNotFound, got %v", err)
-	}
+	assert.ErrorIs(t, err, providers.ErrNotFound)
+	classrooms.AssertExpectations(t)
 }

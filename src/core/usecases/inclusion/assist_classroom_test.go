@@ -2,42 +2,19 @@ package inclusion_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
-	"github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
+	mockproviders "github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
 	"github.com/educabot/alizia-inclusion-be/src/core/usecases/inclusion"
 	"github.com/educabot/alizia-inclusion-be/src/testutil"
 )
-
-func assistClassroomSetupMocks(aiResponse string, aiErr error) (*mocks.MockAIClient, *mocks.MockStudentProvider, *mocks.MockDeviceProvider, *mocks.MockConversationProvider, *mocks.MockAIUsageProvider) {
-	return &mocks.MockAIClient{
-			ChatFn: func(_ context.Context, _ []providers.ChatMessage) (*providers.ChatResponse, error) {
-				if aiErr != nil {
-					return nil, aiErr
-				}
-				return &providers.ChatResponse{Content: aiResponse}, nil
-			},
-		},
-		&mocks.MockStudentProvider{
-			ListByClassroomFn: func(_ context.Context, _ uuid.UUID, _ int64) ([]entities.Student, error) {
-				s := testutil.NewStudent(1, 1, "Lucas")
-				return []entities.Student{s}, nil
-			},
-		},
-		&mocks.MockDeviceProvider{
-			ListDevicesFn: func(_ context.Context, _ uuid.UUID, _ *int64) ([]entities.Device, error) {
-				d := testutil.NewDevice(1, 1, "Pictogramas")
-				return []entities.Device{d}, nil
-			},
-		},
-		&mocks.MockConversationProvider{},
-		&mocks.MockAIUsageProvider{}
-}
 
 var assistClassroomBaseRequest = inclusion.AssistClassroomRequest{
 	OrgID:       testutil.TestOrgID,
@@ -45,148 +22,167 @@ var assistClassroomBaseRequest = inclusion.AssistClassroomRequest{
 	Message:     "Lucas no puede concentrarse",
 }
 
+// assistClassroomMocks wires the providers a successful assist call exercises:
+// devices.ListDevices + students.ListByClassroom always run, ai.Chat returns the
+// supplied content (or error), AppendTurn / Record are left to each test to expect.
+func assistClassroomMocks(t *testing.T, aiContent string, aiErr error) (
+	*mockproviders.MockAIClient,
+	*mockproviders.MockStudentProvider,
+	*mockproviders.MockDeviceProvider,
+	*mockproviders.MockConversationProvider,
+	*mockproviders.MockAIUsageProvider,
+) {
+	t.Helper()
+	ai := new(mockproviders.MockAIClient)
+	students := new(mockproviders.MockStudentProvider)
+	devices := new(mockproviders.MockDeviceProvider)
+	conversations := new(mockproviders.MockConversationProvider)
+	usage := new(mockproviders.MockAIUsageProvider)
+
+	devices.On("ListDevices", mock.Anything, testutil.TestOrgID, (*int64)(nil)).
+		Return([]entities.Device{testutil.NewDevice(1, 1, "Pictogramas")}, nil)
+	students.On("ListByClassroom", mock.Anything, testutil.TestOrgID, int64(1)).
+		Return([]entities.Student{testutil.NewStudent(1, 1, "Lucas")}, nil)
+	if aiErr != nil {
+		ai.On("Chat", mock.Anything, mock.AnythingOfType("[]providers.ChatMessage")).
+			Return(nil, aiErr)
+	} else {
+		ai.On("Chat", mock.Anything, mock.AnythingOfType("[]providers.ChatMessage")).
+			Return(&providers.ChatResponse{Content: aiContent}, nil)
+	}
+	return ai, students, devices, conversations, usage
+}
+
 func TestAssistClassroom_ReturnsAssistResponse(t *testing.T) {
-	ctx := context.Background()
+	ai, students, devices, conversations, usage := assistClassroomMocks(t, "Podrias usar pictogramas [DEVICE_ID:1]", nil)
 
-	ai, students, devices, conversations, usage := assistClassroomSetupMocks("Podrias usar pictogramas [DEVICE_ID:1]", nil)
+	got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage, false).
+		Execute(context.Background(), assistClassroomBaseRequest)
 
-	got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage, false).Execute(ctx, assistClassroomBaseRequest)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got.Response == "" {
-		t.Error("expected non-empty response")
-	}
+	require.NoError(t, err)
+	assert.NotEmpty(t, got.Response)
+	ai.AssertExpectations(t)
 }
 
 func TestAssistClassroom_WorksInGuidedMode(t *testing.T) {
-	ctx := context.Background()
-
-	ai, students, devices, conversations, usage := assistClassroomSetupMocks("Para que alumno necesitas la adaptacion?", nil)
+	ai, students, devices, conversations, usage := assistClassroomMocks(t, "Para que alumno necesitas la adaptacion?", nil)
 	req := assistClassroomBaseRequest
 	req.Mode = "guided"
 
-	got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage, false).Execute(ctx, req)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got.Response == "" {
-		t.Error("expected non-empty response")
-	}
+	got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage, false).
+		Execute(context.Background(), req)
+
+	require.NoError(t, err)
+	assert.NotEmpty(t, got.Response)
+	ai.AssertExpectations(t)
 }
 
 func TestAssistClassroom_WrapsAIError(t *testing.T) {
-	ctx := context.Background()
+	ai, students, devices, conversations, usage := assistClassroomMocks(t, "", errDB)
 
-	ai, students, devices, conversations, usage := assistClassroomSetupMocks("", errDB)
+	_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage, false).
+		Execute(context.Background(), assistClassroomBaseRequest)
 
-	_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage, false).Execute(ctx, assistClassroomBaseRequest)
-	if err == nil {
-		t.Fatal("expected error")
-	}
-	if !errors.Is(err, providers.ErrServiceUnavailable) {
-		t.Errorf("expected ErrServiceUnavailable, got: %v", err)
-	}
+	assert.ErrorIs(t, err, providers.ErrServiceUnavailable)
 }
 
 func TestAssistClassroom_RejectsNilOrgID(t *testing.T) {
-	ctx := context.Background()
-
-	ai, students, devices, conversations, usage := assistClassroomSetupMocks("", nil)
+	ai := new(mockproviders.MockAIClient)
+	students := new(mockproviders.MockStudentProvider)
+	devices := new(mockproviders.MockDeviceProvider)
+	conversations := new(mockproviders.MockConversationProvider)
+	usage := new(mockproviders.MockAIUsageProvider)
 	req := assistClassroomBaseRequest
 	req.OrgID = uuid.Nil
 
-	_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage, false).Execute(ctx, req)
-	if !errors.Is(err, providers.ErrValidation) {
-		t.Errorf("expected ErrValidation, got: %v", err)
-	}
+	_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage, false).
+		Execute(context.Background(), req)
+
+	assert.ErrorIs(t, err, providers.ErrValidation)
+	ai.AssertNotCalled(t, "Chat", mock.Anything, mock.Anything)
+	devices.AssertNotCalled(t, "ListDevices", mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestAssistClassroom_RejectsEmptyMessage(t *testing.T) {
-	ctx := context.Background()
-
-	ai, students, devices, conversations, usage := assistClassroomSetupMocks("", nil)
+	ai := new(mockproviders.MockAIClient)
+	students := new(mockproviders.MockStudentProvider)
+	devices := new(mockproviders.MockDeviceProvider)
+	conversations := new(mockproviders.MockConversationProvider)
+	usage := new(mockproviders.MockAIUsageProvider)
 	req := assistClassroomBaseRequest
 	req.Message = ""
 
-	_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage, false).Execute(ctx, req)
-	if !errors.Is(err, providers.ErrValidation) {
-		t.Errorf("expected ErrValidation, got: %v", err)
-	}
+	_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage, false).
+		Execute(context.Background(), req)
+
+	assert.ErrorIs(t, err, providers.ErrValidation)
+	ai.AssertNotCalled(t, "Chat", mock.Anything, mock.Anything)
 }
 
 func TestAssistClassroom_PersistsTurnWhenUserIDPresent(t *testing.T) {
-	ctx := context.Background()
-
-	ai, students, devices, conversations, usage := assistClassroomSetupMocks("Podrias usar pictogramas [DEVICE_ID:1]", nil)
+	ai, students, devices, conversations, usage := assistClassroomMocks(t, "Podrias usar pictogramas [DEVICE_ID:1]", nil)
 	var captured providers.AppendTurnParams
-	conversations.AppendTurnFn = func(_ context.Context, p providers.AppendTurnParams) (int64, error) {
-		captured = p
-		return 42, nil
-	}
+	conversations.On("AppendTurn", mock.Anything, mock.AnythingOfType("providers.AppendTurnParams")).
+		Run(func(args mock.Arguments) {
+			captured = args.Get(1).(providers.AppendTurnParams)
+		}).
+		Return(int64(42), nil)
 	req := assistClassroomBaseRequest
 	req.UserID = 7
 
-	got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage, false).Execute(ctx, req)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got.ConversationID != 42 {
-		t.Errorf("expected conversation_id 42, got %d", got.ConversationID)
-	}
-	if captured.UserID != 7 {
-		t.Errorf("expected captured UserID 7, got %d", captured.UserID)
-	}
-	if captured.UserContent != assistClassroomBaseRequest.Message {
-		t.Errorf("expected UserContent %q, got %q", assistClassroomBaseRequest.Message, captured.UserContent)
-	}
+	got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage, false).
+		Execute(context.Background(), req)
+
+	require.NoError(t, err)
+	assert.Equal(t, int64(42), got.ConversationID)
+	assert.Equal(t, int64(7), captured.UserID)
+	assert.Equal(t, assistClassroomBaseRequest.Message, captured.UserContent)
+	conversations.AssertExpectations(t)
 }
 
 func TestAssistClassroom_SkipsPersistenceWhenUserIDMissing(t *testing.T) {
-	ctx := context.Background()
+	ai, students, devices, conversations, usage := assistClassroomMocks(t, "ok", nil)
 
-	ai, students, devices, conversations, usage := assistClassroomSetupMocks("ok", nil)
-	called := false
-	conversations.AppendTurnFn = func(_ context.Context, _ providers.AppendTurnParams) (int64, error) {
-		called = true
-		return 99, nil
-	}
+	_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage, false).
+		Execute(context.Background(), assistClassroomBaseRequest)
 
-	_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage, false).Execute(ctx, assistClassroomBaseRequest)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if called {
-		t.Error("AppendTurn should not be invoked without UserID")
-	}
+	require.NoError(t, err)
+	conversations.AssertNotCalled(t, "AppendTurn", mock.Anything, mock.Anything)
 }
 
 func TestAssistClassroom_RecordsTokenUsageWhenPresent(t *testing.T) {
-	ctx := context.Background()
+	ai := new(mockproviders.MockAIClient)
+	students := new(mockproviders.MockStudentProvider)
+	devices := new(mockproviders.MockDeviceProvider)
+	conversations := new(mockproviders.MockConversationProvider)
+	usage := new(mockproviders.MockAIUsageProvider)
 
-	ai, students, devices, conversations, usage := assistClassroomSetupMocks("ok", nil)
-	ai.ChatFn = func(_ context.Context, _ []providers.ChatMessage) (*providers.ChatResponse, error) {
-		return &providers.ChatResponse{
+	devices.On("ListDevices", mock.Anything, testutil.TestOrgID, (*int64)(nil)).
+		Return([]entities.Device{testutil.NewDevice(1, 1, "Pictogramas")}, nil)
+	students.On("ListByClassroom", mock.Anything, testutil.TestOrgID, int64(1)).
+		Return([]entities.Student{testutil.NewStudent(1, 1, "Lucas")}, nil)
+	ai.On("Chat", mock.Anything, mock.AnythingOfType("[]providers.ChatMessage")).
+		Return(&providers.ChatResponse{
 			Content: "ok",
 			Usage:   &providers.TokenUsage{PromptTokens: 10, CompletionTokens: 5, TotalTokens: 15},
-		}, nil
-	}
+		}, nil)
+	conversations.On("AppendTurn", mock.Anything, mock.AnythingOfType("providers.AppendTurnParams")).
+		Return(int64(1), nil)
 	var captured providers.AIUsageRecord
-	usage.RecordFn = func(_ context.Context, r providers.AIUsageRecord) error {
-		captured = r
-		return nil
-	}
+	usage.On("Record", mock.Anything, mock.AnythingOfType("providers.AIUsageRecord")).
+		Run(func(args mock.Arguments) {
+			captured = args.Get(1).(providers.AIUsageRecord)
+		}).
+		Return(nil)
+
 	req := assistClassroomBaseRequest
 	req.UserID = 7
 
-	_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage, false).Execute(ctx, req)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if captured.TotalTokens != 15 {
-		t.Errorf("expected total_tokens 15, got %d", captured.TotalTokens)
-	}
-	if captured.Mode != "assist" {
-		t.Errorf("expected mode 'assist', got %q", captured.Mode)
-	}
+	_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, usage, false).
+		Execute(context.Background(), req)
+
+	require.NoError(t, err)
+	assert.Equal(t, 15, captured.TotalTokens)
+	assert.Equal(t, "assist", captured.Mode)
+	usage.AssertExpectations(t)
 }

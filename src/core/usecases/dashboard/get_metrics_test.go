@@ -2,15 +2,15 @@ package dashboard_test
 
 import (
 	"context"
-	"errors"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
-	"github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
+	mockproviders "github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
 	"github.com/educabot/alizia-inclusion-be/src/core/usecases/dashboard"
 	"github.com/educabot/alizia-inclusion-be/src/testutil"
 )
@@ -39,80 +39,47 @@ func TestGetMetrics_ReturnsMetrics(t *testing.T) {
 		testutil.NewClassroom(11, "2B"),
 	}
 
-	studentMock := &mocks.MockStudentProvider{
-		ListFn: func(_ context.Context, _ uuid.UUID) ([]entities.Student, error) {
-			return students, nil
-		},
-	}
-	adaptationMock := &mocks.MockAdaptationProvider{
-		ListFn: func(_ context.Context, _ uuid.UUID, _ *int64) ([]entities.Adaptation, error) {
-			return adaptations, nil
-		},
-		CountSinceFn: func(_ context.Context, _ uuid.UUID, _ time.Time) (int, error) {
-			return 5, nil
-		},
-		TopDevicesFn: func(_ context.Context, _ uuid.UUID, _ int) ([]providers.DeviceUsageStat, error) {
-			return topDevices, nil
-		},
-	}
-	classroomMock := &mocks.MockClassroomProvider{
-		ListFn: func(_ context.Context, _ uuid.UUID) ([]entities.Classroom, error) {
-			return classrooms, nil
-		},
-	}
+	studentMock := new(mockproviders.MockStudentProvider)
+	studentMock.On("List", ctx, testutil.TestOrgID).Return(students, nil)
+
+	adaptationMock := new(mockproviders.MockAdaptationProvider)
+	adaptationMock.On("List", ctx, testutil.TestOrgID, (*int64)(nil)).Return(adaptations, nil)
+	adaptationMock.On("CountSince", ctx, testutil.TestOrgID, mock.AnythingOfType("time.Time")).Return(5, nil)
+	adaptationMock.On("TopDevices", ctx, testutil.TestOrgID, 5).Return(topDevices, nil)
+
+	classroomMock := new(mockproviders.MockClassroomProvider)
+	classroomMock.On("List", ctx, testutil.TestOrgID).Return(classrooms, nil)
+
 	uc := dashboard.NewGetMetrics(studentMock, adaptationMock, classroomMock)
 
 	got, err := uc.Execute(ctx, dashboard.GetMetricsRequest{OrgID: testutil.TestOrgID})
 
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if got == nil {
-		t.Fatal("expected non-nil response, got nil")
-	}
-	if got.TotalStudents != 3 {
-		t.Errorf("TotalStudents = %d, want 3", got.TotalStudents)
-	}
-	if got.StudentsWithProfiles != 2 {
-		t.Errorf("StudentsWithProfiles = %d, want 2", got.StudentsWithProfiles)
-	}
-	if got.TotalAdaptations != 2 {
-		t.Errorf("TotalAdaptations = %d, want 2", got.TotalAdaptations)
-	}
-	if got.AdaptationsThisWeek != 5 {
-		t.Errorf("AdaptationsThisWeek = %d, want 5", got.AdaptationsThisWeek)
-	}
-	if got.ClassroomCount != 2 {
-		t.Errorf("ClassroomCount = %d, want 2", got.ClassroomCount)
-	}
-	if len(got.TopUsedDevices) != 1 {
-		t.Fatalf("TopUsedDevices len = %d, want 1", len(got.TopUsedDevices))
-	}
-	if got.TopUsedDevices[0].DeviceID != 1 {
-		t.Errorf("TopUsedDevices[0].DeviceID = %d, want 1", got.TopUsedDevices[0].DeviceID)
-	}
-	if got.TopUsedDevices[0].DeviceName != "Timer" {
-		t.Errorf("TopUsedDevices[0].DeviceName = %q, want Timer", got.TopUsedDevices[0].DeviceName)
-	}
-	if got.TopUsedDevices[0].Count != 3 {
-		t.Errorf("TopUsedDevices[0].Count = %d, want 3", got.TopUsedDevices[0].Count)
-	}
+	assert.NoError(t, err)
+	assert.NotNil(t, got)
+	assert.Equal(t, 3, got.TotalStudents)
+	assert.Equal(t, 2, got.StudentsWithProfiles)
+	assert.Equal(t, 2, got.TotalAdaptations)
+	assert.Equal(t, 5, got.AdaptationsThisWeek)
+	assert.Equal(t, 2, got.ClassroomCount)
+	assert.Len(t, got.TopUsedDevices, 1)
+	assert.Equal(t, int64(1), got.TopUsedDevices[0].DeviceID)
+	assert.Equal(t, "Timer", got.TopUsedDevices[0].DeviceName)
+	assert.Equal(t, 3, got.TopUsedDevices[0].Count)
+	studentMock.AssertExpectations(t)
+	adaptationMock.AssertExpectations(t)
+	classroomMock.AssertExpectations(t)
 }
 
 func TestGetMetrics_RejectsNilOrgID(t *testing.T) {
-	ctx := context.Background()
-	uc := dashboard.NewGetMetrics(
-		&mocks.MockStudentProvider{},
-		&mocks.MockAdaptationProvider{},
-		&mocks.MockClassroomProvider{},
-	)
+	studentMock := new(mockproviders.MockStudentProvider)
+	adaptationMock := new(mockproviders.MockAdaptationProvider)
+	classroomMock := new(mockproviders.MockClassroomProvider)
+	uc := dashboard.NewGetMetrics(studentMock, adaptationMock, classroomMock)
 
-	_, err := uc.Execute(ctx, dashboard.GetMetricsRequest{OrgID: uuid.Nil})
+	_, err := uc.Execute(context.Background(), dashboard.GetMetricsRequest{OrgID: uuid.Nil})
 
-	if err == nil {
-		t.Fatal("expected validation error, got nil")
-	}
-	if !errors.Is(err, providers.ErrValidation) {
-		t.Errorf("expected ErrValidation, got %v", err)
-	}
+	assert.ErrorIs(t, err, providers.ErrValidation)
+	studentMock.AssertNotCalled(t, "List", mock.Anything, mock.Anything)
+	adaptationMock.AssertNotCalled(t, "List", mock.Anything, mock.Anything, mock.Anything)
+	classroomMock.AssertNotCalled(t, "List", mock.Anything, mock.Anything)
 }

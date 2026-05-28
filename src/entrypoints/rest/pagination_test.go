@@ -1,10 +1,11 @@
 package rest_test
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/educabot/team-ai-toolkit/web"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
 	"github.com/educabot/alizia-inclusion-be/src/entrypoints/rest"
@@ -15,34 +16,22 @@ func TestPage_WrapsItemsAndMoreFlag(t *testing.T) {
 
 	result := rest.Page(items, true)
 
-	if len(result.Items) != 3 {
-		t.Errorf("expected 3 items, got %d", len(result.Items))
-	}
-	if !result.More {
-		t.Error("expected more=true")
-	}
+	assert.Len(t, result.Items, 3)
+	assert.True(t, result.More)
 }
 
 func TestPage_NilItemsBecomesEmptySlice(t *testing.T) {
 	result := rest.Page[string](nil, false)
 
-	if result.Items == nil {
-		t.Error("expected non-nil empty slice")
-	}
-	if len(result.Items) != 0 {
-		t.Errorf("expected 0 items, got %d", len(result.Items))
-	}
-	if result.More {
-		t.Error("expected more=false")
-	}
+	assert.NotNil(t, result.Items)
+	assert.Empty(t, result.Items)
+	assert.False(t, result.More)
 }
 
 func TestPage_EmptySliceStaysEmpty(t *testing.T) {
 	result := rest.Page([]int{}, false)
 
-	if len(result.Items) != 0 {
-		t.Errorf("expected 0 items, got %d", len(result.Items))
-	}
+	assert.Empty(t, result.Items)
 }
 
 func TestParsePagination(t *testing.T) {
@@ -100,24 +89,14 @@ func TestParsePagination(t *testing.T) {
 		p, err := rest.ParsePagination(req)
 
 		if tt.wantErr {
-			if err == nil {
-				t.Errorf("%s: expected error, got nil", tt.name)
-				continue
-			}
-			if tt.wantErrIs != nil && !errors.Is(err, tt.wantErrIs) {
-				t.Errorf("%s: expected %v, got: %v", tt.name, tt.wantErrIs, err)
+			require.Error(t, err, tt.name)
+			if tt.wantErrIs != nil {
+				assert.ErrorIs(t, err, tt.wantErrIs, tt.name)
 			}
 			continue
 		}
-		if err != nil {
-			t.Errorf("%s: unexpected error: %v", tt.name, err)
-			continue
-		}
-		if p.Limit != tt.wantLimit {
-			t.Errorf("%s: expected limit %d, got %d", tt.name, tt.wantLimit, p.Limit)
-		}
-		if p.Offset != tt.wantOffset {
-			t.Errorf("%s: expected offset %d, got %d", tt.name, tt.wantOffset, p.Offset)
-		}
+		require.NoError(t, err, tt.name)
+		assert.Equal(t, tt.wantLimit, p.Limit, tt.name)
+		assert.Equal(t, tt.wantOffset, p.Offset, tt.name)
 	}
 }

@@ -2,60 +2,43 @@ package management_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
-	"github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
+	mockproviders "github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
 	"github.com/educabot/alizia-inclusion-be/src/core/usecases/management"
 	"github.com/educabot/alizia-inclusion-be/src/testutil"
 )
 
 func TestListTeachers_ReturnsTeachers(t *testing.T) {
 	ctx := context.Background()
-	teachers := []entities.User{
+	want := []entities.User{
 		testutil.NewUser(1, "Ana Garcia"),
 		testutil.NewUser(2, "Luis Perez"),
 	}
-	var calledRole string
-	mock := &mocks.MockUserProvider{
-		ListByRoleFn: func(ctx context.Context, orgID uuid.UUID, role string) ([]entities.User, error) {
-			calledRole = role
-			return teachers, nil
-		},
-	}
+	users := new(mockproviders.MockUserProvider)
+	users.On("ListByRole", ctx, testutil.TestOrgID, "teacher").Return(want, nil)
 
-	uc := management.NewListTeachers(mock)
+	uc := management.NewListTeachers(users)
 	got, err := uc.Execute(ctx, management.ListTeachersRequest{OrgID: testutil.TestOrgID})
 
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if calledRole != "teacher" {
-		t.Errorf("expected role %q, got %q", "teacher", calledRole)
-	}
-	if len(got) != len(teachers) {
-		t.Fatalf("expected %d teachers, got %d", len(teachers), len(got))
-	}
-	if got[0].ID != teachers[0].ID {
-		t.Errorf("expected first teacher ID %d, got %d", teachers[0].ID, got[0].ID)
-	}
+	assert.NoError(t, err)
+	assert.Len(t, got, 2)
+	assert.Equal(t, want[0].ID, got[0].ID)
+	users.AssertExpectations(t)
 }
 
 func TestListTeachers_RejectsNilOrgID(t *testing.T) {
-	ctx := context.Background()
-	mock := &mocks.MockUserProvider{}
+	users := new(mockproviders.MockUserProvider)
+	uc := management.NewListTeachers(users)
 
-	uc := management.NewListTeachers(mock)
-	_, err := uc.Execute(ctx, management.ListTeachersRequest{OrgID: uuid.Nil})
+	_, err := uc.Execute(context.Background(), management.ListTeachersRequest{OrgID: uuid.Nil})
 
-	if err == nil {
-		t.Fatal("expected validation error, got nil")
-	}
-	if !errors.Is(err, providers.ErrValidation) {
-		t.Errorf("expected ErrValidation, got %v", err)
-	}
+	assert.ErrorIs(t, err, providers.ErrValidation)
+	users.AssertNotCalled(t, "ListByRole", mock.Anything, mock.Anything, mock.Anything)
 }

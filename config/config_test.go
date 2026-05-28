@@ -3,6 +3,8 @@ package config
 import (
 	"math"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBoundedUintToInt(t *testing.T) {
@@ -40,8 +42,6 @@ func TestBoundedUintToInt(t *testing.T) {
 
 	for _, tc := range tests {
 		got := boundedUintToInt(tc.input)
-		if got != tc.expected {
-			t.Errorf("%s: boundedUintToInt(%d) = %d, want %d", tc.name, tc.input, got, tc.expected)
-		}
+		assert.Equal(t, tc.expected, got, tc.name)
 	}
 }

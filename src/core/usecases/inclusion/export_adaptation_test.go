@@ -3,14 +3,16 @@ package inclusion_test
 import (
 	"bytes"
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
-	"github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
+	mockproviders "github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
 	"github.com/educabot/alizia-inclusion-be/src/core/usecases/inclusion"
 	"github.com/educabot/alizia-inclusion-be/src/testutil"
 )
@@ -34,17 +36,6 @@ func newExportAdaptation() *entities.Adaptation {
 	}
 }
 
-func newExportMock(a *entities.Adaptation, getErr error) *mocks.MockAdaptationProvider {
-	return &mocks.MockAdaptationProvider{
-		GetFn: func(_ context.Context, _ uuid.UUID, _ int64) (*entities.Adaptation, error) {
-			if getErr != nil {
-				return nil, getErr
-			}
-			return a, nil
-		},
-	}
-}
-
 var baseExportRequest = inclusion.ExportAdaptationRequest{
 	OrgID:        testutil.TestOrgID,
 	AdaptationID: 7,
@@ -52,103 +43,78 @@ var baseExportRequest = inclusion.ExportAdaptationRequest{
 }
 
 func TestExportAdaptation_RendersMarkdownWithAdaptationContent(t *testing.T) {
+	adaptations := new(mockproviders.MockAdaptationProvider)
 	ctx := context.Background()
-	adaptations := newExportMock(newExportAdaptation(), nil)
+	adaptations.On("Get", ctx, testutil.TestOrgID, int64(7)).Return(newExportAdaptation(), nil)
 
 	doc, err := inclusion.NewExportAdaptation(adaptations).Execute(ctx, baseExportRequest)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if doc.Filename != "adaptacion-7.md" {
-		t.Errorf("expected filename adaptacion-7.md, got %q", doc.Filename)
-	}
-	if doc.ContentType != "text/markdown; charset=utf-8" {
-		t.Errorf("unexpected content type %q", doc.ContentType)
-	}
+
+	require.NoError(t, err)
+	assert.Equal(t, "adaptacion-7.md", doc.Filename)
+	assert.Equal(t, "text/markdown; charset=utf-8", doc.ContentType)
 	content := string(doc.Data)
-	strategy := "Usar timer visual en bloques de 10 minutos"
-	notes := "Revisar cada semana con la familia"
-	for _, want := range []string{"Matemáticas", "Lucas", "Timer Visual", strategy, notes} {
-		if !contains(content, want) {
-			t.Errorf("markdown missing %q", want)
-		}
+	for _, want := range []string{"Matemáticas", "Lucas", "Timer Visual", "Usar timer visual en bloques de 10 minutos", "Revisar cada semana con la familia"} {
+		assert.Contains(t, content, want)
 	}
+	adaptations.AssertExpectations(t)
 }
 
 func TestExportAdaptation_RendersNonEmptyPDFWithPDFSignature(t *testing.T) {
+	adaptations := new(mockproviders.MockAdaptationProvider)
 	ctx := context.Background()
-	adaptations := newExportMock(newExportAdaptation(), nil)
+	adaptations.On("Get", ctx, testutil.TestOrgID, int64(7)).Return(newExportAdaptation(), nil)
 	req := baseExportRequest
 	req.Format = inclusion.ExportFormatPDF
 
 	doc, err := inclusion.NewExportAdaptation(adaptations).Execute(ctx, req)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if doc.Filename != "adaptacion-7.pdf" {
-		t.Errorf("expected filename adaptacion-7.pdf, got %q", doc.Filename)
-	}
-	if doc.ContentType != "application/pdf" {
-		t.Errorf("unexpected content type %q", doc.ContentType)
-	}
-	if !bytes.HasPrefix(doc.Data, []byte("%PDF-")) {
-		t.Errorf("expected PDF signature, got %q", firstBytes(doc.Data, 8))
-	}
+
+	require.NoError(t, err)
+	assert.Equal(t, "adaptacion-7.pdf", doc.Filename)
+	assert.Equal(t, "application/pdf", doc.ContentType)
+	assert.True(t, bytes.HasPrefix(doc.Data, []byte("%PDF-")))
+	adaptations.AssertExpectations(t)
 }
 
 func TestExportAdaptation_PropagatesNotFoundFromRepository(t *testing.T) {
+	adaptations := new(mockproviders.MockAdaptationProvider)
 	ctx := context.Background()
-	adaptations := newExportMock(nil, providers.ErrAdaptationNotFound)
+	adaptations.On("Get", ctx, testutil.TestOrgID, int64(7)).Return(nil, providers.ErrAdaptationNotFound)
 
 	_, err := inclusion.NewExportAdaptation(adaptations).Execute(ctx, baseExportRequest)
-	if !errors.Is(err, providers.ErrAdaptationNotFound) {
-		t.Errorf("expected ErrAdaptationNotFound, got: %v", err)
-	}
+
+	assert.ErrorIs(t, err, providers.ErrAdaptationNotFound)
+	adaptations.AssertExpectations(t)
 }
 
 func TestExportAdaptation_RejectsUnsupportedFormat(t *testing.T) {
-	ctx := context.Background()
-	adaptations := newExportMock(newExportAdaptation(), nil)
+	adaptations := new(mockproviders.MockAdaptationProvider)
 	req := baseExportRequest
 	req.Format = "docx"
 
-	_, err := inclusion.NewExportAdaptation(adaptations).Execute(ctx, req)
-	if !errors.Is(err, providers.ErrValidation) {
-		t.Errorf("expected ErrValidation, got: %v", err)
-	}
+	_, err := inclusion.NewExportAdaptation(adaptations).Execute(context.Background(), req)
+
+	assert.ErrorIs(t, err, providers.ErrValidation)
+	adaptations.AssertNotCalled(t, "Get", mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestExportAdaptation_RejectsNilOrgID(t *testing.T) {
-	ctx := context.Background()
-	adaptations := newExportMock(newExportAdaptation(), nil)
+	adaptations := new(mockproviders.MockAdaptationProvider)
 	req := baseExportRequest
 	req.OrgID = uuid.Nil
 
-	_, err := inclusion.NewExportAdaptation(adaptations).Execute(ctx, req)
-	if !errors.Is(err, providers.ErrValidation) {
-		t.Errorf("expected ErrValidation, got: %v", err)
-	}
+	_, err := inclusion.NewExportAdaptation(adaptations).Execute(context.Background(), req)
+
+	assert.ErrorIs(t, err, providers.ErrValidation)
+	adaptations.AssertNotCalled(t, "Get", mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestExportAdaptation_RejectsZeroAdaptationID(t *testing.T) {
-	ctx := context.Background()
-	adaptations := newExportMock(newExportAdaptation(), nil)
+	adaptations := new(mockproviders.MockAdaptationProvider)
 	req := baseExportRequest
 	req.AdaptationID = 0
 
-	_, err := inclusion.NewExportAdaptation(adaptations).Execute(ctx, req)
-	if !errors.Is(err, providers.ErrValidation) {
-		t.Errorf("expected ErrValidation, got: %v", err)
-	}
-}
+	_, err := inclusion.NewExportAdaptation(adaptations).Execute(context.Background(), req)
 
-func contains(haystack, needle string) bool {
-	return bytes.Contains([]byte(haystack), []byte(needle))
-}
-
-func firstBytes(b []byte, n int) []byte {
-	if len(b) < n {
-		return b
-	}
-	return b[:n]
+	assert.ErrorIs(t, err, providers.ErrValidation)
+	adaptations.AssertNotCalled(t, "Get", mock.Anything, mock.Anything, mock.Anything)
 }

@@ -3,6 +3,8 @@ package providers_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
 )
 
@@ -59,11 +61,7 @@ func TestPagination_Normalize(t *testing.T) {
 
 	for _, tc := range tests {
 		got := tc.input.Normalize()
-		if got.Limit != tc.expectedLimit {
-			t.Errorf("%s: limit: expected %d, got %d", tc.name, tc.expectedLimit, got.Limit)
-		}
-		if got.Offset != tc.expectedOffset {
-			t.Errorf("%s: offset: expected %d, got %d", tc.name, tc.expectedOffset, got.Offset)
-		}
+		assert.Equal(t, tc.expectedLimit, got.Limit, "%s: limit", tc.name)
+		assert.Equal(t, tc.expectedOffset, got.Offset, "%s: offset", tc.name)
 	}
 }

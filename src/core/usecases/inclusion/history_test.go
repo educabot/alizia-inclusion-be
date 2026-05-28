@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
 )
 
@@ -17,9 +19,7 @@ func TestCapMessages_ReturnsMessagesUnchangedWhenUnderBudget(t *testing.T) {
 
 	got := capMessages(messages, defaultMaxHistoryTokens)
 
-	if len(got) != len(messages) {
-		t.Fatalf("expected %d messages, got %d", len(messages), len(got))
-	}
+	assert.Len(t, got, len(messages))
 }
 
 func TestCapMessages_DropsOldestHistoryButKeepsSystemAndCurrentTurnWhenOverBudget(t *testing.T) {
@@ -34,16 +34,10 @@ func TestCapMessages_DropsOldestHistoryButKeepsSystemAndCurrentTurnWhenOverBudge
 
 	got := capMessages(messages, 2500)
 
-	if got[0].Role != "system" {
-		t.Errorf("expected first message to be system, got %q", got[0].Role)
-	}
-	if got[len(got)-1].Content != "CURRENT question" {
-		t.Errorf("expected last message to be the current turn, got %q", got[len(got)-1].Content)
-	}
+	assert.Equal(t, "system", got[0].Role)
+	assert.Equal(t, "CURRENT question", got[len(got)-1].Content)
 	for _, m := range got {
-		if strings.HasPrefix(m.Content, "OLDEST") {
-			t.Error("expected oldest history message to be dropped")
-		}
+		assert.False(t, strings.HasPrefix(m.Content, "OLDEST"), "oldest history message should be dropped")
 	}
 }
 
@@ -57,12 +51,8 @@ func TestCapMessages_KeepsOnlySystemAndCurrentTurnWhenSystemPromptExhaustsBudget
 
 	got := capMessages(messages, 2000)
 
-	if len(got) != 2 {
-		t.Fatalf("expected 2 messages (system + current), got %d", len(got))
-	}
-	if got[1].Content != "current" {
-		t.Errorf("expected current turn preserved, got %q", got[1].Content)
-	}
+	assert.Len(t, got, 2)
+	assert.Equal(t, "current", got[1].Content)
 }
 
 func TestCapMessages_ReturnsShortConversationsUntouched(t *testing.T) {
@@ -73,9 +63,7 @@ func TestCapMessages_ReturnsShortConversationsUntouched(t *testing.T) {
 
 	got := capMessages(messages, 10)
 
-	if len(got) != 2 {
-		t.Errorf("expected 2 messages preserved, got %d", len(got))
-	}
+	assert.Len(t, got, 2)
 }
 
 func TestEstimateTokens(t *testing.T) {
@@ -89,8 +77,6 @@ func TestEstimateTokens(t *testing.T) {
 	}
 	for _, tt := range tests {
 		got := estimateTokens(tt.input)
-		if got != tt.want {
-			t.Errorf("estimateTokens(%q) = %d, want %d", tt.input, got, tt.want)
-		}
+		assert.Equal(t, tt.want, got)
 	}
 }

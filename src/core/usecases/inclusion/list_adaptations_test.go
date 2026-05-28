@@ -2,103 +2,67 @@ package inclusion_test
 
 import (
 	"context"
-	"errors"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/google/uuid"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
-	"github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
+	mockproviders "github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
 	"github.com/educabot/alizia-inclusion-be/src/core/usecases/inclusion"
 	"github.com/educabot/alizia-inclusion-be/src/testutil"
 )
 
 func TestListAdaptations_ReturnsAllAdaptations(t *testing.T) {
 	ctx := context.Background()
-	expected := []entities.Adaptation{
+	want := []entities.Adaptation{
 		testutil.NewAdaptation(1, 1, 1),
 		testutil.NewAdaptation(2, 2, 1),
 	}
-	mock := &mocks.MockAdaptationProvider{
-		ListFn: func(_ context.Context, orgID uuid.UUID, studentID *int64) ([]entities.Adaptation, error) {
-			return expected, nil
-		},
-	}
+	adaptations := new(mockproviders.MockAdaptationProvider)
+	adaptations.On("List", ctx, testutil.TestOrgID, (*int64)(nil)).Return(want, nil)
 
-	req := inclusion.ListAdaptationsRequest{OrgID: testutil.TestOrgID, StudentID: nil}
+	got, err := inclusion.NewListAdaptations(adaptations).Execute(ctx, inclusion.ListAdaptationsRequest{
+		OrgID:     testutil.TestOrgID,
+		StudentID: nil,
+	})
 
-	got, err := inclusion.NewListAdaptations(mock).Execute(ctx, req)
-
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-	if len(got) != len(expected) {
-		t.Errorf("got %d adaptations, want %d", len(got), len(expected))
-	}
-	for i, a := range got {
-		if a.ID != expected[i].ID {
-			t.Errorf("adaptation[%d].ID = %d, want %d", i, a.ID, expected[i].ID)
-		}
-	}
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
+	adaptations.AssertExpectations(t)
 }
 
 func TestListAdaptations_FiltersByStudent(t *testing.T) {
 	ctx := context.Background()
 	wantStudentID := int64(1)
-	var capturedStudentID *int64
-	expected := []entities.Adaptation{
+	want := []entities.Adaptation{
 		testutil.NewAdaptation(1, wantStudentID, 1),
 	}
-	mock := &mocks.MockAdaptationProvider{
-		ListFn: func(_ context.Context, _ uuid.UUID, studentID *int64) ([]entities.Adaptation, error) {
-			capturedStudentID = studentID
-			return expected, nil
-		},
-	}
+	adaptations := new(mockproviders.MockAdaptationProvider)
+	adaptations.On("List", ctx, testutil.TestOrgID, testutil.Ptr(wantStudentID)).Return(want, nil)
 
-	req := inclusion.ListAdaptationsRequest{
+	got, err := inclusion.NewListAdaptations(adaptations).Execute(ctx, inclusion.ListAdaptationsRequest{
 		OrgID:     testutil.TestOrgID,
 		StudentID: testutil.Ptr(wantStudentID),
-	}
+	})
 
-	got, err := inclusion.NewListAdaptations(mock).Execute(ctx, req)
-
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-	if len(got) != 1 {
-		t.Errorf("got %d adaptations, want 1", len(got))
-	}
-	if capturedStudentID == nil {
-		t.Fatal("studentID was not passed to mock")
-	}
-	if *capturedStudentID != wantStudentID {
-		t.Errorf("mock received studentID %d, want %d", *capturedStudentID, wantStudentID)
-	}
+	require.NoError(t, err)
+	assert.Len(t, got, 1)
+	adaptations.AssertExpectations(t)
 }
 
 func TestListAdaptations_RejectsNilOrgID(t *testing.T) {
 	ctx := context.Background()
-	called := false
-	mock := &mocks.MockAdaptationProvider{
-		ListFn: func(_ context.Context, _ uuid.UUID, _ *int64) ([]entities.Adaptation, error) {
-			called = true
-			return nil, nil
-		},
-	}
+	adaptations := new(mockproviders.MockAdaptationProvider)
 
-	req := inclusion.ListAdaptationsRequest{OrgID: uuid.Nil}
+	_, err := inclusion.NewListAdaptations(adaptations).Execute(ctx, inclusion.ListAdaptationsRequest{
+		OrgID: uuid.Nil,
+	})
 
-	_, err := inclusion.NewListAdaptations(mock).Execute(ctx, req)
-
-	if err == nil {
-		t.Error("expected validation error, got nil")
-	}
-	if !errors.Is(err, providers.ErrValidation) {
-		t.Errorf("expected ErrValidation, got: %v", err)
-	}
-	if called {
-		t.Error("mock should not have been called for invalid request")
-	}
+	assert.ErrorIs(t, err, providers.ErrValidation)
+	adaptations.AssertNotCalled(t, "List", mock.Anything, mock.Anything, mock.Anything)
 }

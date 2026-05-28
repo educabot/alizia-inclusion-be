@@ -1,16 +1,17 @@
 package inclusion_test
 
 import (
-	"errors"
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
 	"github.com/educabot/alizia-inclusion-be/src/core/usecases/inclusion"
 )
 
 var (
-	errDB                 = errors.New("db error")
+	errDB                 = fmt.Errorf("db error")
 	errStudentNotFound    = fmt.Errorf("%w: student 99", providers.ErrNotFound)
 	errAdaptationNotFound = fmt.Errorf("%w: adaptation 99", providers.ErrNotFound)
 )
@@ -39,12 +40,6 @@ func TestValidationErrors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		err := tt.req.Validate()
-		if err == nil {
-			t.Errorf("%s: expected validation error, got nil", tt.name)
-			continue
-		}
-		if !errors.Is(err, providers.ErrValidation) {
-			t.Errorf("%s: expected ErrValidation, got: %v", tt.name, err)
-		}
+		assert.ErrorIs(t, err, providers.ErrValidation, tt.name)
 	}
 }

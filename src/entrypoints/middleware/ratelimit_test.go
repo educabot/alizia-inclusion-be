@@ -7,6 +7,7 @@ import (
 
 	"github.com/educabot/team-ai-toolkit/web"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
 )
 
 // newFakeClock returns a clock function whose time can be advanced by mutating
@@ -30,14 +31,10 @@ func TestRateLimiter_AllowsUpToCapacityThenBlocks(t *testing.T) {
 	key := "org-a"
 
 	for i := range capacity {
-		if !rl.Allow(key) {
-			t.Fatalf("request %d/%d: expected allowed, got blocked", i+1, capacity)
-		}
+		assert.True(t, rl.Allow(key), "request %d/%d: expected allowed, got blocked", i+1, capacity)
 	}
 
-	if rl.Allow(key) {
-		t.Fatal("expected request to be blocked after capacity exhausted, but it was allowed")
-	}
+	assert.False(t, rl.Allow(key), "expected request to be blocked after capacity exhausted")
 }
 
 // TestRateLimiter_RefillsAfterElapsedTime verifies that advancing the fake clock
@@ -51,21 +48,15 @@ func TestRateLimiter_RefillsAfterElapsedTime(t *testing.T) {
 	for range capacity {
 		rl.Allow(key)
 	}
-	if rl.Allow(key) {
-		t.Fatal("expected blocked after draining, got allowed")
-	}
+	assert.False(t, rl.Allow(key), "expected blocked after draining")
 
 	*ts = ts.Add(time.Hour)
 
 	for i := range capacity {
-		if !rl.Allow(key) {
-			t.Fatalf("after refill: request %d/%d expected allowed, got blocked", i+1, capacity)
-		}
+		assert.True(t, rl.Allow(key), "after refill: request %d/%d expected allowed", i+1, capacity)
 	}
 
-	if rl.Allow(key) {
-		t.Fatal("expected blocked after re-draining refilled bucket, got allowed")
-	}
+	assert.False(t, rl.Allow(key), "expected blocked after re-draining refilled bucket")
 }
 
 // TestRateLimiter_PartialRefill verifies that advancing the clock by half an hour
@@ -84,13 +75,9 @@ func TestRateLimiter_PartialRefill(t *testing.T) {
 
 	const expected = 5
 	for i := range expected {
-		if !rl.Allow(key) {
-			t.Fatalf("partial refill: request %d/%d expected allowed, got blocked", i+1, expected)
-		}
+		assert.True(t, rl.Allow(key), "partial refill: request %d/%d expected allowed", i+1, expected)
 	}
-	if rl.Allow(key) {
-		t.Fatal("expected blocked after consuming partially-refilled tokens, got allowed")
-	}
+	assert.False(t, rl.Allow(key), "expected blocked after consuming partially-refilled tokens")
 }
 
 // TestRateLimiter_DifferentKeysHaveIndependentBuckets verifies that exhausting
@@ -106,18 +93,12 @@ func TestRateLimiter_DifferentKeysHaveIndependentBuckets(t *testing.T) {
 		rl.Allow(keyA)
 	}
 
-	if rl.Allow(keyA) {
-		t.Fatal("keyA: expected blocked after exhaustion, got allowed")
-	}
+	assert.False(t, rl.Allow(keyA), "keyA: expected blocked after exhaustion")
 
 	for i := range capacity {
-		if !rl.Allow(keyB) {
-			t.Fatalf("keyB: request %d/%d expected allowed (independent bucket), got blocked", i+1, capacity)
-		}
+		assert.True(t, rl.Allow(keyB), "keyB: request %d/%d expected allowed (independent bucket)", i+1, capacity)
 	}
-	if rl.Allow(keyB) {
-		t.Fatal("keyB: expected blocked after its own exhaustion, got allowed")
-	}
+	assert.False(t, rl.Allow(keyB), "keyB: expected blocked after its own exhaustion")
 }
 
 // TestRateLimiter_UnlimitedWhenMaxPerHourIsZero verifies that maxPerHour <= 0
@@ -129,9 +110,7 @@ func TestRateLimiter_UnlimitedWhenMaxPerHourIsZero(t *testing.T) {
 
 	const iterations = 1000
 	for i := range iterations {
-		if !rl.Allow(key) {
-			t.Fatalf("unlimited mode: request %d expected allowed, got blocked", i+1)
-		}
+		assert.True(t, rl.Allow(key), "unlimited mode: request %d expected allowed", i+1)
 	}
 }
 
@@ -143,9 +122,7 @@ func TestRateLimiter_UnlimitedWhenMaxPerHourIsNegative(t *testing.T) {
 	key := "org-neg"
 
 	for i := range 100 {
-		if !rl.Allow(key) {
-			t.Fatalf("unlimited mode (negative): request %d expected allowed, got blocked", i+1)
-		}
+		assert.True(t, rl.Allow(key), "unlimited mode (negative): request %d expected allowed", i+1)
 	}
 }
 
@@ -157,9 +134,7 @@ func TestRateLimitMiddleware_AllowsRequestWithNoOrgID(t *testing.T) {
 
 	resp := interceptor(req)
 
-	if resp.Status != 0 {
-		t.Errorf("expected pass-through (status 0) for missing org, got %d", resp.Status)
-	}
+	assert.Equal(t, 0, resp.Status)
 }
 
 // TestRateLimitMiddleware_AllowsWithinLimit verifies that requests within the
@@ -172,9 +147,7 @@ func TestRateLimitMiddleware_AllowsWithinLimit(t *testing.T) {
 
 	resp := interceptor(req)
 
-	if resp.Status != 0 {
-		t.Errorf("expected pass-through, got status %d", resp.Status)
-	}
+	assert.Equal(t, 0, resp.Status)
 }
 
 // TestRateLimitMiddleware_BlocksWhenLimitExceeded verifies that once the org
@@ -202,10 +175,6 @@ func TestRateLimitMiddleware_BlocksWhenLimitExceeded(t *testing.T) {
 	first := interceptor(req)
 	second := interceptor(req)
 
-	if first.Status != 0 {
-		t.Errorf("first request: expected pass-through (0), got %d", first.Status)
-	}
-	if second.Status != http.StatusTooManyRequests {
-		t.Errorf("second request: expected %d, got %d", http.StatusTooManyRequests, second.Status)
-	}
+	assert.Equal(t, 0, first.Status)
+	assert.Equal(t, http.StatusTooManyRequests, second.Status)
 }

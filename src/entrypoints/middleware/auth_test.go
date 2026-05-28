@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	bcfg "github.com/educabot/team-ai-toolkit/config"
 	"github.com/educabot/team-ai-toolkit/tokens"
@@ -21,13 +23,9 @@ import (
 func generateRSAKeyPair(t *testing.T) (privKey *rsa.PrivateKey, publicPEM string) {
 	t.Helper()
 	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		t.Fatalf("generate RSA key: %v", err)
-	}
+	require.NoError(t, err)
 	pubBytes, err := x509.MarshalPKIXPublicKey(&privKey.PublicKey)
-	if err != nil {
-		t.Fatalf("marshal public key: %v", err)
-	}
+	require.NoError(t, err)
 	pubPEM := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: pubBytes})
 	return privKey, string(pubPEM)
 }
@@ -51,9 +49,7 @@ func signAuthServiceToken(t *testing.T, privKey *rsa.PrivateKey, userID int64, o
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
 	signed, err := token.SignedString(privKey)
-	if err != nil {
-		t.Fatalf("sign token: %v", err)
-	}
+	require.NoError(t, err)
 	return signed
 }
 
@@ -63,20 +59,12 @@ func TestRS256AuthMiddleware_TestEnv_InjectsMockClaims(t *testing.T) {
 
 	resp := interceptor(req)
 
-	if resp.Status != 0 {
-		t.Fatalf("expected pass-through, got status %d", resp.Status)
-	}
+	assert.Equal(t, 0, resp.Status)
 
 	claims := tokens.GetClaims(req)
-	if claims == nil {
-		t.Fatal("expected claims to be set")
-	}
-	if claims.ID != "1" {
-		t.Errorf("expected mock user_id '1', got %q", claims.ID)
-	}
-	if claims.Email != "test@educabot.com" {
-		t.Errorf("expected mock email 'test@educabot.com', got %q", claims.Email)
-	}
+	require.NotNil(t, claims)
+	assert.Equal(t, "1", claims.ID)
+	assert.Equal(t, "test@educabot.com", claims.Email)
 }
 
 func TestRS256AuthMiddleware_Prod_AcceptsValidRS256Token(t *testing.T) {
@@ -90,24 +78,15 @@ func TestRS256AuthMiddleware_Prod_AcceptsValidRS256Token(t *testing.T) {
 
 	resp := interceptor(req)
 
-	if resp.Status != 0 {
-		t.Fatalf("expected pass-through, got status %d", resp.Status)
-	}
+	assert.Equal(t, 0, resp.Status)
 
 	claims := tokens.GetClaims(req)
-	if claims == nil {
-		t.Fatal("expected claims to be set")
-	}
+	require.NotNil(t, claims)
 	userID, err := strconv.ParseInt(claims.ID, 10, 64)
-	if err != nil {
-		t.Fatalf("parse user_id: %v", err)
-	}
-	if userID != 42 {
-		t.Errorf("expected user_id 42, got %d", userID)
-	}
-	if len(claims.Audience) == 0 || claims.Audience[0] != orgUUID {
-		t.Errorf("expected audience %q, got %v", orgUUID, claims.Audience)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, int64(42), userID)
+	assert.NotEmpty(t, claims.Audience)
+	assert.Equal(t, orgUUID, claims.Audience[0])
 }
 
 func TestRS256AuthMiddleware_Prod_RejectsMissingBearerToken(t *testing.T) {
@@ -117,9 +96,7 @@ func TestRS256AuthMiddleware_Prod_RejectsMissingBearerToken(t *testing.T) {
 
 	resp := interceptor(req)
 
-	if resp.Status != 401 {
-		t.Errorf("expected 401, got %d", resp.Status)
-	}
+	assert.Equal(t, 401, resp.Status)
 }
 
 func TestRS256AuthMiddleware_Prod_RejectsMalformedAuthorizationHeader(t *testing.T) {
@@ -130,9 +107,7 @@ func TestRS256AuthMiddleware_Prod_RejectsMalformedAuthorizationHeader(t *testing
 
 	resp := interceptor(req)
 
-	if resp.Status != 401 {
-		t.Errorf("expected 401 for non-bearer, got %d", resp.Status)
-	}
+	assert.Equal(t, 401, resp.Status)
 }
 
 func TestRS256AuthMiddleware_Prod_RejectsExpiredToken(t *testing.T) {
@@ -146,9 +121,7 @@ func TestRS256AuthMiddleware_Prod_RejectsExpiredToken(t *testing.T) {
 
 	resp := interceptor(req)
 
-	if resp.Status != 401 {
-		t.Errorf("expected 401 for expired token, got %d", resp.Status)
-	}
+	assert.Equal(t, 401, resp.Status)
 }
 
 func TestRS256AuthMiddleware_Prod_RejectsTokenSignedWithWrongKey(t *testing.T) {
@@ -156,23 +129,19 @@ func TestRS256AuthMiddleware_Prod_RejectsTokenSignedWithWrongKey(t *testing.T) {
 	interceptor := mw.RS256AuthMiddleware(pubPEM, bcfg.Production)
 	orgUUID := "00000000-0000-0000-0000-000000000001"
 
-	wrongKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+	wrongKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
 	tokenStr := signAuthServiceToken(t, wrongKey, 42, orgUUID, false)
 	req := web.NewMockRequest()
 	req.Headers["Authorization"] = "Bearer " + tokenStr
 
 	resp := interceptor(req)
 
-	if resp.Status != 401 {
-		t.Errorf("expected 401 for wrong signing key, got %d", resp.Status)
-	}
+	assert.Equal(t, 401, resp.Status)
 }
 
 func TestRS256AuthMiddleware_PanicsOnInvalidKey(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Error("expected panic for invalid PEM key")
-		}
-	}()
-	mw.RS256AuthMiddleware("not-a-valid-pem", bcfg.Production)
+	assert.Panics(t, func() {
+		mw.RS256AuthMiddleware("not-a-valid-pem", bcfg.Production)
+	})
 }

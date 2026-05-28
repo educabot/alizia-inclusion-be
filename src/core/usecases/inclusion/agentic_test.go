@@ -8,197 +8,138 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
-	"github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
+	mockproviders "github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
 )
 
 func TestRunAgenticChat_ReturnsPlainChatResponseWhenNoToolsProvided(t *testing.T) {
 	ctx := context.Background()
 	orgID := uuid.New()
-
-	chatCalled := false
-	ai := &mocks.MockAIClient{
-		ChatFn: func(_ context.Context, _ []providers.ChatMessage) (*providers.ChatResponse, error) {
-			chatCalled = true
-			return &providers.ChatResponse{Content: "hola"}, nil
-		},
-		ChatWithToolsFn: func(_ context.Context, _ []providers.ChatMessage, _ []providers.ToolDefinition) (*providers.ChatResponse, error) {
-			t.Fatal("ChatWithTools must not be called when there are no tools")
-			return nil, nil
-		},
-	}
+	ai := new(mockproviders.MockAIClient)
+	ai.On("Chat", ctx, mock.AnythingOfType("[]providers.ChatMessage")).
+		Return(&providers.ChatResponse{Content: "hola"}, nil)
 	msgs := []providers.ChatMessage{{Role: "user", Content: "hola"}}
 
 	resp, err := runAgenticChat(ctx, ai, msgs, nil, inclusionDispatcher{}, orgID, maxAgenticIterations)
 
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !chatCalled {
-		t.Error("expected Chat to be called")
-	}
-	if resp.Content != "hola" {
-		t.Errorf("expected content %q, got %q", "hola", resp.Content)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "hola", resp.Content)
+	ai.AssertExpectations(t)
+	ai.AssertNotCalled(t, "ChatWithTools", mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestRunAgenticChat_ExecutesToolThenReturnsTheFinalAnswer(t *testing.T) {
 	ctx := context.Background()
 	orgID := uuid.New()
+	var secondTurnMsgs []providers.ChatMessage
 
-	var turns int
-	var toolMessages []providers.ChatMessage
-	ai := &mocks.MockAIClient{
-		ChatWithToolsFn: func(_ context.Context, msgs []providers.ChatMessage, _ []providers.ToolDefinition) (*providers.ChatResponse, error) {
-			turns++
-			if turns == 1 {
-				return &providers.ChatResponse{
-					ToolCalls: []providers.ToolCall{
-						{ID: "call_1", Name: "list_devices", Arguments: "{}"},
-					},
-					Usage: &providers.TokenUsage{TotalTokens: 10},
-				}, nil
-			}
-			toolMessages = msgs
-			return &providers.ChatResponse{
-				Content: "Te recomiendo el Timer Visual",
-				Usage:   &providers.TokenUsage{TotalTokens: 5},
-			}, nil
-		},
-	}
-	devices := &mocks.MockDeviceProvider{
-		ListDevicesFn: func(_ context.Context, _ uuid.UUID, _ *int64) ([]entities.Device, error) {
-			return []entities.Device{{ID: 1, Name: "Timer Visual"}}, nil
-		},
-	}
+	ai := new(mockproviders.MockAIClient)
+	ai.On("ChatWithTools", ctx, mock.AnythingOfType("[]providers.ChatMessage"), mock.AnythingOfType("[]providers.ToolDefinition")).
+		Return(&providers.ChatResponse{
+			ToolCalls: []providers.ToolCall{{ID: "call_1", Name: "list_devices", Arguments: "{}"}},
+			Usage:     &providers.TokenUsage{TotalTokens: 10},
+		}, nil).Once()
+	ai.On("ChatWithTools", ctx, mock.AnythingOfType("[]providers.ChatMessage"), mock.AnythingOfType("[]providers.ToolDefinition")).
+		Run(func(args mock.Arguments) {
+			secondTurnMsgs = args.Get(1).([]providers.ChatMessage)
+		}).
+		Return(&providers.ChatResponse{
+			Content: "Te recomiendo el Timer Visual",
+			Usage:   &providers.TokenUsage{TotalTokens: 5},
+		}, nil).Once()
+
+	devices := new(mockproviders.MockDeviceProvider)
+	devices.On("ListDevices", ctx, orgID, (*int64)(nil)).
+		Return([]entities.Device{{ID: 1, Name: "Timer Visual"}}, nil)
 	dispatcher := inclusionDispatcher{devices: devices}
 	msgs := []providers.ChatMessage{{Role: "user", Content: "que dispositivo uso?"}}
 
 	resp, err := runAgenticChat(ctx, ai, msgs, inclusionTools(), dispatcher, orgID, maxAgenticIterations)
 
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if turns != 2 {
-		t.Errorf("expected 2 model turns, got %d", turns)
-	}
-	if resp.Content != "Te recomiendo el Timer Visual" {
-		t.Errorf("unexpected final content: %q", resp.Content)
-	}
-	if resp.Usage == nil || resp.Usage.TotalTokens != 15 {
-		t.Errorf("expected accumulated usage 15, got %+v", resp.Usage)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "Te recomiendo el Timer Visual", resp.Content)
+	require.NotNil(t, resp.Usage)
+	assert.Equal(t, 15, resp.Usage.TotalTokens)
 	var foundToolMsg bool
-	for _, m := range toolMessages {
+	for _, m := range secondTurnMsgs {
 		if m.Role == "tool" && m.ToolCallID == "call_1" && strings.Contains(m.Content, "Timer Visual") {
 			foundToolMsg = true
 		}
 	}
-	if !foundToolMsg {
-		t.Error("expected a tool result message wired back into the conversation")
-	}
+	assert.True(t, foundToolMsg, "expected a tool result message wired back into the conversation")
+	ai.AssertExpectations(t)
+	devices.AssertExpectations(t)
 }
 
 func TestRunAgenticChat_FeedsErrorResultBackWhenToolFails(t *testing.T) {
 	ctx := context.Background()
 	orgID := uuid.New()
-
 	var secondTurnMsgs []providers.ChatMessage
-	var turns int
-	ai := &mocks.MockAIClient{
-		ChatWithToolsFn: func(_ context.Context, msgs []providers.ChatMessage, _ []providers.ToolDefinition) (*providers.ChatResponse, error) {
-			turns++
-			if turns == 1 {
-				return &providers.ChatResponse{
-					ToolCalls: []providers.ToolCall{
-						{ID: "call_x", Name: "list_devices", Arguments: "{}"},
-					},
-				}, nil
-			}
-			secondTurnMsgs = msgs
-			return &providers.ChatResponse{Content: "lo siento"}, nil
-		},
-	}
-	devices := &mocks.MockDeviceProvider{
-		ListDevicesFn: func(_ context.Context, _ uuid.UUID, _ *int64) ([]entities.Device, error) {
-			return nil, errors.New("db down")
-		},
-	}
+
+	ai := new(mockproviders.MockAIClient)
+	ai.On("ChatWithTools", ctx, mock.AnythingOfType("[]providers.ChatMessage"), mock.AnythingOfType("[]providers.ToolDefinition")).
+		Return(&providers.ChatResponse{
+			ToolCalls: []providers.ToolCall{{ID: "call_x", Name: "list_devices", Arguments: "{}"}},
+		}, nil).Once()
+	ai.On("ChatWithTools", ctx, mock.AnythingOfType("[]providers.ChatMessage"), mock.AnythingOfType("[]providers.ToolDefinition")).
+		Run(func(args mock.Arguments) {
+			secondTurnMsgs = args.Get(1).([]providers.ChatMessage)
+		}).
+		Return(&providers.ChatResponse{Content: "lo siento"}, nil).Once()
+
+	devices := new(mockproviders.MockDeviceProvider)
+	devices.On("ListDevices", ctx, orgID, (*int64)(nil)).Return(nil, errors.New("db down"))
 	dispatcher := inclusionDispatcher{devices: devices}
 	msgs := []providers.ChatMessage{{Role: "user", Content: "dispositivos?"}}
 
 	resp, err := runAgenticChat(ctx, ai, msgs, inclusionTools(), dispatcher, orgID, maxAgenticIterations)
 
-	if err != nil {
-		t.Fatalf("loop must not abort on tool error: %v", err)
-	}
-	if resp.Content != "lo siento" {
-		t.Errorf("unexpected content: %q", resp.Content)
-	}
+	require.NoError(t, err, "loop must not abort on tool error")
+	assert.Equal(t, "lo siento", resp.Content)
 	var sawErrResult bool
 	for _, m := range secondTurnMsgs {
 		if m.Role == "tool" && strings.Contains(m.Content, "db down") {
 			sawErrResult = true
 		}
 	}
-	if !sawErrResult {
-		t.Error("expected the tool error to be fed back to the model")
-	}
+	assert.True(t, sawErrResult, "expected the tool error to be fed back to the model")
 }
 
 func TestRunAgenticChat_ForcesFinalAnswerWhenIterationBudgetExhausted(t *testing.T) {
 	ctx := context.Background()
 	orgID := uuid.New()
 
-	toolCalls := 0
-	chatFallbackCalled := false
-	ai := &mocks.MockAIClient{
-		ChatWithToolsFn: func(_ context.Context, _ []providers.ChatMessage, _ []providers.ToolDefinition) (*providers.ChatResponse, error) {
-			toolCalls++
-			return &providers.ChatResponse{
-				ToolCalls: []providers.ToolCall{{ID: "loop", Name: "list_devices", Arguments: "{}"}},
-			}, nil
-		},
-		ChatFn: func(_ context.Context, _ []providers.ChatMessage) (*providers.ChatResponse, error) {
-			chatFallbackCalled = true
-			return &providers.ChatResponse{Content: "respuesta forzada"}, nil
-		},
-	}
-	devices := &mocks.MockDeviceProvider{
-		ListDevicesFn: func(_ context.Context, _ uuid.UUID, _ *int64) ([]entities.Device, error) {
-			return nil, nil
-		},
-	}
+	ai := new(mockproviders.MockAIClient)
+	ai.On("ChatWithTools", ctx, mock.AnythingOfType("[]providers.ChatMessage"), mock.AnythingOfType("[]providers.ToolDefinition")).
+		Return(&providers.ChatResponse{
+			ToolCalls: []providers.ToolCall{{ID: "loop", Name: "list_devices", Arguments: "{}"}},
+		}, nil).Times(2)
+	ai.On("Chat", ctx, mock.AnythingOfType("[]providers.ChatMessage")).
+		Return(&providers.ChatResponse{Content: "respuesta forzada"}, nil).Once()
+
+	devices := new(mockproviders.MockDeviceProvider)
+	devices.On("ListDevices", ctx, orgID, (*int64)(nil)).Return(nil, nil)
 	dispatcher := inclusionDispatcher{devices: devices}
 	msgs := []providers.ChatMessage{{Role: "user", Content: "loop"}}
 
 	resp, err := runAgenticChat(ctx, ai, msgs, inclusionTools(), dispatcher, orgID, 2)
 
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if toolCalls != 2 {
-		t.Errorf("expected 2 tool rounds (the cap), got %d", toolCalls)
-	}
-	if !chatFallbackCalled {
-		t.Error("expected a final plain Chat fallback after the cap")
-	}
-	if resp.Content != "respuesta forzada" {
-		t.Errorf("unexpected content: %q", resp.Content)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "respuesta forzada", resp.Content)
+	ai.AssertExpectations(t)
 }
 
 func TestInclusionDispatcher_GetStudentReturnsStudentPayload(t *testing.T) {
 	ctx := context.Background()
 	orgID := uuid.New()
-
-	students := &mocks.MockStudentProvider{
-		GetStudentFn: func(_ context.Context, _ uuid.UUID, id int64) (*entities.Student, error) {
-			return &entities.Student{ID: id, Name: "Lucas"}, nil
-		},
-	}
+	students := new(mockproviders.MockStudentProvider)
+	students.On("GetStudent", ctx, orgID, int64(7)).
+		Return(&entities.Student{ID: 7, Name: "Lucas"}, nil)
 	d := inclusionDispatcher{students: students}
 
 	result, err := d.Dispatch(ctx, orgID, providers.ToolCall{
@@ -206,46 +147,30 @@ func TestInclusionDispatcher_GetStudentReturnsStudentPayload(t *testing.T) {
 		Arguments: `{"student_id": 7}`,
 	})
 
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 	var got entities.Student
-	if jerr := json.Unmarshal([]byte(result), &got); jerr != nil {
-		t.Fatalf("result is not valid JSON: %v", jerr)
-	}
-	if got.ID != 7 || got.Name != "Lucas" {
-		t.Errorf("unexpected student payload: %+v", got)
-	}
+	require.NoError(t, json.Unmarshal([]byte(result), &got))
+	assert.Equal(t, int64(7), got.ID)
+	assert.Equal(t, "Lucas", got.Name)
+	students.AssertExpectations(t)
 }
 
 func TestInclusionDispatcher_RejectsUnknownTool(t *testing.T) {
-	ctx := context.Background()
-	orgID := uuid.New()
-
 	d := inclusionDispatcher{}
 
-	_, err := d.Dispatch(ctx, orgID, providers.ToolCall{Name: "delete_everything"})
+	_, err := d.Dispatch(context.Background(), uuid.New(), providers.ToolCall{Name: "delete_everything"})
 
-	if err == nil {
-		t.Fatal("expected error for unknown tool")
-	}
-	if !strings.Contains(err.Error(), "unknown tool") {
-		t.Errorf("expected unknown-tool error, got: %v", err)
-	}
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown tool")
 }
 
 func TestInclusionDispatcher_RejectsMalformedArguments(t *testing.T) {
-	ctx := context.Background()
-	orgID := uuid.New()
-
 	d := inclusionDispatcher{}
 
-	_, err := d.Dispatch(ctx, orgID, providers.ToolCall{
+	_, err := d.Dispatch(context.Background(), uuid.New(), providers.ToolCall{
 		Name:      "get_student",
 		Arguments: `{not json`,
 	})
 
-	if err == nil {
-		t.Fatal("expected error for malformed arguments")
-	}
+	require.Error(t, err)
 }

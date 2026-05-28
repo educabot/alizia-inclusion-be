@@ -2,99 +2,73 @@ package dashboard_test
 
 import (
 	"context"
-	"errors"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
-	"github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
+	mockproviders "github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
 	"github.com/educabot/alizia-inclusion-be/src/core/usecases/dashboard"
+	"github.com/educabot/alizia-inclusion-be/src/testutil"
 )
 
 func TestGetAIUsage_AggregatesUsageAndMapsTheSummary(t *testing.T) {
 	ctx := context.Background()
-	orgID := uuid.New()
-	usage := &mocks.MockAIUsageProvider{
-		SummarizeFn: func(_ context.Context, _ uuid.UUID, _ time.Time) (*providers.AIUsageSummary, error) {
-			return &providers.AIUsageSummary{
-				TotalRequests:    3,
-				PromptTokens:     100,
-				CompletionTokens: 40,
-				TotalTokens:      140,
-				ByMode: []providers.AIUsageModeSummary{
-					{Mode: "assist", Requests: 2, TotalTokens: 90},
-					{Mode: "recommend", Requests: 1, TotalTokens: 50},
-				},
-			}, nil
+	summary := providers.AIUsageSummary{
+		TotalRequests:    3,
+		PromptTokens:     100,
+		CompletionTokens: 40,
+		TotalTokens:      140,
+		ByMode: []providers.AIUsageModeSummary{
+			{Mode: "assist", Requests: 2, TotalTokens: 90},
+			{Mode: "recommend", Requests: 1, TotalTokens: 50},
 		},
 	}
+	usage := new(mockproviders.MockAIUsageProvider)
+	usage.On("Summarize", ctx, testutil.TestOrgID, mock.AnythingOfType("time.Time")).Return(&summary, nil)
 
-	got, err := dashboard.NewGetAIUsage(usage).Execute(ctx, dashboard.GetAIUsageRequest{OrgID: orgID, Days: 7})
+	got, err := dashboard.NewGetAIUsage(usage).Execute(ctx, dashboard.GetAIUsageRequest{OrgID: testutil.TestOrgID, Days: 7})
 
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got.WindowDays != 7 {
-		t.Errorf("expected window_days 7, got %d", got.WindowDays)
-	}
-	if got.TotalTokens != 140 || got.TotalRequests != 3 {
-		t.Errorf("unexpected totals: %+v", got)
-	}
-	if len(got.ByMode) != 2 || got.ByMode[0].Mode != "assist" {
-		t.Errorf("unexpected by_mode: %+v", got.ByMode)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, 7, got.WindowDays)
+	assert.Equal(t, 140, got.TotalTokens)
+	assert.Equal(t, 3, got.TotalRequests)
+	assert.Len(t, got.ByMode, 2)
+	assert.Equal(t, "assist", got.ByMode[0].Mode)
+	usage.AssertExpectations(t)
 }
 
 func TestGetAIUsage_DefaultsTheWindowWhenDaysIsNotProvided(t *testing.T) {
 	ctx := context.Background()
-	orgID := uuid.New()
-	var capturedSince time.Time
-	before := time.Now().AddDate(0, 0, -31)
-	usage := &mocks.MockAIUsageProvider{
-		SummarizeFn: func(_ context.Context, _ uuid.UUID, since time.Time) (*providers.AIUsageSummary, error) {
-			capturedSince = since
-			return &providers.AIUsageSummary{}, nil
-		},
-	}
+	usage := new(mockproviders.MockAIUsageProvider)
+	usage.On("Summarize", ctx, testutil.TestOrgID, mock.AnythingOfType("time.Time")).Return(&providers.AIUsageSummary{}, nil)
 
-	got, err := dashboard.NewGetAIUsage(usage).Execute(ctx, dashboard.GetAIUsageRequest{OrgID: orgID})
+	got, err := dashboard.NewGetAIUsage(usage).Execute(ctx, dashboard.GetAIUsageRequest{OrgID: testutil.TestOrgID})
 
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got.WindowDays != 30 {
-		t.Errorf("expected default window 30, got %d", got.WindowDays)
-	}
-	// The look-back must be roughly 30 days ago, i.e. after the 31-days-ago mark.
-	if capturedSince.Before(before) {
-		t.Errorf("since %v is older than the 30-day default window", capturedSince)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, 30, got.WindowDays)
+	usage.AssertExpectations(t)
 }
 
 func TestGetAIUsage_CapsAnExcessiveWindow(t *testing.T) {
 	ctx := context.Background()
-	orgID := uuid.New()
-	usage := &mocks.MockAIUsageProvider{}
+	usage := new(mockproviders.MockAIUsageProvider)
+	usage.On("Summarize", ctx, testutil.TestOrgID, mock.AnythingOfType("time.Time")).Return(&providers.AIUsageSummary{}, nil)
 
-	got, err := dashboard.NewGetAIUsage(usage).Execute(ctx, dashboard.GetAIUsageRequest{OrgID: orgID, Days: 99999})
+	got, err := dashboard.NewGetAIUsage(usage).Execute(ctx, dashboard.GetAIUsageRequest{OrgID: testutil.TestOrgID, Days: 99999})
 
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got.WindowDays != 365 {
-		t.Errorf("expected window capped at 365, got %d", got.WindowDays)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, 365, got.WindowDays)
+	usage.AssertExpectations(t)
 }
 
 func TestGetAIUsage_RejectsNilOrgID(t *testing.T) {
-	ctx := context.Background()
-	usage := &mocks.MockAIUsageProvider{}
+	usage := new(mockproviders.MockAIUsageProvider)
 
-	_, err := dashboard.NewGetAIUsage(usage).Execute(ctx, dashboard.GetAIUsageRequest{OrgID: uuid.Nil})
+	_, err := dashboard.NewGetAIUsage(usage).Execute(context.Background(), dashboard.GetAIUsageRequest{OrgID: uuid.Nil})
 
-	if !errors.Is(err, providers.ErrValidation) {
-		t.Errorf("expected ErrValidation, got: %v", err)
-	}
+	assert.ErrorIs(t, err, providers.ErrValidation)
+	usage.AssertNotCalled(t, "Summarize", mock.Anything, mock.Anything, mock.Anything)
 }

@@ -2,101 +2,73 @@ package auth_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
-	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
-	"github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
+	mockproviders "github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
 	"github.com/educabot/alizia-inclusion-be/src/core/usecases/auth"
 	"github.com/educabot/alizia-inclusion-be/src/testutil"
 )
 
 func TestGetMe_ReturnsUser(t *testing.T) {
+	users := new(mockproviders.MockUserProvider)
+	uc := auth.NewGetMe(users)
 	ctx := context.Background()
 	want := testutil.NewUser(42, "Ana")
-	mock := &mocks.MockUserProvider{
-		GetByIDFn: func(_ context.Context, _ uuid.UUID, _ int64) (*entities.User, error) {
-			return &want, nil
-		},
-	}
-	uc := auth.NewGetMe(mock)
+	users.On("GetByID", ctx, testutil.TestOrgID, int64(42)).Return(&want, nil)
 
 	got, err := uc.Execute(ctx, auth.GetMeRequest{
 		OrgID:  testutil.TestOrgID,
 		UserID: 42,
 	})
 
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if got == nil {
-		t.Fatal("expected non-nil user, got nil")
-	}
-	if got.ID != want.ID {
-		t.Errorf("user ID = %d, want %d", got.ID, want.ID)
-	}
-	if got.Name != want.Name {
-		t.Errorf("user Name = %q, want %q", got.Name, want.Name)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, &want, got)
+	users.AssertExpectations(t)
 }
 
 func TestGetMe_RejectsNilOrgID(t *testing.T) {
-	ctx := context.Background()
-	mock := &mocks.MockUserProvider{}
-	uc := auth.NewGetMe(mock)
+	users := new(mockproviders.MockUserProvider)
+	uc := auth.NewGetMe(users)
 
-	_, err := uc.Execute(ctx, auth.GetMeRequest{
+	_, err := uc.Execute(context.Background(), auth.GetMeRequest{
 		OrgID:  uuid.Nil,
 		UserID: 1,
 	})
 
-	if err == nil {
-		t.Fatal("expected validation error, got nil")
-	}
-	if !errors.Is(err, providers.ErrValidation) {
-		t.Errorf("expected ErrValidation, got %v", err)
-	}
+	assert.ErrorIs(t, err, providers.ErrValidation)
+	users.AssertNotCalled(t, "GetByID", mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestGetMe_RejectsZeroUserID(t *testing.T) {
-	ctx := context.Background()
-	mock := &mocks.MockUserProvider{}
-	uc := auth.NewGetMe(mock)
+	users := new(mockproviders.MockUserProvider)
+	uc := auth.NewGetMe(users)
 
-	_, err := uc.Execute(ctx, auth.GetMeRequest{
+	_, err := uc.Execute(context.Background(), auth.GetMeRequest{
 		OrgID:  testutil.TestOrgID,
 		UserID: 0,
 	})
 
-	if err == nil {
-		t.Fatal("expected validation error, got nil")
-	}
-	if !errors.Is(err, providers.ErrValidation) {
-		t.Errorf("expected ErrValidation, got %v", err)
-	}
+	assert.ErrorIs(t, err, providers.ErrValidation)
+	users.AssertNotCalled(t, "GetByID", mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestGetMe_ReturnsNotFound(t *testing.T) {
+	users := new(mockproviders.MockUserProvider)
+	uc := auth.NewGetMe(users)
 	ctx := context.Background()
-	mock := &mocks.MockUserProvider{
-		GetByIDFn: func(_ context.Context, _ uuid.UUID, _ int64) (*entities.User, error) {
-			return nil, errUserNotFound
-		},
-	}
-	uc := auth.NewGetMe(mock)
+	users.On("GetByID", ctx, testutil.TestOrgID, int64(99)).Return(nil, errUserNotFound)
 
 	got, err := uc.Execute(ctx, auth.GetMeRequest{
 		OrgID:  testutil.TestOrgID,
 		UserID: 99,
 	})
 
-	if !errors.Is(err, providers.ErrNotFound) {
-		t.Errorf("expected ErrNotFound, got %v", err)
-	}
-	if got != nil {
-		t.Errorf("expected nil user, got %+v", got)
-	}
+	assert.ErrorIs(t, err, providers.ErrNotFound)
+	assert.Nil(t, got)
+	users.AssertExpectations(t)
 }

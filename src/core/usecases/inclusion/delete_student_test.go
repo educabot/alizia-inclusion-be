@@ -2,64 +2,53 @@ package inclusion_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
-	"github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
+	mockproviders "github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
 	"github.com/educabot/alizia-inclusion-be/src/core/usecases/inclusion"
 	"github.com/educabot/alizia-inclusion-be/src/testutil"
 )
 
 func TestDeleteStudent_DeletesStudent(t *testing.T) {
+	students := new(mockproviders.MockStudentProvider)
 	ctx := context.Background()
-	var calledWith int64
-	mock := &mocks.MockStudentProvider{
-		DeleteFn: func(_ context.Context, _ uuid.UUID, id int64) error {
-			calledWith = id
-			return nil
-		},
-	}
+	students.On("Delete", ctx, testutil.TestOrgID, int64(5)).Return(nil)
 
-	err := inclusion.NewDeleteStudent(mock).Execute(ctx, inclusion.DeleteStudentRequest{
+	err := inclusion.NewDeleteStudent(students).Execute(ctx, inclusion.DeleteStudentRequest{
 		OrgID:     testutil.TestOrgID,
 		StudentID: 5,
 	})
 
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if calledWith != 5 {
-		t.Errorf("expected delete called with ID 5, got %d", calledWith)
-	}
+	require.NoError(t, err)
+	students.AssertExpectations(t)
 }
 
 func TestDeleteStudent_RejectsNilOrgID(t *testing.T) {
-	ctx := context.Background()
-	mock := &mocks.MockStudentProvider{}
+	students := new(mockproviders.MockStudentProvider)
 
-	err := inclusion.NewDeleteStudent(mock).Execute(ctx, inclusion.DeleteStudentRequest{
+	err := inclusion.NewDeleteStudent(students).Execute(context.Background(), inclusion.DeleteStudentRequest{
 		OrgID:     uuid.Nil,
 		StudentID: 1,
 	})
 
-	if !errors.Is(err, providers.ErrValidation) {
-		t.Errorf("expected ErrValidation, got: %v", err)
-	}
+	assert.ErrorIs(t, err, providers.ErrValidation)
+	students.AssertNotCalled(t, "Delete", mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestDeleteStudent_RejectsZeroStudentID(t *testing.T) {
-	ctx := context.Background()
-	mock := &mocks.MockStudentProvider{}
+	students := new(mockproviders.MockStudentProvider)
 
-	err := inclusion.NewDeleteStudent(mock).Execute(ctx, inclusion.DeleteStudentRequest{
+	err := inclusion.NewDeleteStudent(students).Execute(context.Background(), inclusion.DeleteStudentRequest{
 		OrgID:     testutil.TestOrgID,
 		StudentID: 0,
 	})
 
-	if !errors.Is(err, providers.ErrValidation) {
-		t.Errorf("expected ErrValidation, got: %v", err)
-	}
+	assert.ErrorIs(t, err, providers.ErrValidation)
+	students.AssertNotCalled(t, "Delete", mock.Anything, mock.Anything, mock.Anything)
 }

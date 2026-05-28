@@ -4,6 +4,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 )
 
@@ -14,9 +17,8 @@ func Test_extractDeviceID_ExtractsValidID(t *testing.T) {
 
 	result := extractDeviceID(input)
 
-	if result == nil || *result != 42 {
-		t.Errorf("expected 42, got %v", result)
-	}
+	require.NotNil(t, result)
+	assert.Equal(t, int64(42), *result)
 }
 
 func Test_extractDeviceID_ReturnsNilForNoMatch(t *testing.T) {
@@ -24,9 +26,7 @@ func Test_extractDeviceID_ReturnsNilForNoMatch(t *testing.T) {
 
 	result := extractDeviceID(input)
 
-	if result != nil {
-		t.Errorf("expected nil, got %v", *result)
-	}
+	assert.Nil(t, result)
 }
 
 func Test_extractDeviceID_ReturnsNilForInvalidNumber(t *testing.T) {
@@ -34,9 +34,7 @@ func Test_extractDeviceID_ReturnsNilForInvalidNumber(t *testing.T) {
 
 	result := extractDeviceID(input)
 
-	if result != nil {
-		t.Errorf("expected nil, got %v", *result)
-	}
+	assert.Nil(t, result)
 }
 
 func Test_extractStudentID_ExtractsValidID(t *testing.T) {
@@ -44,9 +42,8 @@ func Test_extractStudentID_ExtractsValidID(t *testing.T) {
 
 	result := extractStudentID(input)
 
-	if result == nil || *result != 7 {
-		t.Errorf("expected 7, got %v", result)
-	}
+	require.NotNil(t, result)
+	assert.Equal(t, int64(7), *result)
 }
 
 func Test_extractStudentID_ReturnsNilForNoMatch(t *testing.T) {
@@ -54,9 +51,7 @@ func Test_extractStudentID_ReturnsNilForNoMatch(t *testing.T) {
 
 	result := extractStudentID(input)
 
-	if result != nil {
-		t.Errorf("expected nil")
-	}
+	assert.Nil(t, result)
 }
 
 func Test_extractAdaptationJSON_ExtractsValidJSON(t *testing.T) {
@@ -64,18 +59,10 @@ func Test_extractAdaptationJSON_ExtractsValidJSON(t *testing.T) {
 
 	result := extractAdaptationJSON(input)
 
-	if result == nil {
-		t.Fatal("expected non-nil")
-	}
-	if result.Title != "Test" {
-		t.Errorf("title = %q, want Test", result.Title)
-	}
-	if result.Type != "actividad_adaptada" {
-		t.Errorf("type = %q", result.Type)
-	}
-	if len(result.DeviceIDs) != 2 {
-		t.Errorf("device_ids len = %d, want 2", len(result.DeviceIDs))
-	}
+	require.NotNil(t, result)
+	assert.Equal(t, "Test", result.Title)
+	assert.Equal(t, "actividad_adaptada", result.Type)
+	assert.Len(t, result.DeviceIDs, 2)
 }
 
 func Test_extractAdaptationJSON_ReturnsNilForNoMatch(t *testing.T) {
@@ -83,9 +70,7 @@ func Test_extractAdaptationJSON_ReturnsNilForNoMatch(t *testing.T) {
 
 	result := extractAdaptationJSON(input)
 
-	if result != nil {
-		t.Error("expected nil")
-	}
+	assert.Nil(t, result)
 }
 
 func Test_extractAdaptationJSON_ReturnsNilForMalformedJSON(t *testing.T) {
@@ -93,9 +78,7 @@ func Test_extractAdaptationJSON_ReturnsNilForMalformedJSON(t *testing.T) {
 
 	result := extractAdaptationJSON(input)
 
-	if result != nil {
-		t.Error("expected nil")
-	}
+	assert.Nil(t, result)
 }
 
 func Test_buildRecommendSystemPrompt_ContainsDeviceInfo(t *testing.T) {
@@ -105,16 +88,8 @@ func Test_buildRecommendSystemPrompt_ContainsDeviceInfo(t *testing.T) {
 
 	prompt := buildRecommendSystemPrompt(devices)
 
-	if !strings.Contains(prompt, "Timer Visual") {
-		t.Error("prompt should contain device name")
-	}
-	if !strings.Contains(prompt, "[ID:1]") {
-		t.Error("prompt should contain device ID")
-	}
-	if !strings.Contains(prompt, "ADAPTATION_JSON") {
-		t.Error("prompt should contain format instructions")
-	}
-	if !strings.Contains(prompt, "Para alumnos con distraccion") {
-		t.Error("prompt should contain device needs description")
-	}
+	assert.True(t, strings.Contains(prompt, "Timer Visual"), "prompt should contain device name")
+	assert.True(t, strings.Contains(prompt, "[ID:1]"), "prompt should contain device ID")
+	assert.True(t, strings.Contains(prompt, "ADAPTATION_JSON"), "prompt should contain format instructions")
+	assert.True(t, strings.Contains(prompt, "Para alumnos con distraccion"), "prompt should contain device needs description")
 }

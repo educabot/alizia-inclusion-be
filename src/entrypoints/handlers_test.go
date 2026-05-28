@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/educabot/team-ai-toolkit/web"
 
@@ -129,18 +130,14 @@ func (m *mockGetMetrics) Execute(ctx context.Context, req dashuc.GetMetricsReque
 func TestHandleListRamps_ReturnsRamps(t *testing.T) {
 	container := &entrypoints.CatalogContainer{
 		ListRamps: &mockListRamps{fn: func(_ context.Context, req cataloguc.ListRampsRequest) ([]entities.Ramp, error) {
-			if req.OrgID != testOrgID {
-				t.Errorf("expected org %s, got %s", testOrgID, req.OrgID)
-			}
+			assert.Equal(t, testOrgID, req.OrgID)
 			return []entities.Ramp{{ID: 1, Name: "Comunicación"}}, nil
 		}},
 	}
 
 	resp := container.HandleListRamps(newTenantRequest())
 
-	if resp.Status != http.StatusOK {
-		t.Errorf("expected 200, got %d", resp.Status)
-	}
+	assert.Equal(t, http.StatusOK, resp.Status)
 }
 
 func TestHandleListRamps_ReturnsError(t *testing.T) {
@@ -152,17 +149,13 @@ func TestHandleListRamps_ReturnsError(t *testing.T) {
 
 	resp := container.HandleListRamps(newTenantRequest())
 
-	if resp.Status != http.StatusNotFound {
-		t.Errorf("expected 404, got %d", resp.Status)
-	}
+	assert.Equal(t, http.StatusNotFound, resp.Status)
 }
 
 func TestHandleGetRamp_ReturnsByID(t *testing.T) {
 	container := &entrypoints.CatalogContainer{
 		GetRamp: &mockGetRamp{fn: func(_ context.Context, req cataloguc.GetRampRequest) (*entities.Ramp, error) {
-			if req.RampID != 5 {
-				t.Errorf("expected ramp_id 5, got %d", req.RampID)
-			}
+			assert.Equal(t, int64(5), req.RampID)
 			return &entities.Ramp{ID: 5, Name: "Sensorial"}, nil
 		}},
 	}
@@ -171,9 +164,7 @@ func TestHandleGetRamp_ReturnsByID(t *testing.T) {
 
 	resp := container.HandleGetRamp(req)
 
-	if resp.Status != http.StatusOK {
-		t.Errorf("expected 200, got %d", resp.Status)
-	}
+	assert.Equal(t, http.StatusOK, resp.Status)
 }
 
 func TestHandleGetRamp_RejectsInvalidID(t *testing.T) {
@@ -183,9 +174,8 @@ func TestHandleGetRamp_RejectsInvalidID(t *testing.T) {
 
 	resp := container.HandleGetRamp(req)
 
-	if resp.Status == 0 || resp.Status == http.StatusOK {
-		t.Errorf("expected error status, got %d", resp.Status)
-	}
+	assert.NotEqual(t, http.StatusOK, resp.Status)
+	assert.NotEqual(t, 0, resp.Status)
 }
 
 func TestHandleListDevices_ReturnsDevices(t *testing.T) {
@@ -197,17 +187,14 @@ func TestHandleListDevices_ReturnsDevices(t *testing.T) {
 
 	resp := container.HandleListDevices(newTenantRequest())
 
-	if resp.Status != http.StatusOK {
-		t.Errorf("expected 200, got %d", resp.Status)
-	}
+	assert.Equal(t, http.StatusOK, resp.Status)
 }
 
 func TestHandleListDevices_FiltersByRampID(t *testing.T) {
 	container := &entrypoints.CatalogContainer{
 		ListDevices: &mockListDevices{fn: func(_ context.Context, req cataloguc.ListDevicesRequest) ([]entities.Device, error) {
-			if req.RampID == nil || *req.RampID != 3 {
-				t.Error("expected ramp_id 3")
-			}
+			assert.NotNil(t, req.RampID)
+			assert.Equal(t, int64(3), *req.RampID)
 			return []entities.Device{}, nil
 		}},
 	}
@@ -216,9 +203,7 @@ func TestHandleListDevices_FiltersByRampID(t *testing.T) {
 
 	resp := container.HandleListDevices(req)
 
-	if resp.Status != http.StatusOK {
-		t.Errorf("expected 200, got %d", resp.Status)
-	}
+	assert.Equal(t, http.StatusOK, resp.Status)
 }
 
 func TestHandleListDevices_RejectsInvalidRampID(t *testing.T) {
@@ -228,9 +213,8 @@ func TestHandleListDevices_RejectsInvalidRampID(t *testing.T) {
 
 	resp := container.HandleListDevices(req)
 
-	if resp.Status == 0 || resp.Status == http.StatusOK {
-		t.Errorf("expected error status, got %d", resp.Status)
-	}
+	assert.NotEqual(t, http.StatusOK, resp.Status)
+	assert.NotEqual(t, 0, resp.Status)
 }
 
 func TestHandleGetDevice_ReturnsDevice(t *testing.T) {
@@ -244,9 +228,7 @@ func TestHandleGetDevice_ReturnsDevice(t *testing.T) {
 
 	resp := container.HandleGetDevice(req)
 
-	if resp.Status != http.StatusOK {
-		t.Errorf("expected 200, got %d", resp.Status)
-	}
+	assert.Equal(t, http.StatusOK, resp.Status)
 }
 
 // ==================== Management Handler Tests ====================
@@ -260,9 +242,7 @@ func TestHandleListClassrooms_ReturnsClassrooms(t *testing.T) {
 
 	resp := container.HandleListClassrooms(newTenantRequest())
 
-	if resp.Status != http.StatusOK {
-		t.Errorf("expected 200, got %d", resp.Status)
-	}
+	assert.Equal(t, http.StatusOK, resp.Status)
 }
 
 func TestHandleGetClassroom_ReturnsClassroom(t *testing.T) {
@@ -276,9 +256,7 @@ func TestHandleGetClassroom_ReturnsClassroom(t *testing.T) {
 
 	resp := container.HandleGetClassroom(req)
 
-	if resp.Status != http.StatusOK {
-		t.Errorf("expected 200, got %d", resp.Status)
-	}
+	assert.Equal(t, http.StatusOK, resp.Status)
 }
 
 func TestHandleGetClassroom_Returns404ForNotFound(t *testing.T) {
@@ -292,9 +270,7 @@ func TestHandleGetClassroom_Returns404ForNotFound(t *testing.T) {
 
 	resp := container.HandleGetClassroom(req)
 
-	if resp.Status != http.StatusNotFound {
-		t.Errorf("expected 404, got %d", resp.Status)
-	}
+	assert.Equal(t, http.StatusNotFound, resp.Status)
 }
 
 func TestHandleCreateClassroom_CreatesClassroom(t *testing.T) {
@@ -312,17 +288,13 @@ func TestHandleCreateClassroom_CreatesClassroom(t *testing.T) {
 
 	resp := container.HandleCreateClassroom(req)
 
-	if resp.Status != http.StatusCreated {
-		t.Errorf("expected 201, got %d", resp.Status)
-	}
+	assert.Equal(t, http.StatusCreated, resp.Status)
 }
 
 func TestHandleDeleteClassroom_DeletesClassroom(t *testing.T) {
 	container := &entrypoints.ManagementContainer{
 		DeleteClassroom: &mockDeleteClassroom{fn: func(_ context.Context, req mgmtuc.DeleteClassroomRequest) error {
-			if req.ClassroomID != 3 {
-				t.Errorf("expected classroom_id 3, got %d", req.ClassroomID)
-			}
+			assert.Equal(t, int64(3), req.ClassroomID)
 			return nil
 		}},
 	}
@@ -331,9 +303,7 @@ func TestHandleDeleteClassroom_DeletesClassroom(t *testing.T) {
 
 	resp := container.HandleDeleteClassroom(req)
 
-	if resp.Status != http.StatusNoContent {
-		t.Errorf("expected 204, got %d", resp.Status)
-	}
+	assert.Equal(t, http.StatusNoContent, resp.Status)
 }
 
 func TestHandleListTeachers_ReturnsTeachers(t *testing.T) {
@@ -345,9 +315,7 @@ func TestHandleListTeachers_ReturnsTeachers(t *testing.T) {
 
 	resp := container.HandleListTeachers(newTenantRequest())
 
-	if resp.Status != http.StatusOK {
-		t.Errorf("expected 200, got %d", resp.Status)
-	}
+	assert.Equal(t, http.StatusOK, resp.Status)
 }
 
 // ==================== Auth Handler Tests ====================
@@ -355,18 +323,14 @@ func TestHandleListTeachers_ReturnsTeachers(t *testing.T) {
 func TestHandleGetMe_ReturnsCurrentUser(t *testing.T) {
 	container := &entrypoints.AuthContainer{
 		GetMe: &mockGetMe{fn: func(_ context.Context, req authuc.GetMeRequest) (*entities.User, error) {
-			if req.UserID != 42 {
-				t.Errorf("expected user_id 42, got %d", req.UserID)
-			}
+			assert.Equal(t, int64(42), req.UserID)
 			return &entities.User{ID: 42, Name: "Test", Email: "test@test.com", Role: "teacher"}, nil
 		}},
 	}
 
 	resp := container.HandleGetMe(newTenantRequest())
 
-	if resp.Status != http.StatusOK {
-		t.Errorf("expected 200, got %d", resp.Status)
-	}
+	assert.Equal(t, http.StatusOK, resp.Status)
 }
 
 func TestHandleGetMe_ReturnsErrorWhenNotFound(t *testing.T) {
@@ -378,9 +342,7 @@ func TestHandleGetMe_ReturnsErrorWhenNotFound(t *testing.T) {
 
 	resp := container.HandleGetMe(newTenantRequest())
 
-	if resp.Status != http.StatusNotFound {
-		t.Errorf("expected 404, got %d", resp.Status)
-	}
+	assert.Equal(t, http.StatusNotFound, resp.Status)
 }
 
 // ==================== Dashboard Handler Tests ====================
@@ -397,9 +359,7 @@ func TestHandleGetMetrics_ReturnsMetrics(t *testing.T) {
 
 	resp := container.HandleGetMetrics(newTenantRequest())
 
-	if resp.Status != http.StatusOK {
-		t.Errorf("expected 200, got %d", resp.Status)
-	}
+	assert.Equal(t, http.StatusOK, resp.Status)
 }
 
 func TestHandleGetMetrics_ReturnsError(t *testing.T) {
@@ -411,7 +371,5 @@ func TestHandleGetMetrics_ReturnsError(t *testing.T) {
 
 	resp := container.HandleGetMetrics(newTenantRequest())
 
-	if resp.Status != http.StatusBadRequest {
-		t.Errorf("expected 400, got %d", resp.Status)
-	}
+	assert.Equal(t, http.StatusBadRequest, resp.Status)
 }

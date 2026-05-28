@@ -2,8 +2,10 @@ package ai_test
 
 import (
 	"context"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	ai "github.com/educabot/alizia-inclusion-be/src/repositories/ai"
 
@@ -16,15 +18,9 @@ func TestStubClient_Generate_ReturnsStubContent(t *testing.T) {
 		UserPrompt: "test prompt",
 	})
 
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got == "" {
-		t.Error("expected non-empty content")
-	}
-	if !strings.Contains(got, "[stub]") {
-		t.Errorf("expected content to contain '[stub]', got %q", got)
-	}
+	require.NoError(t, err)
+	assert.NotEmpty(t, got)
+	assert.Contains(t, got, "[stub]")
 }
 
 func TestStubClient_Chat_ReturnsStubResponse(t *testing.T) {
@@ -33,15 +29,9 @@ func TestStubClient_Chat_ReturnsStubResponse(t *testing.T) {
 		{Role: "user", Content: "hello"},
 	})
 
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp == nil {
-		t.Fatal("expected non-nil response")
-	}
-	if resp.Content == "" {
-		t.Error("expected non-empty response content")
-	}
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.NotEmpty(t, resp.Content)
 }
 
 func TestStubClient_ChatWithTools_ReturnsStubResponse(t *testing.T) {
@@ -52,10 +42,6 @@ func TestStubClient_ChatWithTools_ReturnsStubResponse(t *testing.T) {
 		[]providers.ToolDefinition{{Name: "noop", Description: "does nothing"}},
 	)
 
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp == nil {
-		t.Fatal("expected non-nil response")
-	}
+	require.NoError(t, err)
+	require.NotNil(t, resp)
 }

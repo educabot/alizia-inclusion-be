@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
 	"github.com/educabot/alizia-inclusion-be/src/core/usecases/catalog"
 )
@@ -27,12 +29,6 @@ func TestValidationErrors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		err := tt.req.Validate()
-		if err == nil {
-			t.Errorf("%s: expected validation error, got nil", tt.name)
-			continue
-		}
-		if !errors.Is(err, providers.ErrValidation) {
-			t.Errorf("%s: expected ErrValidation, got: %v", tt.name, err)
-		}
+		assert.ErrorIs(t, err, providers.ErrValidation, tt.name)
 	}
 }

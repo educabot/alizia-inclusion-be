@@ -2,50 +2,44 @@ package inclusion_test
 
 import (
 	"context"
-	"errors"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
-	"github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
+	mockproviders "github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
 	"github.com/educabot/alizia-inclusion-be/src/core/usecases/inclusion"
 	"github.com/educabot/alizia-inclusion-be/src/testutil"
 )
 
 func TestListAdaptationResources_ReturnsResources(t *testing.T) {
 	ctx := context.Background()
-	expected := []entities.AdaptationResource{
+	want := []entities.AdaptationResource{
 		testutil.NewAdaptationResource(1, 10),
 		testutil.NewAdaptationResource(2, 10),
 	}
-	mock := &mocks.MockAdaptationResourceProvider{
-		ListByAdaptationFn: func(_ context.Context, adaptationID int64) ([]entities.AdaptationResource, error) {
-			if adaptationID != 10 {
-				t.Errorf("expected adaptationID 10, got %d", adaptationID)
-			}
-			return expected, nil
-		},
-	}
+	resources := new(mockproviders.MockAdaptationResourceProvider)
+	resources.On("ListByAdaptation", ctx, int64(10)).Return(want, nil)
 
-	got, err := inclusion.NewListAdaptationResources(mock).Execute(ctx, inclusion.ListAdaptationResourcesRequest{
+	got, err := inclusion.NewListAdaptationResources(resources).Execute(ctx, inclusion.ListAdaptationResourcesRequest{
 		AdaptationID: 10,
 	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(got) != 2 {
-		t.Errorf("got %d resources, want 2", len(got))
-	}
+
+	require.NoError(t, err)
+	assert.Len(t, got, 2)
+	resources.AssertExpectations(t)
 }
 
 func TestListAdaptationResources_RejectsZeroAdaptationID(t *testing.T) {
 	ctx := context.Background()
-	mock := &mocks.MockAdaptationResourceProvider{}
+	resources := new(mockproviders.MockAdaptationResourceProvider)
 
-	_, err := inclusion.NewListAdaptationResources(mock).Execute(ctx, inclusion.ListAdaptationResourcesRequest{
+	_, err := inclusion.NewListAdaptationResources(resources).Execute(ctx, inclusion.ListAdaptationResourcesRequest{
 		AdaptationID: 0,
 	})
-	if !errors.Is(err, providers.ErrValidation) {
-		t.Errorf("expected ErrValidation, got: %v", err)
-	}
+
+	assert.ErrorIs(t, err, providers.ErrValidation)
+	resources.AssertNotCalled(t, "ListByAdaptation")
 }

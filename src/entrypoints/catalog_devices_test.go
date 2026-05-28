@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 )
 
@@ -18,13 +20,12 @@ func TestMapDevice_MapsEmbeddedResourcesIntoDownloads(t *testing.T) {
 
 	got := mapDevice(device)
 
-	if len(got.Downloads) != 1 {
-		t.Fatalf("expected 1 download, got %d", len(got.Downloads))
-	}
+	assert.Len(t, got.Downloads, 1)
 	d := got.Downloads[0]
-	if d.ID != 1 || d.Title != "Ficha imprimible" || d.FileURL != "/files/5/ficha.pdf" || d.FileType != "pdf" {
-		t.Errorf("unexpected download mapping: %+v", d)
-	}
+	assert.Equal(t, int64(1), d.ID)
+	assert.Equal(t, "Ficha imprimible", d.Title)
+	assert.Equal(t, "/files/5/ficha.pdf", d.FileURL)
+	assert.Equal(t, "pdf", d.FileType)
 }
 
 func TestMapDevice_OmitsDownloadsWhenDeviceHasNoResources(t *testing.T) {
@@ -32,7 +33,5 @@ func TestMapDevice_OmitsDownloadsWhenDeviceHasNoResources(t *testing.T) {
 
 	got := mapDevice(device)
 
-	if got.Downloads != nil {
-		t.Errorf("expected nil downloads, got %+v", got.Downloads)
-	}
+	assert.Nil(t, got.Downloads)
 }

@@ -2,14 +2,14 @@ package management_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
-	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
-	"github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
+	mockproviders "github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
 	"github.com/educabot/alizia-inclusion-be/src/core/usecases/management"
 	"github.com/educabot/alizia-inclusion-be/src/testutil"
 )
@@ -19,16 +19,10 @@ func TestCreateClassroom_CreatesClassroom(t *testing.T) {
 	grade := "3"
 	section := "B"
 
-	var capturedClassroom *entities.Classroom
-	mock := &mocks.MockClassroomProvider{
-		CreateFn: func(ctx context.Context, classroom *entities.Classroom) error {
-			capturedClassroom = classroom
-			classroom.ID = 42
-			return nil
-		},
-	}
+	classrooms := new(mockproviders.MockClassroomProvider)
+	classrooms.On("Create", ctx, mock.AnythingOfType("*entities.Classroom")).Return(nil)
 
-	uc := management.NewCreateClassroom(mock)
+	uc := management.NewCreateClassroom(classrooms)
 	got, err := uc.Execute(ctx, management.CreateClassroomRequest{
 		OrgID:   testutil.TestOrgID,
 		Name:    "3B Math",
@@ -36,83 +30,52 @@ func TestCreateClassroom_CreatesClassroom(t *testing.T) {
 		Section: &section,
 	})
 
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if capturedClassroom == nil {
-		t.Fatal("expected CreateFn to be called with a classroom, got nil")
-	}
-	if capturedClassroom.OrganizationID != testutil.TestOrgID {
-		t.Errorf("expected OrgID %v, got %v", testutil.TestOrgID, capturedClassroom.OrganizationID)
-	}
-	if capturedClassroom.Name != "3B Math" {
-		t.Errorf("expected name %q, got %q", "3B Math", capturedClassroom.Name)
-	}
-	if capturedClassroom.Grade == nil || *capturedClassroom.Grade != grade {
-		t.Errorf("expected grade %q, got %v", grade, capturedClassroom.Grade)
-	}
-	if capturedClassroom.Section == nil || *capturedClassroom.Section != section {
-		t.Errorf("expected section %q, got %v", section, capturedClassroom.Section)
-	}
-	if got.ID != 42 {
-		t.Errorf("expected returned classroom ID 42, got %d", got.ID)
-	}
+	assert.NoError(t, err)
+	assert.NotNil(t, got)
+	assert.Equal(t, testutil.TestOrgID, got.OrganizationID)
+	assert.Equal(t, "3B Math", got.Name)
+	assert.Equal(t, &grade, got.Grade)
+	assert.Equal(t, &section, got.Section)
+	classrooms.AssertExpectations(t)
 }
 
 func TestCreateClassroom_RejectsNilOrgID(t *testing.T) {
-	ctx := context.Background()
-	mock := &mocks.MockClassroomProvider{}
+	classrooms := new(mockproviders.MockClassroomProvider)
+	uc := management.NewCreateClassroom(classrooms)
 
-	uc := management.NewCreateClassroom(mock)
-	_, err := uc.Execute(ctx, management.CreateClassroomRequest{
+	_, err := uc.Execute(context.Background(), management.CreateClassroomRequest{
 		OrgID: uuid.Nil,
 		Name:  "1A",
 	})
 
-	if err == nil {
-		t.Fatal("expected validation error, got nil")
-	}
-	if !errors.Is(err, providers.ErrValidation) {
-		t.Errorf("expected ErrValidation, got %v", err)
-	}
+	assert.ErrorIs(t, err, providers.ErrValidation)
+	classrooms.AssertNotCalled(t, "Create", mock.Anything, mock.Anything)
 }
 
 func TestCreateClassroom_RejectsEmptyName(t *testing.T) {
-	ctx := context.Background()
-	mock := &mocks.MockClassroomProvider{}
+	classrooms := new(mockproviders.MockClassroomProvider)
+	uc := management.NewCreateClassroom(classrooms)
 
-	uc := management.NewCreateClassroom(mock)
-	_, err := uc.Execute(ctx, management.CreateClassroomRequest{
+	_, err := uc.Execute(context.Background(), management.CreateClassroomRequest{
 		OrgID: testutil.TestOrgID,
 		Name:  "",
 	})
 
-	if err == nil {
-		t.Fatal("expected validation error, got nil")
-	}
-	if !errors.Is(err, providers.ErrValidation) {
-		t.Errorf("expected ErrValidation, got %v", err)
-	}
+	assert.ErrorIs(t, err, providers.ErrValidation)
+	classrooms.AssertNotCalled(t, "Create", mock.Anything, mock.Anything)
 }
 
 func TestCreateClassroom_PropagatesProviderError(t *testing.T) {
 	ctx := context.Background()
-	mock := &mocks.MockClassroomProvider{
-		CreateFn: func(ctx context.Context, classroom *entities.Classroom) error {
-			return errDB
-		},
-	}
+	classrooms := new(mockproviders.MockClassroomProvider)
+	classrooms.On("Create", ctx, mock.AnythingOfType("*entities.Classroom")).Return(errDB)
 
-	uc := management.NewCreateClassroom(mock)
+	uc := management.NewCreateClassroom(classrooms)
 	_, err := uc.Execute(ctx, management.CreateClassroomRequest{
 		OrgID: testutil.TestOrgID,
 		Name:  "1A",
 	})
 
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-	if !errors.Is(err, errDB) {
-		t.Errorf("expected errDB, got %v", err)
-	}
+	assert.ErrorIs(t, err, errDB)
+	classrooms.AssertExpectations(t)
 }
