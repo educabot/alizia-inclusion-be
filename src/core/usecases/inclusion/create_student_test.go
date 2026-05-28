@@ -24,8 +24,10 @@ func TestCreateStudent_CreatesStudent(t *testing.T) {
 	students.On("Create", ctx, mock.AnythingOfType("*entities.Student")).
 		Return(nil).
 		Run(func(args mock.Arguments) {
-			captured = args.Get(1).(*entities.Student)
-			captured.ID = 10
+			s, ok := args.Get(1).(*entities.Student)
+			require.True(t, ok)
+			s.ID = 10
+			captured = s
 		})
 
 	got, err := inclusion.NewCreateStudent(students).Execute(ctx, inclusion.CreateStudentRequest{

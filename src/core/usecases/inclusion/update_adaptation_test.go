@@ -50,7 +50,9 @@ func TestUpdateAdaptation_AppliesTitleWhenProvided(t *testing.T) {
 	adaptations.On("Get", ctx, testutil.TestOrgID, int64(1)).Return(&existing, nil)
 	adaptations.On("Update", ctx, mock.AnythingOfType("*entities.Adaptation")).
 		Run(func(args mock.Arguments) {
-			captured = args.Get(1).(*entities.Adaptation)
+			a, ok := args.Get(1).(*entities.Adaptation)
+			require.True(t, ok)
+			captured = a
 		}).
 		Return(nil)
 

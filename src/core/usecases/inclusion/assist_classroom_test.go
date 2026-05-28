@@ -124,7 +124,9 @@ func TestAssistClassroom_PersistsTurnWhenUserIDPresent(t *testing.T) {
 	var captured providers.AppendTurnParams
 	conversations.On("AppendTurn", mock.Anything, mock.AnythingOfType("providers.AppendTurnParams")).
 		Run(func(args mock.Arguments) {
-			captured = args.Get(1).(providers.AppendTurnParams)
+			p, ok := args.Get(1).(providers.AppendTurnParams)
+			require.True(t, ok)
+			captured = p
 		}).
 		Return(int64(42), nil)
 	req := assistClassroomBaseRequest
@@ -171,7 +173,9 @@ func TestAssistClassroom_RecordsTokenUsageWhenPresent(t *testing.T) {
 	var captured providers.AIUsageRecord
 	usage.On("Record", mock.Anything, mock.AnythingOfType("providers.AIUsageRecord")).
 		Run(func(args mock.Arguments) {
-			captured = args.Get(1).(providers.AIUsageRecord)
+			r, ok := args.Get(1).(providers.AIUsageRecord)
+			require.True(t, ok)
+			captured = r
 		}).
 		Return(nil)
 

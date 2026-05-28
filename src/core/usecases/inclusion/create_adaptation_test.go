@@ -21,7 +21,9 @@ func TestCreateAdaptation_CreatesAdaptationWithoutDevices(t *testing.T) {
 	ctx := context.Background()
 	adaptations.On("Create", ctx, mock.AnythingOfType("*entities.Adaptation")).
 		Run(func(args mock.Arguments) {
-			args.Get(1).(*entities.Adaptation).ID = 1
+			a, ok := args.Get(1).(*entities.Adaptation)
+			require.True(t, ok)
+			a.ID = 1
 		}).
 		Return(nil)
 	got := testutil.NewAdaptation(1, 1, 1)
@@ -47,7 +49,9 @@ func TestCreateAdaptation_CreatesAdaptationWithDevices(t *testing.T) {
 	ctx := context.Background()
 	adaptations.On("Create", ctx, mock.AnythingOfType("*entities.Adaptation")).
 		Run(func(args mock.Arguments) {
-			args.Get(1).(*entities.Adaptation).ID = 1
+			a, ok := args.Get(1).(*entities.Adaptation)
+			require.True(t, ok)
+			a.ID = 1
 		}).
 		Return(nil)
 	adaptations.On("SetDevices", ctx, int64(1), []int64{10, 20}).Return(nil)
@@ -74,8 +78,10 @@ func TestCreateAdaptation_DefaultsAdaptationTypeAndPersistsTitleWhenTypeOmitted(
 	var captured *entities.Adaptation
 	adaptations.On("Create", ctx, mock.AnythingOfType("*entities.Adaptation")).
 		Run(func(args mock.Arguments) {
-			captured = args.Get(1).(*entities.Adaptation)
-			captured.ID = 1
+			a, ok := args.Get(1).(*entities.Adaptation)
+			require.True(t, ok)
+			a.ID = 1
+			captured = a
 		}).
 		Return(nil)
 	got := testutil.NewAdaptation(1, 1, 1)

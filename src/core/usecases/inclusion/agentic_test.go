@@ -46,7 +46,9 @@ func TestRunAgenticChat_ExecutesToolThenReturnsTheFinalAnswer(t *testing.T) {
 		}, nil).Once()
 	ai.On("ChatWithTools", ctx, mock.AnythingOfType("[]providers.ChatMessage"), mock.AnythingOfType("[]providers.ToolDefinition")).
 		Run(func(args mock.Arguments) {
-			secondTurnMsgs = args.Get(1).([]providers.ChatMessage)
+			msgs, ok := args.Get(1).([]providers.ChatMessage)
+			require.True(t, ok)
+			secondTurnMsgs = msgs
 		}).
 		Return(&providers.ChatResponse{
 			Content: "Te recomiendo el Timer Visual",
@@ -88,7 +90,9 @@ func TestRunAgenticChat_FeedsErrorResultBackWhenToolFails(t *testing.T) {
 		}, nil).Once()
 	ai.On("ChatWithTools", ctx, mock.AnythingOfType("[]providers.ChatMessage"), mock.AnythingOfType("[]providers.ToolDefinition")).
 		Run(func(args mock.Arguments) {
-			secondTurnMsgs = args.Get(1).([]providers.ChatMessage)
+			msgs, ok := args.Get(1).([]providers.ChatMessage)
+			require.True(t, ok)
+			secondTurnMsgs = msgs
 		}).
 		Return(&providers.ChatResponse{Content: "lo siento"}, nil).Once()
 

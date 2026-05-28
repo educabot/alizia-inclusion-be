@@ -24,7 +24,8 @@ func TestUpsertStudentProfile_UpsertsProfile(t *testing.T) {
 	students.On("GetStudent", ctx, testutil.TestOrgID, int64(1)).Return(&existing, nil)
 	profiles.On("Upsert", ctx, mock.AnythingOfType("*entities.StudentProfile")).
 		Run(func(args mock.Arguments) {
-			p := args.Get(1).(*entities.StudentProfile)
+			p, ok := args.Get(1).(*entities.StudentProfile)
+			require.True(t, ok)
 			p.ID = 1
 		}).
 		Return(nil)
