@@ -1,0 +1,252 @@
+// ============================================================
+// SCHEMA DBML — alizia-inclusion-be — para dbdiagram.io
+// Fiel a db/migrations + src/core/entities
+// ============================================================
+
+Enum member_role {
+  teacher
+  coordinator
+  admin
+  ministerio
+  psicopedagogo
+}
+
+Table organizations {
+  id uuid [pk, default: `gen_random_uuid()`]
+  name varchar
+  created_at timestamp
+  updated_at timestamp
+
+  Note: "Tenant. Toda fila de negocio cuelga de una organization (multitenancy)"
+}
+
+Table users {
+  id bigserial [pk, increment]
+  organization_id uuid [ref: > organizations.id, not null]
+  email varchar
+  name varchar
+  password_hash varchar [null] // nullable desde mig 000011 (auth delegado a auth-service)
+  role member_role [not null, default: "teacher"]
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (organization_id, email) [unique]
+    organization_id
+  }
+
+  Note: "Docentes y roles de la escuela. Profesor=teacher, Director≈coordinator/admin"
+}
+
+Table classrooms {
+  id bigserial [pk, increment]
+  organization_id uuid [ref: > organizations.id, not null]
+  name varchar
+  grade varchar [null]
+  section varchar [null]
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    organization_id
+  }
+
+  Note: "Aulas. Las crea el Director"
+}
+
+Table students {
+  id bigserial [pk, increment]
+  organization_id uuid [ref: > organizations.id, not null]
+  classroom_id bigint [ref: > classrooms.id, not null] // ON DELETE CASCADE
+  name varchar
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    organization_id
+    classroom_id
+  }
+
+  Note: "Alumnos de un aula. Los carga el Profesor"
+}
+
+Table student_profiles {
+  id bigserial [pk, increment]
+  student_id bigint [ref: - students.id, not null] // ON DELETE CASCADE, UNIQUE (1:1)
+  is_transitory boolean [not null, default: false]
+  difficulties "text[]" [not null, default: "{}"]
+  free_description text [null]
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    student_id [unique]
+  }
+
+  Note: "Perfil de necesidades del alumno (1:1). difficulties = array de etiquetas"
+}
+
+Table ramps {
+  id bigserial [pk, increment]
+  organization_id uuid [ref: > organizations.id, not null]
+  name varchar
+  description text [null]
+  short_description varchar [null]
+  video_url text [null] // agregado en mig 000005
+  sort_order integer [not null, default: 0]
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    organization_id
+  }
+
+  Note: "Catálogo: rampas (categorías/estrategias de inclusión). Solo lectura"
+}
+
+Table devices {
+  id bigserial [pk, increment]
+  organization_id uuid [ref: > organizations.id, not null]
+  ramp_id bigint [ref: > ramps.id, not null] // ON DELETE CASCADE
+  name varchar
+  description text [null]
+  image_url text [null]
+  qr_code varchar [null]
+  how_to_use text [null]
+  recommendations text [null]
+  rationale text [null]
+  classroom_benefit text [null]
+  needs_description text [null]
+  useful_when text [null] // agregado en mig 000008
+  evaluation_criteria text [null]
+  quantity integer [not null, default: 1]
+  sort_order integer [not null, default: 0]
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (organization_id, qr_code) [unique]
+    organization_id
+    ramp_id
+  }
+
+  Note: "Catálogo: dispositivos/recursos de cada rampa. Solo lectura"
+}
+
+Table device_resources {
+  id bigserial [pk, increment]
+  device_id bigint [ref: > devices.id, not null] // ON DELETE CASCADE
+  title varchar
+  file_url text
+  file_type varchar [not null, default: "pdf"]
+  created_at timestamptz
+
+  indexes {
+    device_id
+  }
+
+  Note: "Archivos adjuntos de un device del catálogo"
+}
+
+Table adaptations {
+  id bigserial [pk, increment]
+  organization_id uuid [ref: > organizations.id, not null]
+  student_id bigint [ref: > students.id, not null] // ON DELETE CASCADE
+  teacher_id bigint [ref: > users.id, not null]
+  device_id bigint [ref: > devices.id, null] // device principal (opcional)
+  title varchar [default: ""] // agregado en mig 000012
+  subject varchar
+  activity_description text [null]
+  adaptation_strategy text [null]
+  adaptation_type varchar [default: ""] // agregado en mig 000009
+  outcome text [null]
+  notes text [null]
+  status varchar [not null, default: "en_curso"] // en_curso / funcionó / para_ajustar
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    organization_id
+    student_id
+    teacher_id
+  }
+
+  Note: "OUTPUT PRINCIPAL. Adaptación de un alumno creada por un docente"
+}
+
+Table adaptation_devices {
+  adaptation_id bigint [ref: > adaptations.id, not null] // ON DELETE CASCADE
+  device_id bigint [ref: > devices.id, not null] // ON DELETE CASCADE
+
+  indexes {
+    (adaptation_id, device_id) [pk]
+    adaptation_id
+    device_id
+  }
+
+  Note: "M2M: devices del catálogo asociados a una adaptación"
+}
+
+Table adaptation_resources {
+  id bigserial [pk, increment]
+  adaptation_id bigint [ref: > adaptations.id, not null] // ON DELETE CASCADE
+  title varchar
+  file_url text
+  file_type varchar [default: "pdf"]
+  created_at timestamptz
+
+  indexes {
+    adaptation_id
+  }
+
+  Note: "Archivos generados/adjuntos de una adaptación (ej: PDF exportado)"
+}
+
+Table conversations {
+  id bigserial [pk, increment]
+  organization_id uuid [ref: > organizations.id, not null]
+  user_id bigint [ref: > users.id, not null]
+  student_id bigint [ref: > students.id, null]
+  mode varchar [not null, default: "assist"] // recommend / assist
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    organization_id
+    user_id
+  }
+
+  Note: "Sesión de chat con Alizia (IA). Puede estar atada a un alumno"
+}
+
+Table conversation_messages {
+  id bigserial [pk, increment]
+  conversation_id bigint [ref: > conversations.id, not null] // ON DELETE CASCADE
+  role varchar // user / assistant / system
+  content text
+  metadata jsonb [default: "{}"]
+  created_at timestamp
+
+  indexes {
+    conversation_id
+  }
+
+  Note: "Mensajes de una conversación. metadata JSONB para tool calls / extras"
+}
+
+Table ai_usage {
+  id bigserial [pk, increment]
+  organization_id uuid [not null] // sin FK explícita en la migración
+  user_id bigint [not null]
+  mode varchar [not null, default: ""] // recommend / assist
+  prompt_tokens integer [not null, default: 0]
+  completion_tokens integer [not null, default: 0]
+  total_tokens integer [not null, default: 0]
+  created_at timestamptz [not null]
+
+  indexes {
+    (organization_id, created_at)
+  }
+
+  Note: "Métrica de consumo de IA por org/usuario. Alimenta el tablero del Director"
+}
