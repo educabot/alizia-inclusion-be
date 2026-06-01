@@ -60,9 +60,55 @@
 - El **component** del backlog va como **label**, no en el campo Components.
 
 ## Subtareas
-**No creadas** — las 🔧 sub-tareas del backlog quedan como detalle dentro de cada historia/spec,
-no como issues separados (patrón aplicado uniformemente a las 30 historias).
+**91 subtareas creadas** (ALZ-302..392), el 2026-06-01. Una `Subtarea` Jira por cada 🔧 del backlog,
+con summary prefijado por CE para identificarlas en el board. Reparto:
+
+| Historia | Subtareas (rango ALZ) |
+|---|---|
+| CE-0.1 | 302–305 | 
+| CE-0.2 | 306–309 |
+| CE-1.1 | 310–313 |
+| CE-1.2 | 314–316 |
+| CE-1.3 | 317–320 |
+| CE-1.4 | 321–324 |
+| CE-1.5 | 325–327 |
+| CE-1.6 | 328–330 |
+| CE-1.7 | 331–335 |
+| CE-1.8 | 336–338 |
+| CE-2.1 | 339–342 |
+| CE-2.2 | 343–347 |
+| CE-2.3 | 348–350 |
+| CE-2.4 | 351–354 |
+| CE-2.5 | 355–358 |
+| CE-2.6 | 359–361 |
+| CE-3.1 | 362–365 |
+| CE-3.2 | 366–369 |
+| CE-3.3 | 370–372 |
+| CE-4.1 | 373–376 |
+| CE-4.2 | 377–380 |
+| CE-4.3 | 381–383 |
+| CE-4.4 | 384–387 |
+| CE-4.5 | 388–392 |
+
+> Las CE-5.x (contenido) no llevan subtareas técnicas — son autoría.
 
 ## Issue links (Blocks)
-**No creados** — las dependencias (`🔗 Depende de`) están capturadas como **texto** en la
-descripción de cada historia, no como links nativos de Jira.
+**37 links creados** (`Blocks`), el 2026-06-01. Semántica: el que bloquea → el bloqueado.
+
+| Bloqueada | La bloquean |
+|---|---|
+| ALZ-280 (CE-1.7) | 274, 275, 276, 277, 278, 279 |
+| ALZ-281 (CE-1.8) | 280, 289 |
+| ALZ-283 (CE-2.2) | 282, 280 |
+| ALZ-284 (CE-2.3) | 282, 283 |
+| ALZ-285 (CE-2.4) | 283 |
+| ALZ-286 (CE-2.5) | 282, 283, 284, 285 |
+| ALZ-287 (CE-2.6) | 282, 296, 297, 298, 299 |
+| ALZ-289 (CE-3.2) | 288 |
+| ALZ-290 (CE-3.3) | 288 |
+| ALZ-291 (CE-4.1) | 301 |
+| ALZ-292 (CE-4.2) | 291, 283 |
+| ALZ-293 (CE-4.3) | 272, 273, 282 |
+| ALZ-294 (CE-4.4) | 282, 291, 293 |
+| ALZ-295 (CE-4.5) | 291, 293, 289 |
+| ALZ-276 (CE-1.3) | 300 |
