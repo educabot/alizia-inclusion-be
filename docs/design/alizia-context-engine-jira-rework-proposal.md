@@ -1,9 +1,38 @@
 # Contenido literal para Jira — Context Engine (para validar antes de crear)
 
-> **Estado:** PROPUESTA, no ejecutada. Es el texto EXACTO que irá a cada campo `Título` (summary) y `Descripción`.
+> **Estado:** la estructura EP/HU/T **ya está creada** en Jira (ALZ-266..271 / 393..432).
 > **Fecha:** 2026-06-01 · Proyecto ALZ.
 > Jerarquía y códigos: **EP-{n}** Épica · **HU-{n}.{m}** Historia · **T-{n}.{k}** Tarea (corrida dentro de la épica `n`).
-> 6 Épicas (ya creadas: ALZ-266..271) · 10 Historias · 30 Subtareas (a crear al aprobar).
+> 6 Épicas · 10 Historias · 30 Subtareas.
+
+---
+
+## ⏳ PENDIENTE de validar con Juan/Francisco — redacción de historias "Como… quiero… para…"
+
+Feedback del equipo (Slack 2026-06-01):
+- **Historia** = caso de uso testeable de forma completa, con condiciones previas y resultado esperado.
+- Formato: **"Como {user} quiero {resultado} para {motivo}"** (el "para" no siempre, pero suma).
+- **Lenguaje común, no técnico** — que se entienda y se pueda derivar a un agente sin preguntar.
+- En la historia van **todos los criterios de aceptación** de calidad.
+
+Propuesta: agregar esta línea como **primera línea de la descripción** de cada HU (los títulos quedan igual; los criterios de aceptación ya cargados se mantienen).
+
+| HU | "Como… quiero… para…" propuesto | Rol (user) |
+|---|---|---|
+| HU-1.1 | Como **equipo de Alizia** quiero registrar en cada interacción qué se pidió, qué se respondió y si el docente lo aprovechó, para medir y mejorar las recomendaciones con datos reales. | equipo |
+| HU-2.1 | Como **docente** quiero que Alizia tenga en cuenta el contexto de mi alumno (perfil, situaciones, PPI) al responder, para que las sugerencias sean pertinentes a ese chico y no genéricas. | docente |
+| HU-2.2 | Como **docente** quiero que Alizia traiga más datos del alumno cuando hace falta (historial, adaptaciones, aprendizajes), para que profundice sin que yo le repita todo. | docente |
+| HU-3.1 | Como **equipo de producto** quiero ajustar y publicar el comportamiento de Alizia sin esperar un deploy (con validación previa), para iterar rápido y sin riesgo de romper producción. | producto |
+| HU-4.1 | Como **docente** quiero que Alizia no pierda el hilo en conversaciones largas, para seguir trabajando sin recontextualizar todo. | docente |
+| HU-4.2 | Como **docente** quiero que Alizia recuerde entre sesiones qué funcionó con mi alumno, para no explicárselo cada vez. | docente |
+| HU-5.1 | Como **equipo de Alizia** quiero alimentarla con ejemplos de buenas respuestas, para que dé recomendaciones de calidad desde el día 1 aunque no haya historial. | equipo |
+| HU-5.2 | Como **equipo de Alizia** quiero medir si las recomendaciones mejoran versión a versión, para decidir con datos qué cambios mantener. | equipo |
+| HU-5.3 | Como **equipo de Alizia** quiero probar dos versiones en paralelo y promover la mejor automáticamente, para que Alizia mejore sola sin degradar la calidad. | equipo |
+| HU-6.1 | Como **equipo pedagógico** quiero dejar redactado el contenido base de Alizia (persona, marco, límites, formato, situaciones, ejemplos), para que sus respuestas sigan nuestros lineamientos de inclusión. | pedagógico |
+
+> **Nota de tensión:** el Context Engine es en parte infra (traza, versionado, flywheel) → ahí el "user" honesto es un rol interno (*equipo / producto / pedagógico*), no el docente. Las de cara al docente (HU-2.1, 2.2, 4.1, 4.2) son las más alineadas al ejemplo de Juan.
+> **Pendiente de definir con producto:** criterios de aceptación de dominio (p. ej. "incluir productos de la valija", "seguir lineamientos de inclusión") para enriquecer HU-2.1 y EP-6.
+> Francisco ofreció ayuda para **buscar los contenidos** de EP-6 (las T-6.*).
 
 ---
 
