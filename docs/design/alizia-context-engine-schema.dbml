@@ -1,0 +1,456 @@
+// ============================================================
+// SCHEMA DBML CONSOLIDADO — Context Engine de Alizia
+// Estado OBJETIVO (existente + nuevo MVP + Futuro) para dbdiagram.io
+// Pegar tal cual en https://dbdiagram.io  ->  ver ER completo
+//
+// Convención:
+//   [NEW]    = columna agregada por el context-engine (ALTER sobre tabla existente)
+//   (NUEVA)  = tabla nueva del context-engine
+//   (FUTURO) = fuera del MVP (ver §0 del design doc) — separada en su TableGroup
+//
+// NOTA: este archivo es para VISUALIZAR/VALIDAR. El canónico del estado
+// actual sigue siendo db/schema.dbml. No se corre nada en prod.
+// ============================================================
+
+Enum member_role {
+  teacher
+  coordinator
+  admin
+  ministerio
+  psicopedagogo
+  maestra_integradora // [NEW] MVP — alumno asignado (ver §7 design doc)
+}
+
+// ============================================================
+// EXISTENTES (con ALTERs del context-engine aplicados inline)
+// ============================================================
+
+Table organizations {
+  id uuid [pk, default: `gen_random_uuid()`]
+  name varchar
+  created_at timestamp
+  updated_at timestamp
+  Note: "Tenant. Toda fila de negocio cuelga de una organization"
+}
+
+Table users {
+  id bigserial [pk, increment]
+  organization_id uuid [ref: > organizations.id, not null]
+  email varchar
+  name varchar
+  password_hash varchar [null]
+  role member_role [not null, default: "teacher"]
+  created_at timestamp
+  updated_at timestamp
+  indexes {
+    (organization_id, email) [unique]
+    organization_id
+  }
+  Note: "Docentes y roles de la escuela"
+}
+
+Table classrooms {
+  id bigserial [pk, increment]
+  organization_id uuid [ref: > organizations.id, not null]
+  name varchar
+  grade varchar [null]
+  section varchar [null]
+  created_at timestamp
+  updated_at timestamp
+  indexes { organization_id }
+  Note: "Aulas"
+}
+
+Table students {
+  id bigserial [pk, increment]
+  organization_id uuid [ref: > organizations.id, not null]
+  classroom_id bigint [ref: > classrooms.id, not null]
+  name varchar
+  birthdate date [null]          // [NEW] doble granularidad
+  age_range varchar [null]       // [NEW]
+  grade_level varchar [null]     // [NEW]
+  preferred_name varchar [null]  // [NEW]
+  created_at timestamp
+  updated_at timestamp
+  indexes {
+    organization_id
+    classroom_id
+  }
+  Note: "Alumnos. [NEW] edad/grado/nombre preferido nullable"
+}
+
+Table student_profiles {
+  id bigserial [pk, increment]
+  student_id bigint [ref: - students.id, not null]
+  is_transitory boolean [not null, default: false]
+  difficulties "text[]" [not null, default: "{}"]
+  free_description text [null]
+  support_level varchar [null]                 // [NEW]
+  strengths "text[]" [null]                     // [NEW]
+  interests "text[]" [null]                      // [NEW]
+  triggers "text[]" [null]                        // [NEW] disparadores
+  effective_strategies "text[]" [null]            // [NEW]
+  ineffective_strategies "text[]" [null]          // [NEW]
+  situation_codes "text[]" [null]                 // [NEW] vocabulario controlado (situations_catalog)
+  has_therapeutic_companion boolean [null]        // [NEW]
+  environment_notes text [null]                   // [NEW] familia/profesionales/AT (Eje 3)
+  created_at timestamp
+  updated_at timestamp
+  indexes { student_id [unique] }
+  Note: "Perfil del alumno (1:1). [NEW] capa rica, todo nullable"
+}
+
+Table ramps {
+  id bigserial [pk, increment]
+  organization_id uuid [ref: > organizations.id, not null]
+  name varchar
+  description text [null]
+  short_description varchar [null]
+  video_url text [null]
+  sort_order integer [not null, default: 0]
+  created_at timestamp
+  updated_at timestamp
+  indexes { organization_id }
+  Note: "Catálogo: rampas (categorías de inclusión)"
+}
+
+Table devices {
+  id bigserial [pk, increment]
+  organization_id uuid [ref: > organizations.id, not null]
+  ramp_id bigint [ref: > ramps.id, not null]
+  name varchar
+  description text [null]
+  image_url text [null]
+  qr_code varchar [null]
+  how_to_use text [null]
+  recommendations text [null]
+  rationale text [null]
+  classroom_benefit text [null]
+  needs_description text [null]
+  useful_when text [null]
+  evaluation_criteria text [null]
+  quantity integer [not null, default: 1]
+  sort_order integer [not null, default: 0]
+  created_at timestamp
+  updated_at timestamp
+  indexes {
+    (organization_id, qr_code) [unique]
+    organization_id
+    ramp_id
+  }
+  Note: "Catálogo: dispositivos de la valija. Entran EN CONTEXTO (no RAG)"
+}
+
+Table device_resources {
+  id bigserial [pk, increment]
+  device_id bigint [ref: > devices.id, not null]
+  title varchar
+  file_url text
+  file_type varchar [not null, default: "pdf"]
+  created_at timestamptz
+  indexes { device_id }
+  Note: "Archivos descargables de un device del catálogo"
+}
+
+Table adaptations {
+  id bigserial [pk, increment]
+  organization_id uuid [ref: > organizations.id, not null]
+  student_id bigint [ref: > students.id, not null]
+  teacher_id bigint [ref: > users.id, not null]
+  device_id bigint [ref: > devices.id, null]
+  title varchar [default: ""]
+  subject varchar
+  activity_description text [null]
+  adaptation_strategy text [null]
+  adaptation_type varchar [default: ""]
+  outcome text [null]
+  notes text [null]
+  status varchar [not null, default: "en_curso"] // en_curso / funcionó / para_ajustar
+  source_conversation_id bigint [ref: > conversations.id, null] // [NEW] origen IA
+  source_message_id bigint [ref: > conversation_messages.id, null] // [NEW] origen IA
+  was_edited boolean [default: false]            // [NEW] aceptación implícita
+  created_at timestamp
+  updated_at timestamp
+  indexes {
+    organization_id
+    student_id
+    teacher_id
+  }
+  Note: "OUTPUT PRINCIPAL = el 'recurso' (decisión 2026-06-08). create_recurso escribe acá. [NEW] traza de origen IA"
+}
+
+Table adaptation_devices {
+  adaptation_id bigint [ref: > adaptations.id, not null]
+  device_id bigint [ref: > devices.id, not null]
+  indexes {
+    (adaptation_id, device_id) [pk]
+    adaptation_id
+    device_id
+  }
+  Note: "M2M: materiales de valija usados en una adaptación"
+}
+
+Table adaptation_resources {
+  id bigserial [pk, increment]
+  adaptation_id bigint [ref: > adaptations.id, not null]
+  title varchar
+  file_url text
+  file_type varchar [default: "pdf"]
+  created_at timestamptz
+  indexes { adaptation_id }
+  Note: "Archivos adjuntos de una adaptación (NO es el 'recurso' lógico)"
+}
+
+Table conversations {
+  id bigserial [pk, increment]
+  organization_id uuid [ref: > organizations.id, not null]
+  user_id bigint [ref: > users.id, not null]
+  student_id bigint [ref: > students.id, null] // alumno primario; N relaciones en cross-tables
+  mode varchar [not null, default: "assist"]    // recommend / assist / guided
+  created_at timestamp
+  updated_at timestamp
+  indexes {
+    organization_id
+    user_id
+  }
+  Note: "Sesión de chat con Alizia"
+}
+
+Table conversation_messages {
+  id bigserial [pk, increment]
+  conversation_id bigint [ref: > conversations.id, not null]
+  role varchar // user / assistant / system
+  content text
+  metadata jsonb [default: "{}"]
+  created_at timestamp
+  indexes { conversation_id }
+  Note: "Mensajes. metadata JSONB para tool calls"
+}
+
+Table ai_usage {
+  id bigserial [pk, increment]
+  organization_id uuid [ref: > organizations.id, not null]
+  user_id bigint [not null]
+  mode varchar [not null, default: ""]
+  prompt_tokens integer [not null, default: 0]
+  completion_tokens integer [not null, default: 0]
+  total_tokens integer [not null, default: 0]
+  conversation_id bigint [ref: > conversations.id, null]       // [NEW] traza
+  message_id bigint [ref: > conversation_messages.id, null]    // [NEW] traza
+  prompt_version_id bigint [null]                              // [NEW] traza (FK a prompt_versions = FUTURO)
+  model varchar [null]                                         // [NEW] traza
+  latency_ms integer [default: 0]                              // [NEW] traza
+  tool_calls integer [default: 0]                              // [NEW] traza
+  context_snapshot jsonb [default: "{}"]                       // [NEW] IDs, NO PII en claro
+  created_at timestamptz [not null]
+  indexes { (organization_id, created_at) }
+  Note: "Métrica + traza por turno (ALTER in-place, no tabla nueva). Migración renumerada a 000014"
+}
+
+// ============================================================
+// NUEVAS — MVP (context-engine)
+// ============================================================
+
+Table teacher_profiles {
+  id bigserial [pk, increment]
+  user_id bigint [ref: - users.id, not null] // 1:1
+  organization_id uuid [ref: > organizations.id, not null]
+  birthdate date [null]
+  age_range varchar [null]
+  years_experience integer [null]
+  specialization varchar [null]
+  subjects "text[]" [null]
+  tone_preference varchar [null] // cercano / formal / directo
+  bio text [null]
+  created_at timestamp
+  updated_at timestamp
+  Note: "(NUEVA) Contexto del docente para tono/nivel de la IA"
+}
+
+Table situations_catalog {
+  id bigserial [pk, increment]
+  organization_id uuid [ref: > organizations.id, null] // null = global (Educabot)
+  code varchar [not null]
+  name varchar [not null]
+  description text [null]
+  phase varchar [null] // preventiva / durante / cierre
+  sort_order integer [not null, default: 0]
+  indexes { (organization_id, code) [unique] }
+  Note: "(NUEVA) ~15 situaciones observables de aula. Entrada pedagógica primaria. Seed por script de entorno"
+}
+
+Table ppi {
+  id bigserial [pk, increment]
+  organization_id uuid [ref: > organizations.id, not null]
+  student_id bigint [ref: - students.id, not null] // 1:1
+  objectives "text[]" [null]
+  curricular_adaptations text [null]
+  follow_up text [null]
+  status varchar [not null, default: "draft"] // draft / active / archived
+  created_by bigint [ref: > users.id, null]
+  validated_by bigint [ref: > users.id, null]
+  created_at timestamp
+  updated_at timestamp
+  indexes { student_id [unique] }
+  Note: "(NUEVA) Proyecto Pedagógico Individual. Contexto de primera línea. Futuro 'tipo de recurso'"
+}
+
+Table diagnoses_catalog {
+  id bigserial [pk, increment]
+  organization_id uuid [ref: > organizations.id, null] // null = global
+  name varchar [not null]
+  category varchar [null]
+  Note: "(NUEVA) Taxonomía de diagnósticos. Secundaria a situations_catalog. Opcional"
+}
+
+Table student_diagnoses {
+  id bigserial [pk, increment]
+  student_profile_id bigint [ref: > student_profiles.id, not null]
+  diagnosis_id bigint [ref: > diagnoses_catalog.id, not null]
+  severity varchar [null]
+  notes text [null]
+  created_at timestamp
+  indexes { (student_profile_id, diagnosis_id) [unique] }
+  Note: "(NUEVA) Diagnósticos estructurados (dato sensible). Opcional"
+}
+
+Table conversation_summaries {
+  conversation_id bigint [pk, ref: - conversations.id] // 1:1
+  summary text          // par de párrafos
+  topic_keywords "text[]" // TEMA = keyword (mismo vocabulario que el RAG)
+  token_count integer [default: 0]
+  updated_at timestamp
+  Note: "(NUEVA) Resumen comprimido. Se escribe al FIN; se recupera por entidad al ABRIR (máx 10)"
+}
+
+Table conversation_summary_students {
+  conversation_id bigint [ref: > conversation_summaries.conversation_id, not null]
+  student_id bigint [ref: > students.id, not null]
+  indexes { (conversation_id, student_id) [unique] }
+  Note: "(NUEVA) N alumnos por conversación. Retrieval: últimas 10 charlas de un alumno"
+}
+
+Table conversation_summary_devices {
+  conversation_id bigint [ref: > conversation_summaries.conversation_id, not null]
+  device_id bigint [ref: > devices.id, not null]
+  indexes { (conversation_id, device_id) [unique] }
+  Note: "(NUEVA) N puntos de valija por conversación"
+}
+
+Table response_examples {
+  id bigserial [pk, increment]
+  organization_id uuid [ref: > organizations.id, null] // null = global
+  mode varchar [not null]
+  context_snapshot jsonb [default: "{}"]
+  response text
+  label varchar [not null] // golden / bad
+  tags "text[]"
+  source varchar           // curated / from_outcome
+  created_at timestamp
+  Note: "(NUEVA) Few-shot golden + set de eval. curated = seed cold-start de los ~15 casos"
+}
+
+// ---- Capa E — Contenido pedagógico (RAG) — MVP ----
+Table pedagogical_content {
+  id bigserial [pk, increment]
+  parent_id bigint [ref: > pedagogical_content.id, null] // self-ref tipo Notion
+  type varchar      // libro / paper / material / capítulo
+  title varchar
+  status varchar [not null, default: "draft"] // draft / published / archived
+  keywords "text[]" // temas + discapacidades (ej. "TEA")
+  organization_id uuid [ref: > organizations.id, null] // null = global (Educabot)
+  created_at timestamp
+  updated_at timestamp
+  Note: "(NUEVA) Documento pedagógico. Transversal. NO atado a la valija. Libros diferidos"
+}
+
+Table pedagogical_content_chunks {
+  id bigserial [pk, increment]
+  content_id bigint [ref: > pedagogical_content.id, not null]
+  chunk_text text   // el sub-texto (lo devuelve get_content)
+  tags "text[]"     // tags del chunk (estilo content generator)
+  embedding vector  // pgvector — fijar dimensión del modelo Azure: vector(<dim>)
+  created_at timestamp
+  Note: "(NUEVA) Chunks con embedding. MVP: 1 chunk = documento entero. Requiere CREATE EXTENSION vector"
+}
+
+// ============================================================
+// NUEVAS — FUTURO (fuera del MVP, ver §0 del design doc)
+// ============================================================
+
+Table prompt_templates {
+  id bigserial [pk, increment]
+  key varchar [not null] // recommend / assist / guided
+  name varchar
+  indexes { key [unique] }
+  Note: "(FUTURO) Prompts en DB versionada. MVP: prompts en código (paquete prompts/)"
+}
+
+Table prompt_versions {
+  id bigserial [pk, increment]
+  template_id bigint [ref: > prompt_templates.id, not null]
+  version integer [not null]
+  body text          // con {{placeholders}}
+  model varchar [null]
+  params jsonb [default: "{}"]
+  status varchar [default: "draft"] // draft / active / archived
+  created_at timestamp
+  indexes { (template_id, version) [unique] }
+  Note: "(FUTURO) Contenido editable versionado. ai_usage.prompt_version_id apunta acá cuando exista"
+}
+
+Table student_insights {
+  id bigserial [pk, increment]
+  organization_id uuid [ref: > organizations.id, not null]
+  student_id bigint [ref: - students.id, not null]
+  summary text
+  key_learnings "text[]"
+  source varchar [default: "ai_generated"]
+  updated_at timestamp
+  indexes { student_id [unique] }
+  Note: "(FUTURO) Memoria viva por alumno. Job batch la regenera"
+}
+
+// FK diferida (apunta a tabla FUTURO; en el MVP la columna existe sin la constraint):
+Ref: ai_usage.prompt_version_id > prompt_versions.id
+
+// ============================================================
+// AGRUPACIONES (para leer el diagrama por alcance)
+// ============================================================
+
+TableGroup existente {
+  organizations
+  users
+  classrooms
+  students
+  student_profiles
+  ramps
+  devices
+  device_resources
+  adaptations
+  adaptation_devices
+  adaptation_resources
+  conversations
+  conversation_messages
+  ai_usage
+}
+
+TableGroup context_engine_mvp {
+  teacher_profiles
+  situations_catalog
+  ppi
+  diagnoses_catalog
+  student_diagnoses
+  conversation_summaries
+  conversation_summary_students
+  conversation_summary_devices
+  response_examples
+  pedagogical_content
+  pedagogical_content_chunks
+}
+
+TableGroup context_engine_futuro {
+  prompt_templates
+  prompt_versions
+  student_insights
+}
