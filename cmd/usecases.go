@@ -20,6 +20,7 @@ type UseCases struct {
 	ListClassroomStudents inclusionuc.ListClassroomStudents
 	RecommendDevice       inclusionuc.RecommendDevice
 	AssistClassroom       inclusionuc.AssistClassroom
+	OpenSession           inclusionuc.OpenSession
 
 	GetMe authuc.GetMe
 
@@ -59,6 +60,7 @@ func NewUseCases(repos *Repositories, cfg *config.Config) *UseCases {
 		ListClassroomStudents: inclusionuc.NewListClassroomStudents(repos.Students),
 		RecommendDevice:       inclusionuc.NewRecommendDevice(repos.AI, repos.Students, repos.Devices, repos.Ramps, repos.Conversations, repos.AIUsage),
 		AssistClassroom:       inclusionuc.NewAssistClassroom(repos.AI, repos.Students, repos.Devices, repos.Conversations, repos.AIUsage, cfg.AIAgenticEnabled),
+		OpenSession:           inclusionuc.NewOpenSession(repos.Students, repos.ConversationSummaries),
 
 		GetMe: authuc.NewGetMe(repos.Users),
 
