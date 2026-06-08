@@ -2,7 +2,7 @@
 
 ## Índice
 
-0. **Scope MVP vs Futuro (decisión 2026-06-02) — LEER PRIMERO**
+0. **Scope MVP vs Futuro — LEER PRIMERO**
    - 0.1 RAG — Contenido pedagógico (libros/papers) (MVP)
 1. Problema
 2. Visión
@@ -36,11 +36,11 @@
 
 ---
 
-## 0. Scope MVP vs Futuro (decisión 2026-06-02) — LEER PRIMERO
+## 0. Scope MVP vs Futuro — LEER PRIMERO
 
 > **Esta sección manda sobre el resto del documento.** El cuerpo del spec (§5, §6, §9, §10, §13)
 > fue escrito con un modelo más ambicioso (prompts en DB versionada + flywheel). La reunión
-> Sebastian / José Attento del **2026-06-02** recortó el alcance al MVP. Donde el cuerpo
+> Sebastian / José Attento recortó el alcance al MVP. Donde el cuerpo
 > contradiga esta sección, vale esta sección.
 
 **Decisiones de la reunión:**
@@ -49,7 +49,7 @@
    se saca de `prompts.go` a un **paquete de código aparte** (`prompts/`). Sin DB, sin backoffice.
    → El versionado en DB + backoffice (§5, §6.1, §9) pasa a **Futuro**.
 2. **RAG de contenido pedagógico (MVP).** El RAG indexa **sólo contenido pedagógico** (libros,
-   papers, guías y material que nos van a brindar) con un **doble approach (decisión 2026-06-05):
+   papers, guías y material que nos van a brindar) con un **doble approach:
    keywords / full-text como camino primario + embeddings (pgvector) como fallback**. Es **MVP** (no
    se posterga) y **transversal**: cualquier rama de la conversación (alumno / valija / tema) puede
    invocarlo. El contenido **lo carga Educabot** (los docentes no suben PDFs). **La valija NO va a
@@ -59,18 +59,19 @@
    Archivar conversaciones viejas en **buckets GCP** queda para **Futuro**.
 4. **Flywheel a Futuro.** Golden few-shot, métricas/win-rate y A/B (§10, §13) se posponen.
 5. **Memoria viva (insights) a Futuro.**
-6. **Guardrails + arranque más chico (2026-06-08).** (a) **Guardrail por código**
+6. **Guardrails + arranque más chico.** (a) **Guardrail por código**
    además del prompt: se valida la respuesta **antes de mostrarla** (que el `DEVICE_ID` exista en
    catálogo, que el `ADAPTATION_JSON` parsee, que no cruce límites duros). (b) **Respuesta off-ramp**
    prevista para casos fuera de alcance (clínico / crisis / pedido de diagnóstico): Alizia da un paso
-   al costado en vez de improvisar → **a validar con producto**. (c) **Output desde catálogo cerrado**:
-   devices ya es cerrado (`DEVICE_ID`); queda **a decidir** cuánto acotar también la adaptación. (d)
+   al costado en vez de improvisar → **a validar con producto**. (c) **Output**: devices cerrado
+   (`DEVICE_ID`); **adaptación de escritura libre** — el front ofrece opciones predefinidas, pero el
+   docente siempre puede escribir libre. (d)
    **Arrancar con 1 pasada (2 máx)** del loop agéntico en el primer release; el loop con N iteraciones
    se sube después. (e) **MVP corre por keywords / full-text**; los embeddings quedan como estructura
    inerte (columna `embedding` nullable, sin índice vectorial) — ya conciliado en la implementación
-   (concilia el doble approach de la reunión 2026-06-05 con el criterio de diferir embeddings). Detalle
+   (concilia el doble approach con el criterio de diferir embeddings). Detalle
    en §6.7.
-7. **Un solo modo de respuesta (decisión 2026-06-08).** Se **eliminan los 3 modos**
+7. **Un solo modo de respuesta.** Se **eliminan los 3 modos**
    (`recommend` / `assist` / `guided`). Alizia tiene **una sola forma** de atender: responde directo
    cuando puede y pregunta/busca cuando le falta info. El docente **no elige modo**. Los 3 builders de
    `prompts.go` se funden en uno en el refactor a `prompts/`. Las columnas `mode` (`conversations`,
@@ -107,10 +108,10 @@ cualquier rama (alumno / valija / tema) puede invocarlo.
 | Variante | Cómo busca | Decisión |
 |---|---|---|
 | **Keyword / full-text** | palabras clave en Postgres (`tsvector`, `keywords[]`) | ✅ **primaria** |
-| **Vectorial / embeddings** | similitud semántica sobre vectores (pgvector) | ✅ **fallback** (decisión 2026-06-05) |
+| **Vectorial / embeddings** | similitud semántica sobre vectores (pgvector) | ✅ **fallback** |
 | Consulta directa (structured) | `SELECT` a tablas | ya se usa para el catálogo de devices |
 
-> **Doble approach (reunión 2026-06-05).** Se buscó primero por **keywords** (temas + nombres de
+> **Doble approach.** Se buscó primero por **keywords** (temas + nombres de
 > discapacidades; ej. "TEA"). Cuando el keyword no matchea, se cae a **embeddings**: se vectoriza
 > la consulta y se compara contra los vectores guardados. El modelo de embeddings **ya está
 > deployado** (Azure, el mismo que usa el *content generator*) y es barato, así que se suma como
@@ -138,7 +139,7 @@ Un documento puede colgar de otro (`autismo → estrategias en el aula → {caso
 `discapacidad visual → técnicas de lectura`) y tener **estados** (tipo Notion). Al ser markdown no
 estructurado, mañana se puede crear un documento nuevo sin tocar el schema.
 
-> **Granularidad (decisión 2026-06-05).** La búsqueda opera **siempre a nivel chunk** (uniforme).
+> **Granularidad.** La búsqueda opera **siempre a nivel chunk** (uniforme).
 > Para el MVP, con documentos chicos, **1 chunk = el documento entero**; cuando lleguen libros, solo
 > cambia el paso de *partir en chunks* (reusando la lógica del *content generator*) — **sin migración
 > de schema**. Los **libros quedan diferidos** (no los tenemos aún); la estructura se arma igual.
@@ -225,13 +226,13 @@ El "goal" concreto y medible se define después de cerrar este diseño (§12 pro
 
 ### Prompts en código (MVP) · DB versionada (Futuro)
 
-> **Re-scope 2026-06-02 (§0):** para el MVP los prompts **viven en código, en un paquete `prompts/`
+> **Re-scope (§0):** para el MVP los prompts **viven en código, en un paquete `prompts/`
 > aparte** — no en DB. La subsección de abajo describe el modelo de **DB versionada**, que se
 > **pospone a Futuro** (prompts en DB + backoffice; el detalle de tareas vive en el backlog). Se conserva como diseño de
 > referencia para cuando se retome.
 
 **MVP — prompts en código.** Sacar la capa 1 (persona, tono, lineamientos, few-shot, params) de
-`prompts.go` a un paquete `prompts/` con un archivo por modo (recommend / assist / guided). El
+`prompts.go` a un paquete `prompts/` con **un solo archivo** (una sola forma de responder, ver §0). El
 `{{output_contract}}` y el motor quedan en código. Sin cambio de comportamiento observable. Iterar
 = editar código + deploy (aceptable para el MVP). Esto NO incluye backoffice ni versionado.
 
@@ -379,24 +380,6 @@ Director (`Summarize` → `GROUP BY mode`) ignora las columnas nuevas y **sigue 
 
 Cuatro piezas, en orden de flujo:
 
-```mermaid
-flowchart LR
-    CA["1 · ContextAssembler<br/>junta TODO (cacheable)"]
-    PR["2 · PromptRenderer<br/>rellena template versionado de DB"]
-    AR["3 · AgenticRun + traza<br/>ejecuta y registra en ai_usage (enriquecida)"]
-    FF["4 · FeedbackFlywheel<br/>aprende y mejora contexto + prompt"]
-
-    CA --> PR --> AR --> FF
-    FF -. "realimenta el contexto y promueve versiones" .-> CA
-
-    style CA fill:#e3f2fd
-    style PR fill:#e8f5e9
-    style AR fill:#fff3e0
-    style FF fill:#fce4ec
-```
-
-Mismo flujo en ASCII (por si el IDE no renderiza Mermaid en el preview):
-
 ```text
 ┌───────────────┐    ┌───────────────┐    ┌───────────────┐    ┌───────────────┐
 │ 1 · Context   │ ─► │ 2 · Prompt    │ ─► │ 3 · Agentic   │ ─► │ 4 · Feedback  │
@@ -414,7 +397,7 @@ Mismo flujo en ASCII (por si el IDE no renderiza Mermaid en el preview):
 Antes del Context Assembler corre una pieza propia, el **Prompt 0**, que actúa como
 **router de entrada** y precede al flujo de las cuatro piezas. Su trabajo:
 
-- **Da la bienvenida.** **No hay elección de modo** (decisión 2026-06-08, ver §0): Alizia tiene
+- **Da la bienvenida.** **No hay elección de modo** (ver §0): Alizia tiene
   **una sola forma** de responder — contesta directo cuando puede y pregunta/busca cuando le falta
   info. Se eliminan `recommend` / `assist` / `guided`.
 - Pregunta **"¿de qué querés hablar?"** → el docente elige una **dimensión**:
@@ -476,23 +459,22 @@ profundizar bajo demanda sin inflar el prompt base:
 - `list_devices()` → catálogo de devices de la valija.
 
 *Acción (es Alizia quien crea alumnos/aulas y recursos — el docente no los crea directo, interactúa con Alizia):*
-- `create_student(...)` → da de alta un alumno. **Persistencia confirmada por el docente
-  (decisión 2026-06-05):** el docente no crea alumnos a mano; Alizia arma la ficha, **se la
+- `create_student(...)` → da de alta un alumno. **Persistencia confirmada por el docente:**
+  el docente no crea alumnos a mano; Alizia arma la ficha, **se la
   muestra y le pregunta si la guarda**, y recién con el OK la tool persiste vía el endpoint
   existente. La LLM arma los datos; la tool sólo persiste — no hay 2ª LLM.
 - `create_recurso(...)` → **muestra la ficha de frente al docente** y, **tras la confirmación
-  explícita del docente** (*"¿querés guardar el recurso?"* al cierre de la respuesta — decisión
-  2026-06-05), **persiste vía el endpoint existente** (la LLM arma el contenido; la tool sólo
+  explícita del docente** (*"¿querés guardar el recurso?"* al cierre de la respuesta), **persiste vía el endpoint existente** (la LLM arma el contenido; la tool sólo
   persiste — no hay 2ª LLM). Guarda con su origen (`source_conversation_id` / `source_message_id`)
   + materiales de valija usados + resultado; queda visible/filtrable por material / alumno / tema.
 - `relate_student_recurso(student_id, recurso_id)` → vincula la adaptación al alumno.
 
-> **Guardado siempre confirmado (decisión 2026-06-05).** Ni alumnos ni recursos se persisten en
+> **Guardado siempre confirmado.** Ni alumnos ni recursos se persisten en
 > silencio: Alizia **propone** (arma la ficha y la muestra), el **docente confirma**, y recién ahí
 > la tool escribe en DB vía el endpoint existente. El docente nunca da de alta entidades por su
 > cuenta — todo pasa por Alizia con su visto bueno explícito.
 
-> **Qué es un "recurso" — modelo híbrido (decisión 2026-06-08).** En la charla "recurso pedagógico"
+> **Qué es un "recurso" — modelo híbrido.** En la charla "recurso pedagógico"
 > es un **paraguas**: adaptación · PPI · informe de evolución · planificación de clase · versión
 > accesible (dislexia / baja visión). **No se crea una tabla genérica `recursos`.** Para el MVP:
 > - **`create_recurso` ≡ crear una fila en `adaptations`** (la tabla *OUTPUT PRINCIPAL* ya existente)
@@ -508,7 +490,7 @@ profundizar bajo demanda sin inflar el prompt base:
 > ⚠️ **Ojo de implementación:** "recurso" NO es `adaptation_resources` (archivos PDF adjuntos) ni
 > `device_resources` (archivos del catálogo). `create_recurso` escribe en **`adaptations`**.
 >
-> **Privacidad (decisión 2026-06-08): los recursos son privados de cada docente.** En el MVP no se
+> **Privacidad: los recursos son privados de cada docente.** En el MVP no se
 > comparten entre docentes de la misma organización (cada uno ve solo los suyos).
 
 *RAG (contenido pedagógico — libros/papers):*
@@ -541,7 +523,7 @@ El loop de `agentic.go` se mantiene. Se le suma: al terminar el turno, `recordAI
 student/classroom/profile que alimentaron el prompt — **sin PII en claro**). Sigue siendo
 *best-effort* (no bloquea la respuesta).
 
-**Compactación en 2 momentos** (reunión 2026-06-05). La memoria de conversación se maneja en dos puntos:
+**Compactación en 2 momentos**. La memoria de conversación se maneja en dos puntos:
 
 1. **Al fin de sesión** se **compacta** la conversación a un resumen de **un par de párrafos**
    (de qué se habló · resultado · qué fue lo último · de quién · datos principales) y se guarda en
@@ -564,83 +546,6 @@ contexto dirigido → loop agéntico (tools + RAG) → respuesta → cierre con 
 El RAG de contenido pedagógico es **transversal** (cualquier rama puede invocarlo) y la valija
 viaja en el **catálogo estático**, no por retrieval. El archivo editable está en
 [`flujo-implementacion-fusion.drawio`](./flujo-implementacion-fusion.drawio).
-
-```mermaid
-flowchart TD
-    DOC([Docente inicia sesión])
-
-    subgraph P0["0 · PROMPT DE APERTURA"]
-        BIENV["Bienvenida<br/>(una sola forma de responder)"]
-        ROUTER{{"¿De qué querés hablar?<br/>ROUTER detecta DIMENSIÓN<br/>(alumno · valija · tema)<br/>si es ambiguo, repregunta"}}
-        MEM["Recupera resúmenes de esa entidad<br/>(máx. 10 más recientes)"]
-        OUT0["Output = dimensión"]
-        BIENV --> ROUTER --> MEM --> OUT0
-    end
-
-    subgraph CTX["1 · CONTEXT ASSEMBLER (dirigido por el router)"]
-        EST["ESTÁTICO (eager + cacheado):<br/>identidad + lineamientos + contrato +<br/>catálogo valija + situaciones + tools"]
-        CUT["✂ corte de cache"]
-        DIN["DINÁMICO (lazy, sólo la dimensión pedida):<br/>alumno → perfil + PPI + adaptaciones + historial<br/>tema → se resuelve con el RAG<br/>valija → ya está en el catálogo estático"]
-        EST --- CUT --- DIN
-    end
-
-    PR["PROMPTS EN ARCHIVOS (Input)<br/>Capa 1 estáticos · Capa 2 dinámicos (no DB)<br/>Límites duros: no diagnostica · no reemplaza<br/>al docente · no informes clínicos"]
-
-    LLM["2 · ALIZIA LLM · loop agéntico<br/>(MVP: 1 pasada · 2 máx — N iteraciones = Futuro)"]
-    CONS["CONSULTA (turno del docente)"]
-    Q{"¿Le alcanza<br/>la info?"}
-
-    subgraph TOOLS["TOOLS (lectura + acción)"]
-        TL["get_student · get_student_history<br/>get_past_adaptations · list_classroom_students<br/>list_devices · create_student<br/>create_recurso (card al front)<br/>relate_student_recurso (card al front)"]
-    end
-
-    subgraph RAG["RAG DE CONTENIDO PEDAGÓGICO (temas · libros · papers)"]
-        RG["search_content: keyword / full-text (primario)<br/>embeddings inertes en MVP (pgvector = Futuro)<br/>get_content (chunk / documento)"]
-    end
-
-    CONFIRM{{"¿El docente confirma guardar?<br/>(alumno o recurso — nunca en silencio)"}}
-    ADAPT["Guardar recurso/adaptación (endpoint existente):<br/>origen (conversation/message) · was_edited<br/>+ materiales de valija usados + resultado<br/>visible/filtrable por material · alumno · tema"]
-
-    subgraph OUT["3 · RESPUESTA ESTRUCTURADA"]
-        O1["Texto al docente · 1-3 acciones, útil en &lt;1 min"]
-        O2["Dispositivo recomendado · DEVICE_ID"]
-        O3["Adaptación · ADAPTATION_JSON"]
-    end
-
-    OFFRAMP["OFF-RAMP (§6.7) · fuera de alcance<br/>clínico · crisis · pedido de diagnóstico<br/>'esto excede lo que puedo ver con vos,<br/>conviene hablarlo con orientación'"]
-    GUARD{{"GUARDRAIL por código (§6.7)<br/>DEVICE_ID existe en catálogo ·<br/>ADAPTATION_JSON parsea · no cruza límites"}}
-
-    RESP["Respuesta al docente"]
-    FIN["FIN DE LA SESIÓN"]
-
-    subgraph SAVE["4 · TRAZAR Y COMPACTAR"]
-        S1["ai_usage: modelo · latencia · tokens ·<br/>tool_calls · context_snapshot por IDs"]
-        S2["conversation_summaries: resumen (par de párrafos)<br/>+ tags/FKs a alumno · tema · valija (N relaciones)"]
-    end
-
-    DOC --> P0
-    P0 --> CTX
-    PR -. Input .-> CTX
-    CTX --> LLM --> CONS --> Q
-    Q -- "falta dato del alumno" --> TOOLS
-    Q -- "falta conocimiento (tema)" --> RAG
-    Q -- "fuera de alcance" --> OFFRAMP
-    Q -- "listo" --> OUT
-    TOOLS -. "vuelven al LLM" .-> LLM
-    RAG -. "vuelven al LLM" .-> LLM
-    TOOLS -- "create_student / create_recurso" --> CONFIRM
-    CONFIRM -- "sí" --> ADAPT
-    CONFIRM -. "no / seguir" .-> LLM
-    OUT --> GUARD
-    GUARD -- "ok" --> RESP
-    GUARD -. "inválido: reintento" .-> OFFRAMP
-    OFFRAMP --> RESP
-    RESP -. "seguir charlando" .-> CONS
-    RESP -- "fin" --> FIN
-    FIN --> SAVE
-```
-
-Mismo flujo en ASCII (por si el IDE no renderiza Mermaid en el preview):
 
 ```text
 Docente inicia sesión
@@ -689,18 +594,22 @@ Tres refuerzos sobre los **límites duros**, que hasta acá vivían solo en el p
    `ADAPTATION_JSON` **parsea** contra el contrato (§6.1 capa 2), y la salida no cruza límites duros.
    Si falla, se reintenta o se cae al off-ramp — **no se muestra una respuesta inválida**.
 
-2. **Output desde catálogo cerrado.** Las recomendaciones de dispositivo salen del catálogo
-   (`DEVICE_ID`), **no de texto libre** → el modelo no puede inventar una herramienta inexistente.
-   **Pendiente de decisión:** cuánto acotar también la **adaptación** (hoy contenido armado por la
-   LLM) hacia un set más cerrado.
+2. **Output: dispositivos cerrados, adaptación libre.** Las recomendaciones de
+   **dispositivo** salen del catálogo (`DEVICE_ID`), **no de texto libre** → el modelo no inventa una
+   herramienta inexistente. La **adaptación**, en cambio, queda de **escritura siempre libre**: el
+   **front ofrece opciones predefinidas para elegir** (por UX / comodidad del docente), pero el
+   docente **siempre puede escribir con total libertad**. El guardrail valida la salida igual.
 
 3. **Respuesta off-ramp (fuera de alcance).** **Primero Alizia intenta responder con lo que tiene a
    mano** (contexto del alumno, catálogo de la valija, RAG de contenido, resúmenes previos) — el
-   off-ramp es el **último recurso** (decisión 2026-06-08), no la salida por defecto. Solo cuando el
+   off-ramp es el **último recurso**, no la salida por defecto. Solo cuando el
    caso excede lo que Alizia puede/debe responder (algo clínico, una crisis, un pedido de
-   diagnóstico) hay una **respuesta prevista** que da un paso al costado — *"esto excede lo que puedo ver con vos, conviene hablarlo con el equipo de
-   orientación"* — en vez de improvisar. El docente es el especialista; Alizia reconoce el **borde** y
-   no opina donde no corresponde. **A validar con producto** el wording y los disparadores.
+   diagnóstico) hay una **respuesta prevista** que da un paso al costado — en vez de improvisar. El
+   docente es el especialista; Alizia reconoce el **borde** y no opina donde no corresponde.
+   **Wording por defecto:** *"Esto excede lo que puedo ver con vos. Por la
+   sensibilidad del tema, conviene que lo trabajes con el equipo de orientación / un profesional."*
+   Vive como **una constante editable en el paquete `prompts/`** (un solo lugar), así producto puede
+   ajustar el texto y los disparadores después sin tocar lógica.
 
 > **Arranque más chico.** Para el primer release el loop agéntico corre **1 pasada
 > (2 máx)**: contexto → respuesta, y si falta info **una sola búsqueda** (dato del alumno, o
@@ -720,25 +629,27 @@ Tres refuerzos sobre los **límites duros**, que hasta acá vivían solo en el p
 Tablas nuevas y `ALTER`s, agrupados por capa. DBML (para `db/schema.dbml` / dbdiagram.io)
 al final de la sección.
 
-### 7.0 Estado real del mecanismo de migraciones (verificado 2026-06-08)
+### 7.0 Estado real del mecanismo de migraciones
 
 > Relevamiento contra el schema actual (sin correr nada en prod). Esto condiciona cómo entran
 > las migraciones del context-engine.
 
-- **Migraciones con `golang-migrate` (adoptado 2026-06-08).** Se reemplazó el script casero por
+- **Migraciones con `golang-migrate`.** Se reemplazó el script casero por
   **golang-migrate**, que lleva tracking de versión en la tabla `schema_migrations` y ejecuta los
   `.up.sql` / `.down.sql` (rollback real). Los archivos ya tenían el formato `NNNNNN_nombre.up/down.sql`.
   `scripts/migrate.sh` ahora corre `migrate -path db/migrations -database "$DB_URL" up` (sirve para
   local y Railway). **Railway quedó marcada en versión `21`** (vía `migrate force 21`, porque ya tenía
   todo aplicado de antes); `migrate up` devuelve `no change`. Las migraciones nuevas entran con
   `migrate up` y quedan registradas. CLI: `go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest`.
-- **Colisión `000011` resuelta (2026-06-08).** Había dos migraciones con número `000011`
+- **Colisión `000011` resuelta.** Había dos migraciones con número `000011`
   (`create_ai_usage` y `drop_password_hash_not_null`). Se **renumeró `create_ai_usage` → `000014`**
   (era la más nueva y ningún doc citaba su número); `000011` queda en `drop_password_hash`, que es
   lo que referencian ADR 002 y `schema.dbml`. Son cambios independientes, así que el orden no afecta.
 - **`pgvector` disponible (v0.8.2), no instalado.** Para la Capa E alcanza con
-  `CREATE EXTENSION IF NOT EXISTS vector;` en su migración + fijar la **dimensión del modelo de
-  embeddings de Azure** (dato a confirmar con José) en `embedding vector(<dim>)`.
+  `CREATE EXTENSION IF NOT EXISTS vector;` en su migración. La **dimensión** se define en **un solo
+  punto de config** (env `EMBEDDING_DIM`, **provisional 1536**; a confirmar con José y trivial de
+  cambiar). La columna `embedding` queda como `vector` (sin dimensión fija) para no atarse; el
+  `vector(<dim>)` con índice se crea al activar embeddings (Futuro).
 - **`member_role` sin `maestra_integradora`** (hoy: `teacher · coordinator · admin · ministerio ·
   psicopedagogo`). Hay que agregarla con `ALTER TYPE ... ADD VALUE` (patrón de `000007`); ojo: en
   Postgres **no es reversible**, la `.down` no puede quitar el valor.
@@ -890,7 +801,7 @@ Table conversation_summaries {
   Note: "Resumen comprimido. Se escribe al FIN DE SESIÓN; se recupera por entidad al ABRIR (Prompt 0), máx 10 más recientes. Tema = keyword (topic_keywords); alumno/valija = FK real (tablas de cruce abajo)"
 }
 
-// Vínculos N de la conversación a entidades reales (decisión 2026-06-05, opción híbrida):
+// Vínculos N de la conversación a entidades reales (opción híbrida):
 Table conversation_summary_students {
   conversation_id bigint [ref: > conversation_summaries.conversation_id, not null]
   student_id bigint [ref: > students.id, not null]
@@ -940,7 +851,7 @@ Table response_examples {
 // ============ CAPA D ============
 Table prompt_templates {
   id bigserial [pk, increment]
-  key varchar [not null]          // recommend / assist / guided
+  key varchar [not null]          // un solo modo en el MVP (Futuro: presets de tono)
   name varchar
   indexes { key [unique] }
 }
@@ -959,7 +870,7 @@ Table prompt_versions {
 }
 
 // ============ CAPA E — Contenido pedagógico (RAG) ============
-// Doble approach (decisión 2026-06-05): keyword-first + embeddings (pgvector) fallback.
+// Doble approach: keyword-first + embeddings (pgvector) fallback.
 // Granularidad a nivel chunk; en el MVP 1 chunk = documento entero (sin migración al sumar libros).
 Table pedagogical_content {                              // el documento / metadata + jerarquía
   id bigserial [pk, increment]
@@ -998,122 +909,52 @@ Table pedagogical_content_chunks {                       // los pedacitos buscab
 
 ### 7.1 Diagrama entidad-relación (nuevo + existente)
 
-> Verde = tablas nuevas · Gris = tablas existentes que se modifican (ALTER). El resto del
-> esquema actual (`db/schema.dbml`) se mantiene igual.
+> `[NUEVO]` = tablas nuevas · `[ALTER]` = tablas existentes que se modifican · `[FUTURO]` = fuera
+> del MVP. El resto del esquema actual (`db/schema.dbml`) se mantiene igual.
 
-```mermaid
-erDiagram
-    organizations ||--o{ users : tiene
-    organizations ||--o{ students : tiene
-    classrooms ||--o{ students : agrupa
-    users ||--o| teacher_profiles : "perfil 1:1 (NUEVO)"
-    students ||--o| student_profiles : "perfil 1:1"
+```text
+Leyenda:  ||--o{ uno-a-muchos   ||--o| uno-a-uno   }o--|| muchos-a-uno
+          ..o{ relación lógica (no FK)   [NUEVO] [ALTER] [FUTURO]
 
-    student_profiles ||--o{ student_diagnoses : "tiene (NUEVO)"
-    diagnoses_catalog ||--o{ student_diagnoses : "clasifica (NUEVO)"
-    students ||--o| ppi : "tiene PPI 1:1 (NUEVO)"
-    situations_catalog ||..o{ student_profiles : "etiqueta vía situation_codes (NUEVO)"
+EXISTENTES (núcleo)
+  organizations ||--o{ users · students · classrooms · ramps · devices ·
+                       adaptations · conversations · ai_usage
+  classrooms    ||--o{ students
+  students      ||--o| student_profiles                       (1:1)
+  ramps         ||--o{ devices
+  devices       ||--o{ device_resources
+  students      ||--o{ adaptations
+  adaptations   ||--o{ adaptation_devices }o--|| devices       (M:N materiales de valija)
+  adaptations   ||--o{ adaptation_resources
+  conversations ||--o{ conversation_messages
 
-    conversations ||--o| conversation_summaries : "resume (NUEVO)"
-    conversations ||--o{ conversation_messages : contiene
-    conversation_summaries ||--o{ conversation_summary_students : "liga alumnos (NUEVO)"
-    conversation_summaries ||--o{ conversation_summary_devices : "liga valija (NUEVO)"
-    students ||--o{ conversation_summary_students : "aparece en (NUEVO)"
-    devices ||--o{ conversation_summary_devices : "aparece en (NUEVO)"
-    students ||--o| student_insights : "memoria (NUEVO)"
+NUEVAS — MVP (context-engine)
+  users                  ||--o| teacher_profiles              (1:1)            [NUEVO]
+  students               ||--o| ppi                           (1:1)            [NUEVO]
+  student_profiles       ||--o{ student_diagnoses                              [NUEVO]
+  diagnoses_catalog      ||--o{ student_diagnoses                              [NUEVO]
+  situations_catalog     ..o{  student_profiles  (vía situation_codes[])       [NUEVO]
+  conversations          ||--o| conversation_summaries        (1:1)            [NUEVO]
+  conversation_summaries ||--o{ conversation_summary_students }o--|| students  [NUEVO]
+  conversation_summaries ||--o{ conversation_summary_devices  }o--|| devices   [NUEVO]
+  organizations          ||--o{ response_examples                              [NUEVO]
+  pedagogical_content    ||--o{ pedagogical_content  (parent_id, self-ref)     [NUEVO]
+  pedagogical_content    ||--o{ pedagogical_content_chunks                     [NUEVO]
 
-    students ||--o{ adaptations : recibe
-    conversations ||--o{ adaptations : "origina (ALTER: source_*)"
-    conversation_messages ||--o{ adaptations : "origina (ALTER: source_*)"
+ALTER sobre tablas existentes
+  adaptations  + source_conversation_id, source_message_id, was_edited        [ALTER]
+       (liga la adaptación = "recurso" con la conversación que la originó)
+  students     + birthdate, age_range, grade_level, preferred_name            [ALTER]
+  student_profiles + support_level, strengths[], interests[], triggers[],
+       effective/ineffective_strategies[], situation_codes[],
+       has_therapeutic_companion, environment_notes                           [ALTER]
+  ai_usage     + conversation_id, message_id, prompt_version_id, model,
+       latency_ms, tool_calls, context_snapshot   (sin FK: traza por IDs)     [ALTER]
 
-    prompt_templates ||--o{ prompt_versions : versiona
-    prompt_versions ||--o{ ai_usage : "se ejecuta como (ALTER)"
-    conversations ||--o{ ai_usage : "traza (ALTER)"
-    organizations ||--o{ response_examples : "few-shot golden (NUEVO)"
-    pedagogical_content ||--o{ pedagogical_content : "capítulo/sección (NUEVO)"
-    pedagogical_content ||--o{ pedagogical_content_chunks : "se parte en chunks (NUEVO)"
-
-    teacher_profiles {
-        bigserial id PK
-        bigint user_id FK "1:1"
-        varchar age_range "nullable"
-        date birthdate "nullable"
-        text_array subjects "nullable"
-        varchar tone_preference "nullable"
-    }
-    student_diagnoses {
-        bigserial id PK
-        bigint student_profile_id FK
-        bigint diagnosis_id FK
-        varchar severity "nullable - sensible"
-    }
-    situations_catalog {
-        bigserial id PK
-        varchar code "unique por org"
-        varchar name
-        varchar phase "preventiva/durante/cierre"
-    }
-    ppi {
-        bigserial id PK
-        bigint student_id FK "unique 1:1"
-        text_array objectives "nullable"
-        varchar status "draft/active/archived"
-    }
-    student_insights {
-        bigserial id PK
-        bigint student_id FK "unique"
-        text summary
-        text_array key_learnings
-    }
-    prompt_versions {
-        bigserial id PK
-        bigint template_id FK
-        integer version
-        text body "con placeholders"
-        varchar status "draft/active/archived"
-    }
-    ai_usage {
-        bigserial id PK
-        bigint prompt_version_id FK "nullable (ALTER)"
-        bigint conversation_id FK "nullable (ALTER)"
-        integer total_tokens "ya existe"
-        integer latency_ms "nullable (ALTER)"
-        jsonb context_snapshot "IDs, sin PII (ALTER)"
-    }
-    response_examples {
-        bigserial id PK
-        varchar mode
-        varchar label "golden/bad"
-        text response
-    }
-    pedagogical_content {
-        bigserial id PK
-        bigint parent_id FK "nullable - self-ref"
-        varchar type "libro/paper/material"
-        varchar title
-        varchar status "draft/published/archived"
-        text_array keywords "temas + discapacidades"
-    }
-    pedagogical_content_chunks {
-        bigserial id PK
-        bigint content_id FK
-        text chunk_text
-        text_array tags
-        vector embedding "pgvector - fallback"
-    }
-    conversation_summaries {
-        bigint conversation_id PK "1:1"
-        text summary "par de párrafos"
-        text_array topic_keywords "temas"
-    }
-    conversation_summary_students {
-        bigint conversation_id FK
-        bigint student_id FK
-    }
-    conversation_summary_devices {
-        bigint conversation_id FK
-        bigint device_id FK
-    }
+FUTURO (no entra al MVP)
+  prompt_templates ||--o{ prompt_versions                                     [FUTURO]
+  prompt_versions  ..o{  ai_usage  (prompt_version_id, sin FK en el MVP)      [FUTURO]
+  students         ||--o| student_insights         (1:1)                     [FUTURO]
 ```
 
 ---
@@ -1164,10 +1005,14 @@ bloqueado por datos faltantes.
 
 ## 9. Prompts versionados en DB  — ⚠️ FUTURO (ver §0)
 
-> **Re-scope 2026-06-02:** esta sección describe el modelo de **prompts en DB versionada**, que
+> **Re-scope:** esta sección describe el modelo de **prompts en DB versionada**, que
 > se **pospuso a Futuro** (prompts en DB + backoffice; ver backlog). En el MVP los prompts viven en un **paquete de
 > código** `prompts/` (§0, §5). Lo de abajo se conserva como diseño de referencia y como **insumo
 > de contenido** (el texto de los `body` aplica igual, vivan en código o en DB).
+>
+> **Nota de modo:** esta sección se escribió cuando existían 3 modos (`recommend`/`assist`/`guided`).
+> Por §0 hay **un solo modo** de respuesta; la estructura por modo de abajo queda como material de
+> referencia (el contenido de los `body` sigue siendo válido, fusionado en una sola forma).
 
 > **Contenido fuente de la v1.** El `body` de la primera versión sale de los **lineamientos
 > del MVP**: los 3 ejes (principios pedagógicos, de funcionamiento y de uso) y los Criterios
@@ -1676,22 +1521,27 @@ user: Hoy toca producción escrita y Juan no arranca, ¿cómo lo encaro?
 
 ## 10. Loop de self-improvement (flywheel)  — ⚠️ FUTURO (ver §0)
 
-> **Re-scope 2026-06-02:** todo el flywheel (golden few-shot, win-rate, A/B, job batch) se
+> **Re-scope:** todo el flywheel (golden few-shot, win-rate, A/B, job batch) se
 > **pospuso a Futuro** (ver backlog). El MVP arranca sin retroalimentación automática; se
 > evalúa con las primeras pruebas manuales. Diseño de referencia debajo.
 
-```mermaid
-flowchart LR
-    A[Alizia propone<br/>una adaptación] --> B[CAPTURA señales]
-    B --> B1[Resultado en aula<br/>adaptations.status:<br/>funcionó / para_ajustar]
-    B --> B2[Aceptación implícita<br/>guardada sin editar<br/>was_edited=false]
-    B1 & B2 --> C[AGREGA - job batch]
-    C --> C1[Regenera student_insights<br/>+ conversation_summaries]
-    C --> C2[Win-rate por<br/>prompt_version]
-    C --> C3[Promueve lo que funcionó<br/>→ response_examples golden]
-    C1 & C3 --> D[APLICA en el<br/>próximo prompt]
-    D --> A
-    C2 --> E[A/B: gana la versión<br/>con mayor win-rate] --> D
+```text
+  [Alizia propone una adaptación] ◄───────────────────────────────┐
+            │                                                       │
+            ▼                                                       │
+  [CAPTURA señales]                                                 │
+     ├─ Resultado en aula (adaptations.status: funcionó/para_ajustar) — oro
+     └─ Aceptación implícita (guardada sin editar · was_edited=false)
+            │                                                       │
+            ▼                                                       │
+  [AGREGA · job batch]                                              │
+     ├─ Regenera student_insights + conversation_summaries         │
+     ├─ Win-rate por prompt_version ─► [A/B: gana la versión ──────►┤
+     │                                  con mayor win-rate]         │
+     └─ Promueve lo que funcionó → response_examples (golden)       │
+            │                                                       │
+            ▼                                                       │
+  [APLICA en el próximo prompt] ─────────────────────────────────►─┘
 ```
 
 **Señales (por valor):**
@@ -1791,7 +1641,7 @@ revertir.
 
 ## 12. Fases / roadmap (insumo para el goal)
 
-> **Re-scope 2026-06-02 (§0).** El roadmap se reordena en **MVP** y **Futuro**. Cada fase entrega
+> **Re-scope (§0).** El roadmap se reordena en **MVP** y **Futuro**. Cada fase entrega
 > valor sola y respeta migraciones inmutables/incrementales.
 
 ### 🟢 MVP
@@ -1799,7 +1649,7 @@ revertir.
 | Fase | Entrega | Riesgo |
 |---|---|---|
 | **0 — Traza mínima** | `ALTER ai_usage` (columnas de traza); `adaptations.source_message_id`/`source_conversation_id`/`was_edited`. Registrar sin cambiar comportamiento (solo logging, sin métricas). | bajo |
-| **1 — Contexto** | `teacher_profiles`; ALTER `students`/`student_profiles`; `situations_catalog`; `diagnoses_catalog`/`student_diagnoses`; `ppi`; rol **maestra integradora**; **Prompt 0 / router de apertura** (bienvenida + modo recommend/assist/guided + elección de dimensión alumno/valija/tema, que dirige la carga lazy del contexto); **Context Assembler** + tools de lectura y **tools de acción** (`create_student`, `create_recurso`, `relate_student_recurso`). | medio |
+| **1 — Contexto** | `teacher_profiles`; ALTER `students`/`student_profiles`; `situations_catalog`; `diagnoses_catalog`/`student_diagnoses`; `ppi`; rol **maestra integradora**; **Prompt 0 / router de apertura** (bienvenida + elección de dimensión alumno/valija/tema, que dirige la carga lazy del contexto; una sola forma de responder); **Context Assembler** + tools de lectura y **tools de acción** (`create_student`, `create_recurso`, `relate_student_recurso`). | medio |
 | **2 — RAG de contenido pedagógico** | `pedagogical_content` + `pedagogical_content_chunks` (jerárquico) + seed; **keyword-first + embeddings (pgvector) fallback** + ranker; tools `search_content` / `get_content`. Reusa el chunking del *content generator*; el modelo de embeddings **ya está deployado** (Azure, barato). Plan: DB local + agente en script + validar el retrieval primero. No toca la valija (sigue como catálogo en contexto). | medio |
 | **3 — Prompts en código** | Sacar la capa 1 de `prompts.go` a un paquete `prompts/`; los 3 `body` ahí. Sin DB. | bajo |
 | **4 — Memoria (resumen)** | `conversation_summaries` + job; usar el resumen en `capMessages` (compactado en DB) en vez de descartar. | medio |
@@ -1821,7 +1671,7 @@ qué contexto → qué resultado es barato y deja la base lista para medir más 
 
 ## 13. Métricas de éxito  — ⚠️ FUTURO (ver §0)
 
-> **Re-scope 2026-06-02:** la medición formal (win-rate, etc.) depende del flywheel, que es
+> **Re-scope:** la medición formal (win-rate, etc.) depende del flywheel, que es
 > Futuro. En el MVP la validación es **cualitativa con las primeras pruebas** ("preguntémosle algo
 > a Alizia y veamos si trae bien la info"). Estas métricas quedan como objetivo a futuro.
 
