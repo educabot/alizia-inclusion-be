@@ -1,220 +1,164 @@
-# Backlog Context Engine — DOCUMENTO DE TAREAS (fuente de verdad del backlog)
+# Backlog Context Engine — DOCUMENTO DE TAREAS (vista de producto)
 
-> **Spec / diseño (el "normal"):** [`alizia-context-engine.md`](./alizia-context-engine.md) — el *cómo* a fondo (modelo de datos, DBML, validaciones).
-> **Este doc:** el *qué* y el *en qué orden* — las historias y subtareas tal como están en Jira.
->
-> **Decisión final (Juan, 2026-06-02):** **NO hay épicas intermedias.** Todo cuelga de la épica **AlizIA Inclusión - Chubut (ALZ-246)**.
-> **Conteo definitivo: 10 Historias · 30 Subtareas.** (El "4" y el "6" de versiones anteriores eran cantidades de *épicas* de modelos descartados, no de historias.)
+> **Spec / diseño (el "normal"):** [`alizia-context-engine.md`](./alizia-context-engine.md) — el *cómo* a fondo (modelo de datos, DBML, RAG, prompts, validaciones).
+> **Este doc:** el *qué* en clave de producto — **historias concisas y testeables** (para demo de producto y para QA). El detalle técnico vive en el spec; acá no se enumeran subtareas internas.
 
-## Jerarquía (3 niveles, lo que soporta Jira)
+## Scope del MVP (modelo fusionado, 2026-06-04)
 
-```
-ALZ-246 · AlizIA Inclusión - Chubut        (ÉPICA — la única)
- └─ HU-n   (Historia)   "Como… quiero… para…" + criterios de aceptación
-      └─ T-n.k  (Subtarea)   trabajo técnico
-```
+- **Apertura con router**: Alizia recibe, ofrece modo (recommend / assist / guided) y pregunta de qué hablar (alumno / valija / tema); con eso decide qué contexto cargar.
+- **Valija en contexto**: el catálogo de dispositivos viaja en el prompt (no usa RAG).
+- **RAG sólo de contenido pedagógico** (libros / papers / material que nos brinden), por keywords contra Postgres, sin vectores. Es transversal a cualquier rama.
+- **Tools** de lectura + **acción** (crear alumno, crear recurso/adaptación, vincular) + RAG.
+- **Prompts en código** (paquete aparte), no en DB. **Historial compactado en DB** (2 momentos: al cerrar y al reabrir).
+- **Quedan a Futuro**: memoria viva (insights), flywheel (golden / win-rate / A/B), prompts editables desde backoffice, archivado en buckets GCP.
 
-- Códigos: **HU-{n}** Historia · **T-{n}.{k}** Subtarea (la `k` corre dentro de la historia `n`).
-- Historias en formato caso de uso testeable: *"Como {user} quiero {resultado} para {motivo}"*, lenguaje común, con todos los criterios de aceptación.
-
-## Índice de las 10 Historias (key Jira → título)
-
-| HU | Jira | Título | Subtareas |
-|---|---|---|---|
-| HU-1 | ALZ-449 | Trazar cada turno y la aceptación implícita | T-1.1 · T-1.2 (2) |
-| HU-2 | ALZ-394 | Alizia usa el contexto del alumno en su respuesta | T-2.1 … T-2.7 (7) |
-| HU-3 | ALZ-395 | Profundizar bajo demanda con tools agénticas | T-3.1 (1) |
-| HU-4 | ALZ-396 | Editar y publicar un prompt desde DB sin deploy (validación + fallback) | T-4.1 … T-4.6 (6) |
-| HU-5 | ALZ-397 | La conversación larga conserva memoria (resumen) | T-5.1 · T-5.2 (2) |
-| HU-6 | ALZ-398 | Memoria viva del alumno entre sesiones (insights) | T-6.1 (1) |
-| HU-7 | ALZ-450 | Ejemplos golden alimentan el few-shot (cold-start) | T-7.1 · T-7.2 (2) |
-| HU-8 | ALZ-400 | Medir si el sistema mejora (win-rate y métricas) | T-8.1 (1) |
-| HU-9 | ALZ-399 | Promover golden y correr A/B entre versiones | T-9.1 · T-9.2 (2) |
-| HU-10 | ALZ-402 | Contenido pedagógico base del prompt | T-10.1 … T-10.6 (6) |
-
-**Totales: 10 Historias · 30 Subtareas · 1 sola épica (Chubut).**
+Todo cuelga de la épica **AlizIA Inclusión - Chubut (ALZ-246)**.
 
 ---
 
-# HU-1 · Trazar cada turno y la aceptación implícita  (ALZ-449)
+## Resumen
 
-**Como** equipo de Alizia **quiero** registrar en cada interacción qué se pidió, qué se respondió y si el docente lo aprovechó, **para** medir y mejorar las recomendaciones con datos reales.
+### 🟢 MVP — 6 historias
 
-**Criterios de aceptación**
-- Cada turno guarda en `ai_usage`: modelo, latencia, tool calls, `conversation_id`, `message_id` y un snapshot de contexto con **IDs (no PII en claro)**.
-- Una adaptación creada desde una sugerencia guarda su origen y queda marcada según se editó o no antes de guardar.
-- El tablero del Director sigue funcionando; filas viejas con los campos nuevos en `NULL`.
-- Registro best-effort: si falla, no bloquea la respuesta.
+| HU | Título (producto) | Se demuestra mostrando… |
+|---|---|---|
+| HU-1 | Apertura guiada: elijo modo y de qué hablar | la bienvenida con 3 modos + la pregunta de dimensión que enruta |
+| HU-2 | Respuestas pertinentes a mi alumno | una sugerencia que usa el perfil/situaciones/PPI del chico |
+| HU-3 | Consultar contenido pedagógico (temas) | Alizia trayendo info de un libro/paper cargado, sin inventar |
+| HU-4 | Recomendar la valija y guardar adaptaciones | la ficha del recurso al frente, guardada y vinculada al alumno |
+| HU-5 | La conversación conserva memoria | una charla larga que no pierde el hilo y retoma al volver |
+| HU-6 | Alizia responde dentro de su marco pedagógico | respuestas accionables con límites respetados + traza por turno |
 
-- **T-1.1 · Enriquecer `ai_usage` con columnas de traza** (ALZ-403)
-  `ALTER ai_usage`: `latency_ms`, `model`, `tool_calls`, `conversation_id`, `message_id`, `context_snapshot` (IDs, no PII). Filas viejas en `NULL`.
-- **T-1.2 · Ligar adaptaciones a su origen + señal de aceptación implícita** (ALZ-404)
-  La adaptación persiste `source_conversation_id` y `source_message_id`; `was_edited=false` si se guardó tal cual, `true` si se modificó.
+### 🔵 Futuro (post-MVP)
 
----
-
-# HU-2 · Alizia usa el contexto del alumno en su respuesta  (ALZ-394)
-
-**Como** docente **quiero** que Alizia tenga en cuenta el contexto de mi alumno (perfil, situaciones de aula, PPI, entorno) al responder, **para** que las sugerencias sean pertinentes a ese chico y no genéricas.
-
-**Criterios de aceptación**
-- Con contexto cargado, la respuesta/el prompt lo refleja.
-- Campos ausentes (todos opcionales) no imprimen "N/A" ni rompen.
-- No se filtra PII a logs.
-
-- **T-2.1 · Perfil del docente (`teacher_profiles`)** (ALZ-405)
-  `teacher_profiles` 1:1 con `users`: `age_range`/`birthdate` (nullable), `years_experience`, `specialization`, `subjects[]`, `tone_preference`, `bio`. Aislamiento por organización.
-- **T-2.2 · Enriquecer alumno (`students` / `student_profiles`)** (ALZ-406)
-  `students`: `birthdate`, `age_range`, `grade_level`, `preferred_name` (nullable). `student_profiles`: `support_level`, `strengths[]`, `interests[]`, `triggers[]`, `effective_strategies[]`, `ineffective_strategies[]`, `situation_codes[]`, `has_therapeutic_companion`, `environment_notes`. Todo opcional.
-- **T-2.3 · Catálogo de situaciones observables (`situations_catalog`)** (ALZ-407)
-  Tabla global (con `organization_id` para per-org futuro), `phase` nullable. El seed de las ~15 situaciones se carga por **script de entorno**, no en la migración.
-- **T-2.4 · Diagnósticos estructurados opcionales** (ALZ-408)
-  `diagnoses_catalog` (global) + `student_diagnoses` (M2M con `severity`). Opcional y secundario a las situaciones; Alizia puede sugerir, nunca exigir. Seed por script de entorno.
-- **T-2.5 · Proyecto Pedagógico Individual (`ppi`)** (ALZ-409)
-  `ppi` 1 por alumno, todos los campos nullable. Cuando existe, es contexto de primera línea.
-- **T-2.6 · Rol maestra integradora + asignación** (ALZ-410)
-  Sumar `maestra_integradora` al enum `member_role` y modelar la asignación integradora↔alumno. RBAC fuera de scope (otro equipo).
-- **T-2.7 · Context Assembler (`BuildPromptContext`)** (ALZ-411)
-  Usecase que junta todo el contexto en un struct tipado, ordenado para caching (prefijo invariante adelante, variable atrás). Punto de convergencia de las tareas anteriores.
+| Tema | En una línea |
+|---|---|
+| Memoria viva del alumno | recuerda entre sesiones qué funcionó con cada chico (insights) |
+| Aprendizaje por resultado (flywheel) | golden few-shot + win-rate + A/B para mejorar sola |
+| Prompts editables desde backoffice | producto edita/publica el comportamiento sin deploy (DB versionada) |
+| Archivado en buckets GCP | conversaciones viejas a almacenamiento barato para analytics/ML |
 
 ---
 
-# HU-3 · Profundizar bajo demanda con tools agénticas  (ALZ-395)
+# 🟢 MVP
 
-**Como** docente **quiero** que Alizia traiga más datos del alumno cuando hace falta (historial, adaptaciones, aprendizajes), **para** que profundice sin que yo le repita todo.
+## HU-1 · Apertura guiada: elijo modo y de qué hablar
 
-**Criterio de aceptación**
-- Disponibles `get_student_history`, `get_past_adaptations`, `get_student_insights`; el dispatcher vive en el usecase (clean architecture); el modelo las usa bajo demanda.
+**Como** docente **quiero** que Alizia me reciba, me deje elegir cómo trabajar y me pregunte de qué quiero hablar **para** entrar directo a lo que necesito sin configurar nada.
 
-- **T-3.1 · Tools `get_student_history` / `get_past_adaptations` / `get_student_insights`** (ALZ-412)
-  Implementar las 3 tools y su dispatcher en el usecase. `get_student_insights` degrada hasta que exista la memoria viva.
+**Se demuestra (producto):** abro una sesión → veo el saludo y **tres opciones de modo** (recommend / assist / guided) → elijo una → Alizia pregunta **"¿de qué querés hablar?"** → elijo **un alumno**, **la valija** o **un tema** → Alizia arranca enfocada en eso.
 
----
+**Criterios de aceptación (QA):**
+- Al iniciar una sesión se muestran la **bienvenida** y las **3 opciones de modo**.
+- Tras elegir el modo, Alizia **pregunta la dimensión** (alumno / valija / tema).
+- Si la respuesta es ambigua, **repregunta** en lugar de asumir.
+- Lo elegido **determina qué contexto se carga**: si elijo "tema" no se carga perfil de un alumno; si elijo "alumno" se carga su perfil; la valija siempre está disponible en el catálogo.
+- Si reabro una conversación previa, la apertura **retoma de qué veníamos hablando**.
 
-# HU-4 · Editar y publicar un prompt desde DB sin deploy (validación + fallback)  (ALZ-396)
-
-**Como** equipo de producto **quiero** ajustar y publicar el comportamiento de Alizia sin esperar un deploy (con validación previa y fallback), **para** iterar rápido y sin riesgo de romper producción.
-
-**Criterios de aceptación**
-- Edito un `body`, lo publico (pasa la validación) y el runtime usa la nueva versión; las versiones no se pisan.
-- Una versión inválida no se activa (queda en `draft`, sigue la activa).
-- Si la versión activa falla en runtime, cae a la última versión buena o al prompt de código.
-- El comportamiento observable no cambia respecto al prompt actual.
-
-- **T-4.1 · Modelo de datos versionado (`prompt_templates` + `prompt_versions`)** (ALZ-413)
-  `prompt_templates(key unique)` con `key ∈ {recommend, assist, guided}`; `prompt_versions(template_id, version, body, model, params, status∈{draft,active,archived})`, unique `(template_id, version)`. `ai_usage.prompt_version_id` referencia esta tabla.
-- **T-4.2 · Renderer de templates (placeholders + cache)** (ALZ-414)
-  Motor estilo Mustache/Handlebars (lib probada, p. ej. `raymond`): soporta bloque `{{x}}`, campo `{{x.y}}` y flag `{{#x}}…{{/x}}`. Cache en memoria de la versión activa; invalida al publicar.
-- **T-4.3 · Validación al publicar (los 4 checks)** (ALZ-415)
-  Al publicar verifica: (1) cada `{{x}}` existe en el catálogo; (2) flags balanceados; (3) `{{output_contract}}` intacto; (4) nada dinámico antes del corte de cache. Si falla, no se activa.
-- **T-4.4 · Fallback a última versión buena** (ALZ-416)
-  Si la versión activa falla al renderizar/ejecutar, usa la última versión buena conocida; si no hay, el prompt de código. Loguea el incidente.
-- **T-4.5 · Migrar la capa 1 fuera de `prompts.go`** (ALZ-417)
-  Los 3 builders dejan de hardcodear la capa 1; el `{{output_contract}}` (capa 2) queda en código. Sin cambio de comportamiento observable.
-- **T-4.6 · Seed inicial de los 3 `body` (recommend / assist / guided)** (ALZ-418)
-  Una `version` `active` por modo con el `body` real (no ilustrativo) que pasa la validación. Seed por script de entorno.
+*Spec: §6.0 (router de apertura), §8 (carga dirigida).*
 
 ---
 
-# HU-5 · La conversación larga conserva memoria (resumen)  (ALZ-397)
+## HU-2 · Respuestas pertinentes a mi alumno
 
-**Como** docente **quiero** que Alizia no pierda el hilo en conversaciones largas, **para** seguir trabajando sin recontextualizar todo.
+**Como** docente **quiero** que, cuando hable de un alumno, las sugerencias estén pensadas para **ese** chico (perfil, situaciones de aula, PPI, entorno) **para** que no sean genéricas.
 
-**Criterio de aceptación**
-- Cuando el historial excede el presupuesto de tokens, se conserva system + últimos N + un resumen comprimido de lo viejo, en vez de tirar los mensajes.
+**Se demuestra (producto):** con un alumno que tiene perfil cargado (situación "no inicia la tarea", fortalezas, PPI), pregunto cómo encarar una actividad → la respuesta **menciona y usa** esos datos. Comparado con un alumno sin datos, la respuesta sigue siendo útil pero más general.
 
-- **T-5.1 · Resumen de conversación (`conversation_summaries` + job)** (ALZ-419)
-  `conversation_summaries` 1:1 con `conversations`; un job genera/actualiza el resumen; el bloque `{{conversation_summary}}` lo consume.
-- **T-5.2 · Usar el resumen en `capMessages`** (ALZ-420)
-  `capMessages` usa el resumen en lugar de descartar historial cuando excede el presupuesto.
+**Criterios de aceptación (QA):**
+- Con perfil cargado, la respuesta **refleja** al menos las situaciones / fortalezas / PPI del alumno.
+- Los campos vacíos (todos opcionales) **no aparecen como "N/A"** ni rompen la respuesta.
+- Alizia puede **sugerir completar** datos faltantes; nunca los exige.
+- En los logs **no aparece PII** (nombres ni diagnósticos): sólo IDs.
 
----
-
-# HU-6 · Memoria viva del alumno entre sesiones (insights)  (ALZ-398)
-
-**Como** docente **quiero** que Alizia recuerde entre sesiones qué funcionó con mi alumno, **para** no explicárselo cada vez.
-
-**Criterio de aceptación**
-- `student_insights` (resumen + aprendizajes clave) 1 por alumno, regenerado por job batch desde sesiones y adaptaciones; el bloque `{{insights}}` lo consume.
-
-- **T-6.1 · Memoria viva del alumno (`student_insights`) + job batch** (ALZ-421)
-  Crear `student_insights` (`summary` + `key_learnings[]`) y el job batch que lo regenera. Habilita `get_student_insights`.
+*Spec: §6.2 (Context Assembler), §7 Capa A, §8.*
 
 ---
 
-# HU-7 · Ejemplos golden alimentan el few-shot (cold-start)  (ALZ-450)
+## HU-3 · Consultar contenido pedagógico (temas)
 
-**Como** equipo de Alizia **quiero** alimentarla con ejemplos de buenas respuestas, **para** que dé recomendaciones de calidad desde el día 1 aunque no haya historial.
+**Como** docente **quiero** preguntarle a Alizia sobre temas de inclusión (estrategias para autismo, técnicas de lectura para baja visión, etc.) y que responda con **material pedagógico real** (libros / papers cargados) **para** tener respuestas fundadas y no inventadas.
 
-**Criterios de aceptación**
-- Con ejemplos cargados se inyectan top-3 por relevancia **tras el corte de cache**.
-- Sin ejemplos, solo lineamientos.
+**Se demuestra (producto):** pregunto *"¿qué estrategias hay para un alumno con TEA que se desregula?"* → Alizia **busca en el contenido pedagógico** y responde con lo que encontró. Si pregunto algo que no está cargado, **lo aclara** y responde con los lineamientos base, sin inventar.
 
-- **T-7.1 · `response_examples` + seed curated (~15 casos)** (ALZ-422)
-  `response_examples` (origen curated/promovido, relevancia, modo) + seed curated de ~15 casos por script de entorno.
-- **T-7.2 · Selección de few-shot golden e inyección tras el corte** (ALZ-423)
-  El bloque `{{few_shot}}` se rellena con top-3 por relevancia y se ubica después del marcador de corte de cache.
+**Criterios de aceptación (QA):**
+- Una pregunta cuyo tema **está en el corpus** devuelve contenido de ese material (verificable contra el documento sembrado).
+- La búsqueda **tolera errores de tipeo** (reescribe la pregunta a keywords antes de buscar).
+- Devuelve **los más relevantes primero** (ranking por coincidencia de keywords).
+- Sin match → **no inventa**: usa los lineamientos base.
+- Es **transversal**: funciona hablando de un alumno, de un tema o de la valija.
+- La **valija NO** pasa por este buscador (va en el catálogo del prompt); el RAG es sólo para contenido pedagógico.
 
----
-
-# HU-8 · Medir si el sistema mejora (win-rate y métricas)  (ALZ-400)
-
-**Como** equipo de Alizia **quiero** medir si las recomendaciones mejoran versión a versión, **para** decidir con datos qué cambios mantener.
-
-**Criterio de aceptación**
-- Se computan win-rate (% `funcionó`), tasa de aceptación implícita, cobertura de contexto, costo por turno y % cache-hit, y la mejora por versión. Requiere la traza de HU-1.
-
-- **T-8.1 · Win-rate por versión + métricas de éxito** (ALZ-424)
-  Implementar el cálculo de las métricas anteriores por versión de prompt.
+*Spec: §0.1, §6.2 (`search_content` / `get_content`), §7 Capa E.*
 
 ---
 
-# HU-9 · Promover golden y correr A/B entre versiones  (ALZ-399)
+## HU-4 · Recomendar la valija y guardar adaptaciones
 
-**Como** equipo de Alizia **quiero** probar dos versiones en paralelo y promover la mejor automáticamente, **para** que Alizia mejore sola sin degradar la calidad.
+**Como** docente **quiero** que Alizia me recomiende dispositivos de la valija y que pueda **crear un alumno** o **guardar una adaptación/recurso** desde la conversación, vinculada al alumno **para** no rehacer el trabajo a mano.
 
-**Criterios de aceptación**
-- 2 versiones activas con split de tráfico; antes de promover corre el set de eval y compara; la promoción queda condicionada por win-rate; el job es idempotente y aislado del request path.
+**Se demuestra (producto):** pido una adaptación → Alizia propone usando **dispositivos de la valija** → me muestra **la ficha del recurso de frente** → la guardo → queda **vinculada al alumno** y registra de qué conversación salió.
 
-- **T-9.1 · A/B entre versiones + eval antes de promover** (ALZ-425)
-  Soporta 2 versiones activas con split; corre `response_examples` como eval y compara; promoción condicionada por win-rate.
-- **T-9.2 · Job batch del flywheel (cron interno)** (ALZ-426)
-  Lógica en `RunBatch(ctx)`, disparada por cron interno. Config por env (`FLYWHEEL_ENABLED` default `false`, `FLYWHEEL_CRON`). Idempotente (marca de agua), aislado (goroutine), observable (loguea procesadas/promovidos/duración).
+**Criterios de aceptación (QA):**
+- Alizia recomienda dispositivos del **catálogo de la valija** (identificados con su `DEVICE_ID`).
+- Puedo **crear un alumno** desde la conversación.
+- Al crear un recurso/adaptación, **se muestra la ficha al frente** y **se guarda con su origen** (conversación/mensaje) y con la marca de **si fue editada** antes de guardar.
+- El recurso queda **vinculado al alumno**.
 
----
-
-# HU-10 · Contenido pedagógico base del prompt  (ALZ-402)
-
-**Como** equipo pedagógico **quiero** dejar redactado el contenido base de Alizia (persona, marco, límites, formato, situaciones, ejemplos), **para** que sus respuestas sigan nuestros lineamientos de inclusión.
-
-**Criterio de aceptación**
-- Cada bloque existe y pasa el checklist del Apéndice A: persona, marco pedagógico, límites, formato de salida, situaciones y ejemplos golden de referencia.
-
-- **T-10.1 · Identidad y persona** (ALZ-427)
-  Quién es Alizia, a quién le habla, tono/registro, qué NO es y estilo de salida. Tono base literal.
-- **T-10.2 · Marco pedagógico (3 ejes + Criterios de AliZia + DUA)** (ALZ-428)
-  Texto real de los 3 ejes, Criterios de AliZia y marco DUA. Incluye "entrada pedagógica, no clínica".
-- **T-10.3 · Límites duros / guardrails** (ALZ-429)
-  Redacción oficial de los 3 límites (no diagnostica · no reemplaza al docente · no produce informes clínicos) y protocolos ante pedidos fuera de scope y situaciones de riesgo.
-- **T-10.4 · Reglas de formato de salida** (ALZ-430)
-  1–3 acciones, ≥3 niveles de diferenciación, "útil en <1 min" y la estructura por modo. Coherente con el `{{output_contract}}`.
-- **T-10.5 · Las ~15 situaciones observables (seed)** (ALZ-431)
-  Lista oficial de ~15 situaciones de aula con `code` + `name` (y `phase` si aplica), en formato consumible por el script de seed.
-- **T-10.6 · Few-shot golden curated (~15 casos)** (ALZ-432)
-  ~15 ejemplos golden (contexto → respuesta ideal), etiquetados por modo/situación, listos para el seed de `response_examples`.
+*Spec: §6.2 (tools de acción: `create_student` / `create_recurso` / `relate_student_recurso`), §7 Capa C.*
 
 ---
 
-## Dependencias (a nivel Historia)
+## HU-5 · La conversación conserva memoria
 
-- **HU-2 Contexto** habilita: HU-3 (tools), el renderer de **HU-4** y el few-shot de **HU-7**.
-- **HU-1 Traza** + **HU-4 Prompts** habilitan **HU-8** (medir mejora).
-- **HU-7** + **HU-8** habilitan **HU-9** (promover y A/B).
-- **HU-10 Contenido** habilita el seed real de **T-4.6** (3 body) y **T-7.1** (curated).
+**Como** docente **quiero** que Alizia no pierda el hilo en charlas largas y que al volver recuerde de qué veníamos **para** seguir trabajando sin recontextualizar todo.
 
-## Estado en Jira (2026-06-02)
+**Se demuestra (producto):** mantengo una conversación larga → sigue coherente, sin "olvidar" lo del principio → la cierro → vuelvo más tarde → Alizia **retoma con un resumen** de lo anterior.
 
-- Las 10 Historias cuelgan de **Chubut (ALZ-246)**, en **AI Sprint 36**, asignadas a Sebastian, con título HU-1…HU-10.
-- Las 30 Subtareas cuelgan de su historia (keys ALZ-403…432, según el mapeo de arriba).
-- **Pendiente cosmético:** los títulos de las 30 subtareas en Jira todavía arrastran numeración vieja (T-1.x/T-3.x); este documento define la numeración correcta T-1.1…T-10.6.
-- **Pendiente de limpieza (UI, bulk-delete):** issues cancelados con `[BORRAR]` y el modelo CE viejo (label `context-engine`).
+**Criterios de aceptación (QA):**
+- Una conversación que **excede el presupuesto de tokens** conserva el system + los últimos turnos + un **resumen comprimido** de lo viejo (no se tira el historial).
+- **Al cerrar** la sesión se genera/actualiza el **resumen compactado** en DB.
+- **Al abrir**, Alizia **recupera el resumen** de la conversación/entidad correspondiente (momento que dispara la apertura, HU-1).
+
+*Spec: §6.4 (compactación en 2 momentos), §7 Capa B.*
+
+---
+
+## HU-6 · Alizia responde dentro de su marco pedagógico
+
+**Como** equipo **quiero** que las respuestas de Alizia sigan nuestros lineamientos de inclusión, respeten sus límites duros, y que cada interacción quede registrada **para** garantizar calidad y poder depurar (y, más adelante, medir).
+
+**Se demuestra (producto):** cualquier recomendación llega con **1-3 acciones** ordenadas por impacto, con **niveles de diferenciación**, en lenguaje cálido y claro. Si pido un diagnóstico, Alizia **se corre y deriva**, no diagnostica.
+
+**Criterios de aceptación (QA):**
+- Las propuestas traen **1-3 acciones**, **≥3 niveles de diferenciación**, útiles en **<1 min**.
+- Alizia **nunca** diagnostica, **no** reemplaza al docente, **no** produce informes clínicos: ante el pedido, lo aclara y deriva sin cortar la charla.
+- Tono **cálido, español rioplatense, sin jerga clínica**.
+- Los **prompts viven en un paquete de código** (capa editable separada del motor); cambiar el texto no rompe el formato de salida.
+- **Cada turno deja traza**: modelo, latencia, tokens, tool calls y contexto por **IDs (sin PII)**; si el registro falla, **no bloquea** la respuesta.
+
+*Spec: §4 (principios), §6.1 (capas), §9.4 (bodies) y Apéndice A; traza §6.4 / §7 Capa C.*
+
+---
+
+# 🔵 Futuro (post-MVP)
+
+> Oportunidades de mejora una vez validado el MVP. Se describen en clave de valor; el detalle técnico está en el spec (§9, §10, §12).
+
+- **Memoria viva del alumno (insights).** Alizia recuerda entre sesiones qué funcionó con cada chico, sin que el docente se lo repita. *(spec §6.2, §7 Capa B — `student_insights`).*
+- **Aprendizaje por resultado (flywheel).** Las adaptaciones que funcionaron en el aula alimentan ejemplos golden; se mide win-rate por versión y se corren A/B para mejorar sola. *(spec §10, §13).*
+- **Prompts editables desde backoffice.** Producto/pedagogía ajustan y publican el comportamiento de Alizia sin esperar un deploy, con validación y fallback. *(spec §5, §9 — prompts en DB versionada).*
+- **Archivado en buckets GCP.** Conversaciones viejas a almacenamiento barato (file system) para liberar la DB y guardar datos recuperables para analytics/ML. *(spec §0, §12).*
+
+---
+
+## Dependencias (a nivel historia)
+
+- **HU-2 (contexto del alumno)** habilita HU-3 (el RAG usa la situación/`difficulties[]` como keywords de tema) y HU-4 (recomendaciones pertinentes).
+- **HU-1 (apertura/router)** dirige la carga de contexto de HU-2/HU-3 y consume el resumen de HU-5.
+- **HU-6 (marco + traza)** es transversal: aplica a las respuestas de todas las demás.
+- **HU-5 (memoria)** y **HU-6 (traza)** dejan la base sobre la que más adelante se montan memoria viva y flywheel (Futuro).
+
+## Sincronización con Jira (pendiente)
+
+> Esta versión reagrupa el backlog en **6 historias de producto**; la estructura anterior tenía 10 historias técnicas (épica `ALZ-246`). La conciliación de claves Jira (qué issues existentes se mantienen, fusionan o reetiquetan, y el reparenteo de subtareas) se hace en la tarea de **sync a Jira**, tomando este documento como fuente del *qué*.
