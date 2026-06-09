@@ -15,3 +15,8 @@ packages:
       AdaptationResourceProvider:
       ConversationProvider:
       ConversationSummaryProvider:
+      TeacherProfileProvider:
+      SituationCatalogProvider:
+      DiagnosisProvider:
+      PPIProvider:
+      IntegradoraAssignmentProvider:
