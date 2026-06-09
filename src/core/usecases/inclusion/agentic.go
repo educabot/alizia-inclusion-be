@@ -169,6 +169,34 @@ func inclusionTools() []providers.ToolDefinition {
 				"required": []string{"student_id"},
 			},
 		},
+		{
+			Name:        "search_content",
+			Description: "Busca material pedagógico real (libros / papers / guías) sobre un tema de inclusión. Reescribí la pregunta del docente a palabras clave (temas y discapacidades, ej. 'TEA autismo autorregulación') antes de llamar. Devuelve los fragmentos más relevantes con un preview. Si vuelve vacío, no inventes: respondé con los lineamientos base aclarando que no hay material cargado.",
+			Parameters: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"query": map[string]any{
+						"type":        "string",
+						"description": "Palabras clave del tema a buscar (temas + nombres de discapacidades).",
+					},
+				},
+				"required": []string{"query"},
+			},
+		},
+		{
+			Name:        "get_content",
+			Description: "Trae el contenido pedagógico completo de un documento por su id (obtenido de search_content), con todos sus fragmentos.",
+			Parameters: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"content_id": map[string]any{
+						"type":        "integer",
+						"description": "ID del documento pedagógico a recuperar.",
+					},
+				},
+				"required": []string{"content_id"},
+			},
+		},
 	}
 }
 
@@ -180,7 +208,11 @@ type inclusionDispatcher struct {
 	devices     providers.DeviceProvider
 	summaries   providers.ConversationSummaryProvider
 	adaptations providers.AdaptationProvider
+	content     providers.PedagogicalContentProvider
 }
+
+// defaultContentSearchLimit acota cuántos chunks devuelve el RAG por búsqueda.
+const defaultContentSearchLimit = 5
 
 func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call providers.ToolCall) (string, error) {
 	switch call.Name {
@@ -296,6 +328,40 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 			out[i] = lite
 		}
 		return marshalToolResult(map[string]any{"adaptations": out})
+
+	case "search_content":
+		if d.content == nil {
+			return "", fmt.Errorf("search_content no disponible")
+		}
+		var args struct {
+			Query string `json:"query"`
+		}
+		if err := json.Unmarshal([]byte(call.Arguments), &args); err != nil {
+			return "", fmt.Errorf("invalid arguments for search_content: %w", err)
+		}
+		results, err := d.content.SearchChunks(ctx, orgID, args.Query, defaultContentSearchLimit)
+		if err != nil {
+			return "", err
+		}
+		// Sin coincidencias: devolvemos lista vacía explícita para que la LLM
+		// caiga a los lineamientos base sin inventar.
+		return marshalToolResult(map[string]any{"results": results})
+
+	case "get_content":
+		if d.content == nil {
+			return "", fmt.Errorf("get_content no disponible")
+		}
+		var args struct {
+			ContentID int64 `json:"content_id"`
+		}
+		if err := json.Unmarshal([]byte(call.Arguments), &args); err != nil {
+			return "", fmt.Errorf("invalid arguments for get_content: %w", err)
+		}
+		content, err := d.content.GetContent(ctx, orgID, args.ContentID)
+		if err != nil {
+			return "", err
+		}
+		return marshalToolResult(content)
 
 	default:
 		return "", fmt.Errorf("unknown tool: %s", call.Name)
