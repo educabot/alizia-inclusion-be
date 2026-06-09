@@ -31,6 +31,13 @@ type Config struct {
 	// AIAgenticEnabled turns on the tool-calling (function calling) loop for the
 	// assist endpoint. Off by default until validated against the live AI provider.
 	AIAgenticEnabled bool
+
+	// EmbeddingDim is the dimension of the pedagogical-content embedding vectors.
+	// Single source of truth for the (Futuro) vector search: the embedding column
+	// stays inert in the MVP (keyword/full-text first), and the vector index needs
+	// a fixed dimension, so the real value must be confirmed against the Azure model
+	// before enabling it. Default 1536 (OpenAI/Azure text-embedding-3-small).
+	EmbeddingDim int
 }
 
 func Load() *Config {
@@ -53,6 +60,8 @@ func Load() *Config {
 		AICircuitCooldown:         time.Duration(boundedUintToInt(bcfg.GetEnvUint("AI_CIRCUIT_COOLDOWN_SEC", "30"))) * time.Second,
 
 		AIAgenticEnabled: bcfg.EnvOr("AI_AGENTIC_ENABLED", "false") == "true",
+
+		EmbeddingDim: boundedUintToInt(bcfg.GetEnvUint("EMBEDDING_DIM", "1536")),
 	}
 }
 
