@@ -141,13 +141,45 @@ func inclusionTools() []providers.ToolDefinition {
 				"properties": map[string]any{},
 			},
 		},
+		{
+			Name:        "get_student_history",
+			Description: "Devuelve un resumen de las conversaciones previas sobre un alumno (de qué se venía hablando). Útil para retomar el hilo sin recontextualizar todo.",
+			Parameters: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"student_id": map[string]any{
+						"type":        "integer",
+						"description": "ID del alumno cuyo historial de conversaciones se quiere recuperar.",
+					},
+				},
+				"required": []string{"student_id"},
+			},
+		},
+		{
+			Name:        "get_past_adaptations",
+			Description: "Lista las adaptaciones previas de un alumno con su estado y resultado en aula. Útil para no repetir lo que ya se probó y construir sobre lo que funcionó.",
+			Parameters: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"student_id": map[string]any{
+						"type":        "integer",
+						"description": "ID del alumno cuyas adaptaciones previas se quieren listar.",
+					},
+				},
+				"required": []string{"student_id"},
+			},
+		},
 	}
 }
 
 // inclusionDispatcher executes inclusionTools against the domain providers.
+// summaries y adaptations son opcionales: si faltan, sus tools devuelven un
+// error manejable en vez de panicar.
 type inclusionDispatcher struct {
-	students providers.StudentProvider
-	devices  providers.DeviceProvider
+	students    providers.StudentProvider
+	devices     providers.DeviceProvider
+	summaries   providers.ConversationSummaryProvider
+	adaptations providers.AdaptationProvider
 }
 
 func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call providers.ToolCall) (string, error) {
@@ -205,6 +237,65 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 			out[i] = lite
 		}
 		return marshalToolResult(map[string]any{"devices": out})
+
+	case "get_student_history":
+		if d.summaries == nil {
+			return "", fmt.Errorf("get_student_history no disponible")
+		}
+		var args struct {
+			StudentID int64 `json:"student_id"`
+		}
+		if err := json.Unmarshal([]byte(call.Arguments), &args); err != nil {
+			return "", fmt.Errorf("invalid arguments for get_student_history: %w", err)
+		}
+		summaries, err := d.summaries.RecentByStudent(ctx, orgID, args.StudentID, maxPriorSummaries)
+		if err != nil {
+			return "", err
+		}
+		type summaryLite struct {
+			ConversationID int64    `json:"conversation_id"`
+			Summary        string   `json:"summary"`
+			TopicKeywords  []string `json:"topic_keywords,omitempty"`
+		}
+		out := make([]summaryLite, len(summaries))
+		for i := range summaries {
+			out[i] = summaryLite{
+				ConversationID: summaries[i].ConversationID,
+				Summary:        summaries[i].Summary,
+				TopicKeywords:  summaries[i].TopicKeywords,
+			}
+		}
+		return marshalToolResult(map[string]any{"history": out})
+
+	case "get_past_adaptations":
+		if d.adaptations == nil {
+			return "", fmt.Errorf("get_past_adaptations no disponible")
+		}
+		var args struct {
+			StudentID int64 `json:"student_id"`
+		}
+		if err := json.Unmarshal([]byte(call.Arguments), &args); err != nil {
+			return "", fmt.Errorf("invalid arguments for get_past_adaptations: %w", err)
+		}
+		adaptations, err := d.adaptations.List(ctx, orgID, &args.StudentID)
+		if err != nil {
+			return "", err
+		}
+		type adaptationLite struct {
+			ID      int64  `json:"id"`
+			Subject string `json:"subject"`
+			Status  string `json:"status"`
+			Outcome string `json:"outcome,omitempty"`
+		}
+		out := make([]adaptationLite, len(adaptations))
+		for i := range adaptations {
+			lite := adaptationLite{ID: adaptations[i].ID, Subject: adaptations[i].Subject, Status: adaptations[i].Status}
+			if adaptations[i].Outcome != nil {
+				lite.Outcome = *adaptations[i].Outcome
+			}
+			out[i] = lite
+		}
+		return marshalToolResult(map[string]any{"adaptations": out})
 
 	default:
 		return "", fmt.Errorf("unknown tool: %s", call.Name)

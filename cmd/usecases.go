@@ -21,6 +21,7 @@ type UseCases struct {
 	RecommendDevice       inclusionuc.RecommendDevice
 	AssistClassroom       inclusionuc.AssistClassroom
 	OpenSession           inclusionuc.OpenSession
+	BuildPromptContext    inclusionuc.BuildPromptContext
 
 	GetMe authuc.GetMe
 
@@ -59,8 +60,12 @@ func NewUseCases(repos *Repositories, cfg *config.Config) *UseCases {
 		UpsertStudentProfile:  inclusionuc.NewUpsertStudentProfile(repos.Students, repos.StudentProfiles),
 		ListClassroomStudents: inclusionuc.NewListClassroomStudents(repos.Students),
 		RecommendDevice:       inclusionuc.NewRecommendDevice(repos.AI, repos.Students, repos.Devices, repos.Ramps, repos.Conversations, repos.AIUsage),
-		AssistClassroom:       inclusionuc.NewAssistClassroom(repos.AI, repos.Students, repos.Devices, repos.Conversations, repos.AIUsage, cfg.AIAgenticEnabled),
+		AssistClassroom:       inclusionuc.NewAssistClassroom(repos.AI, repos.Students, repos.Devices, repos.Conversations, repos.ConversationSummaries, repos.Adaptations, repos.AIUsage, cfg.AIAgenticEnabled),
 		OpenSession:           inclusionuc.NewOpenSession(repos.Students, repos.ConversationSummaries),
+		BuildPromptContext: inclusionuc.NewBuildPromptContext(
+			repos.Students, repos.TeacherProfiles, repos.Situations, repos.Diagnoses, repos.PPIs,
+			repos.Adaptations, repos.Classrooms, repos.Devices, repos.ConversationSummaries,
+		),
 
 		GetMe: authuc.NewGetMe(repos.Users),
 
