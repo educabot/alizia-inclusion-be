@@ -21,6 +21,12 @@ INSERT INTO organizations (id, name)
 VALUES ('00000000-0000-0000-0000-000000000001', 'Org de prueba (ENV=test)')
 ON CONFLICT (id) DO NOTHING;
 
+-- Usuario de prueba = la identidad que inyecta el modo test (user_id=1). Necesario
+-- para los FKs de adaptations.teacher_id / ppi.created_by, etc.
+INSERT INTO users (id, organization_id, email, name, role)
+VALUES (1, '00000000-0000-0000-0000-000000000001', 'test@educabot.com', 'Test User', 'teacher')
+ON CONFLICT (id) DO NOTHING;
+
 -- Aula de prueba bajo la org de ceros.
 INSERT INTO classrooms (id, organization_id, name, grade, section)
 VALUES (9001, '00000000-0000-0000-0000-000000000001', 'Aula de prueba', '4to', 'A')
