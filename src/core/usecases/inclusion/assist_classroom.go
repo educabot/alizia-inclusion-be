@@ -88,7 +88,7 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	if uc.agentic {
 		tools = inclusionTools()
 	}
-	dispatcher := inclusionDispatcher{students: uc.students, devices: uc.devices, summaries: uc.summaries, adaptations: uc.adaptations, content: uc.content}
+	dispatcher := inclusionDispatcher{students: uc.students, devices: uc.devices, summaries: uc.summaries, adaptations: uc.adaptations, content: uc.content, userID: req.UserID, conversationID: req.ConversationID}
 
 	resp, err := runAgenticChat(ctx, uc.ai, messages, tools, dispatcher, req.OrgID, maxAgenticIterations)
 	if err != nil {

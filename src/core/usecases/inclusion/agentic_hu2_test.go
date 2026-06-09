@@ -69,7 +69,7 @@ func TestInclusionDispatcher_GetPastAdaptationsReturnsStatusAndOutcome(t *testin
 	outcome := "funcionó muy bien con time timer"
 	adaptations := new(mockproviders.MockAdaptationProvider)
 	studentID := int64(7)
-	adaptations.On("List", ctx, orgID, &studentID).
+	adaptations.On("List", ctx, orgID, providers.AdaptationFilter{StudentID: &studentID}).
 		Return([]entities.Adaptation{
 			{ID: 1, Subject: "Lengua", Status: "funcionó", Outcome: &outcome},
 		}, nil)

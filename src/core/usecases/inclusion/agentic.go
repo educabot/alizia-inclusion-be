@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
 )
 
@@ -197,6 +198,51 @@ func inclusionTools() []providers.ToolDefinition {
 				"required": []string{"content_id"},
 			},
 		},
+		{
+			Name:        "create_student",
+			Description: "Da de alta un alumno. GUARDADO CONFIRMADO: primero llamá SIN confirmed (o confirmed=false) para armar la ficha y mostrársela al docente; recién cuando el docente confirme, volvé a llamar con confirmed=true para persistir. Nunca guardes en silencio.",
+			Parameters: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"name":         map[string]any{"type": "string", "description": "Nombre del alumno."},
+					"classroom_id": map[string]any{"type": "integer", "description": "ID del aula."},
+					"confirmed":    map[string]any{"type": "boolean", "description": "true solo cuando el docente confirmó el alta."},
+				},
+				"required": []string{"name", "classroom_id"},
+			},
+		},
+		{
+			Name:        "create_recurso",
+			Description: "Crea un recurso (adaptación) para un alumno usando dispositivos de la valija. GUARDADO CONFIRMADO: llamá primero SIN confirmed para mostrar la ficha de frente al docente y preguntarle si la guarda; recién con confirmed=true persiste, ligada al alumno y a esta conversación. Es privada del docente.",
+			Parameters: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"student_id":           map[string]any{"type": "integer", "description": "ID del alumno al que se vincula."},
+					"subject":              map[string]any{"type": "string", "description": "Materia o área."},
+					"title":                map[string]any{"type": "string", "description": "Título corto del recurso."},
+					"activity_description": map[string]any{"type": "string", "description": "Descripción de la actividad adaptada."},
+					"adaptation_strategy":  map[string]any{"type": "string", "description": "Resumen de la estrategia."},
+					"adaptation_type":      map[string]any{"type": "string", "description": "Tipo (actividad_adaptada, material_nuevo, estrategia_aula, situacion_emergente)."},
+					"device_ids":           map[string]any{"type": "array", "items": map[string]any{"type": "integer"}, "description": "IDs de dispositivos de la valija usados."},
+					"was_edited":           map[string]any{"type": "boolean", "description": "true si el docente editó la propuesta antes de guardar."},
+					"confirmed":            map[string]any{"type": "boolean", "description": "true solo cuando el docente confirmó guardar."},
+				},
+				"required": []string{"student_id", "subject"},
+			},
+		},
+		{
+			Name:        "relate_student_recurso",
+			Description: "Vincula un recurso (adaptación) existente a un alumno. GUARDADO CONFIRMADO: confirmed=true solo tras el OK del docente.",
+			Parameters: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"student_id": map[string]any{"type": "integer", "description": "ID del alumno."},
+					"recurso_id": map[string]any{"type": "integer", "description": "ID del recurso (adaptación)."},
+					"confirmed":  map[string]any{"type": "boolean", "description": "true solo cuando el docente confirmó."},
+				},
+				"required": []string{"student_id", "recurso_id"},
+			},
+		},
 	}
 }
 
@@ -209,6 +255,10 @@ type inclusionDispatcher struct {
 	summaries   providers.ConversationSummaryProvider
 	adaptations providers.AdaptationProvider
 	content     providers.PedagogicalContentProvider
+	// Identidad del turno, para las tools de acción (HU-4): quién guarda y de qué
+	// conversación salió el recurso.
+	userID         int64
+	conversationID int64
 }
 
 // defaultContentSearchLimit acota cuántos chunks devuelve el RAG por búsqueda.
@@ -309,7 +359,7 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 		if err := json.Unmarshal([]byte(call.Arguments), &args); err != nil {
 			return "", fmt.Errorf("invalid arguments for get_past_adaptations: %w", err)
 		}
-		adaptations, err := d.adaptations.List(ctx, orgID, &args.StudentID)
+		adaptations, err := d.adaptations.List(ctx, orgID, providers.AdaptationFilter{StudentID: &args.StudentID})
 		if err != nil {
 			return "", err
 		}
@@ -362,6 +412,104 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 			return "", err
 		}
 		return marshalToolResult(content)
+
+	case "create_student":
+		if d.students == nil {
+			return "", fmt.Errorf("create_student no disponible")
+		}
+		var args struct {
+			Name        string `json:"name"`
+			ClassroomID int64  `json:"classroom_id"`
+			Confirmed   bool   `json:"confirmed"`
+		}
+		if err := json.Unmarshal([]byte(call.Arguments), &args); err != nil {
+			return "", fmt.Errorf("invalid arguments for create_student: %w", err)
+		}
+		student := &entities.Student{OrganizationID: orgID, ClassroomID: args.ClassroomID, Name: args.Name}
+		if !args.Confirmed {
+			// Propone la ficha sin persistir; la LLM la muestra y pide confirmación.
+			return marshalToolResult(map[string]any{"pending_confirmation": true, "student": student})
+		}
+		if err := d.students.Create(ctx, student); err != nil {
+			return "", err
+		}
+		return marshalToolResult(map[string]any{"saved": true, "student": student})
+
+	case "create_recurso":
+		if d.adaptations == nil {
+			return "", fmt.Errorf("create_recurso no disponible")
+		}
+		var args struct {
+			StudentID           int64   `json:"student_id"`
+			Subject             string  `json:"subject"`
+			Title               string  `json:"title"`
+			ActivityDescription *string `json:"activity_description"`
+			AdaptationStrategy  *string `json:"adaptation_strategy"`
+			AdaptationType      string  `json:"adaptation_type"`
+			DeviceIDs           []int64 `json:"device_ids"`
+			WasEdited           bool    `json:"was_edited"`
+			Confirmed           bool    `json:"confirmed"`
+		}
+		if err := json.Unmarshal([]byte(call.Arguments), &args); err != nil {
+			return "", fmt.Errorf("invalid arguments for create_recurso: %w", err)
+		}
+		adaptationType := args.AdaptationType
+		if adaptationType == "" {
+			adaptationType = defaultAdaptationType
+		}
+		recurso := &entities.Adaptation{
+			OrganizationID:      orgID,
+			StudentID:           args.StudentID,
+			TeacherID:           d.userID,
+			Title:               args.Title,
+			Subject:             args.Subject,
+			ActivityDescription: args.ActivityDescription,
+			AdaptationStrategy:  args.AdaptationStrategy,
+			AdaptationType:      adaptationType,
+			Status:              "en_curso",
+			WasEdited:           args.WasEdited,
+		}
+		if d.conversationID > 0 {
+			recurso.SourceConversationID = &d.conversationID
+		}
+		if !args.Confirmed {
+			// Muestra la ficha de frente; no persiste hasta el OK del docente.
+			return marshalToolResult(map[string]any{"pending_confirmation": true, "recurso": recurso, "device_ids": args.DeviceIDs})
+		}
+		if err := d.adaptations.Create(ctx, recurso); err != nil {
+			return "", err
+		}
+		if len(args.DeviceIDs) > 0 {
+			if err := d.adaptations.SetDevices(ctx, recurso.ID, args.DeviceIDs); err != nil {
+				return "", err
+			}
+		}
+		return marshalToolResult(map[string]any{"saved": true, "recurso": recurso})
+
+	case "relate_student_recurso":
+		if d.adaptations == nil {
+			return "", fmt.Errorf("relate_student_recurso no disponible")
+		}
+		var args struct {
+			StudentID int64 `json:"student_id"`
+			RecursoID int64 `json:"recurso_id"`
+			Confirmed bool  `json:"confirmed"`
+		}
+		if err := json.Unmarshal([]byte(call.Arguments), &args); err != nil {
+			return "", fmt.Errorf("invalid arguments for relate_student_recurso: %w", err)
+		}
+		recurso, err := d.adaptations.Get(ctx, orgID, args.RecursoID)
+		if err != nil {
+			return "", err
+		}
+		recurso.StudentID = args.StudentID
+		if !args.Confirmed {
+			return marshalToolResult(map[string]any{"pending_confirmation": true, "recurso": recurso})
+		}
+		if err := d.adaptations.Update(ctx, recurso); err != nil {
+			return "", err
+		}
+		return marshalToolResult(map[string]any{"saved": true, "recurso": recurso})
 
 	default:
 		return "", fmt.Errorf("unknown tool: %s", call.Name)
