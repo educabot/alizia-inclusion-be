@@ -15,8 +15,8 @@ type MockAdaptationProvider struct {
 	mock.Mock
 }
 
-func (m *MockAdaptationProvider) List(ctx context.Context, orgID uuid.UUID, studentID *int64) ([]entities.Adaptation, error) {
-	args := m.Called(ctx, orgID, studentID)
+func (m *MockAdaptationProvider) List(ctx context.Context, orgID uuid.UUID, filter providers.AdaptationFilter) ([]entities.Adaptation, error) {
+	args := m.Called(ctx, orgID, filter)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

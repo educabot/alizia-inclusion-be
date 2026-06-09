@@ -12,6 +12,11 @@ import (
 type ListAdaptationsRequest struct {
 	OrgID     uuid.UUID
 	StudentID *int64
+	// TeacherID hace privado el listado por docente (HU-4); DeviceID/Query filtran
+	// por material de valija / tema.
+	TeacherID *int64
+	DeviceID  *int64
+	Query     string
 }
 
 func (r ListAdaptationsRequest) Validate() error {
@@ -37,5 +42,10 @@ func (uc *listAdaptationsImpl) Execute(ctx context.Context, req ListAdaptationsR
 	if err := req.Validate(); err != nil {
 		return nil, err
 	}
-	return uc.adaptations.List(ctx, req.OrgID, req.StudentID)
+	return uc.adaptations.List(ctx, req.OrgID, providers.AdaptationFilter{
+		StudentID: req.StudentID,
+		TeacherID: req.TeacherID,
+		DeviceID:  req.DeviceID,
+		Query:     req.Query,
+	})
 }

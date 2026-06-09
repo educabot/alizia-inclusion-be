@@ -24,7 +24,7 @@ func TestListAdaptations_ReturnsAllAdaptations(t *testing.T) {
 		testutil.NewAdaptation(2, 2, 1),
 	}
 	adaptations := new(mockproviders.MockAdaptationProvider)
-	adaptations.On("List", ctx, testutil.TestOrgID, (*int64)(nil)).Return(want, nil)
+	adaptations.On("List", ctx, testutil.TestOrgID, providers.AdaptationFilter{}).Return(want, nil)
 
 	got, err := inclusion.NewListAdaptations(adaptations).Execute(ctx, inclusion.ListAdaptationsRequest{
 		OrgID:     testutil.TestOrgID,
@@ -43,7 +43,7 @@ func TestListAdaptations_FiltersByStudent(t *testing.T) {
 		testutil.NewAdaptation(1, wantStudentID, 1),
 	}
 	adaptations := new(mockproviders.MockAdaptationProvider)
-	adaptations.On("List", ctx, testutil.TestOrgID, testutil.Ptr(wantStudentID)).Return(want, nil)
+	adaptations.On("List", ctx, testutil.TestOrgID, providers.AdaptationFilter{StudentID: testutil.Ptr(wantStudentID)}).Return(want, nil)
 
 	got, err := inclusion.NewListAdaptations(adaptations).Execute(ctx, inclusion.ListAdaptationsRequest{
 		OrgID:     testutil.TestOrgID,

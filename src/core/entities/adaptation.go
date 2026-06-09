@@ -16,9 +16,14 @@ type Adaptation struct {
 	Outcome             *string   `json:"outcome,omitempty"`
 	Notes               *string   `json:"notes,omitempty"`
 	Status              string    `json:"status" gorm:"default:en_curso"`
-	Student             *Student  `json:"student,omitempty" gorm:"foreignKey:StudentID"`
-	Teacher             *User     `json:"teacher,omitempty" gorm:"foreignKey:TeacherID"`
-	Device              *Device   `json:"device,omitempty" gorm:"foreignKey:DeviceID"`
-	Devices             []Device  `json:"devices,omitempty" gorm:"many2many:adaptation_devices"`
+	// Origen IA (Capa C, HU-4): liga la sugerencia de Alizia con su resultado real.
+	// was_edited = ¿el docente la modificó antes de guardar? (aceptación implícita).
+	SourceConversationID *int64   `json:"source_conversation_id,omitempty"`
+	SourceMessageID      *int64   `json:"source_message_id,omitempty"`
+	WasEdited            bool     `json:"was_edited"`
+	Student              *Student `json:"student,omitempty" gorm:"foreignKey:StudentID"`
+	Teacher              *User    `json:"teacher,omitempty" gorm:"foreignKey:TeacherID"`
+	Device               *Device  `json:"device,omitempty" gorm:"foreignKey:DeviceID"`
+	Devices              []Device `json:"devices,omitempty" gorm:"many2many:adaptation_devices"`
 	TimeTrackedEntity
 }

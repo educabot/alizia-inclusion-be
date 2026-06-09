@@ -43,7 +43,7 @@ func TestGetMetrics_ReturnsMetrics(t *testing.T) {
 	studentMock.On("List", ctx, testutil.TestOrgID).Return(students, nil)
 
 	adaptationMock := new(mockproviders.MockAdaptationProvider)
-	adaptationMock.On("List", ctx, testutil.TestOrgID, (*int64)(nil)).Return(adaptations, nil)
+	adaptationMock.On("List", ctx, testutil.TestOrgID, providers.AdaptationFilter{}).Return(adaptations, nil)
 	adaptationMock.On("CountSince", ctx, testutil.TestOrgID, mock.AnythingOfType("time.Time")).Return(5, nil)
 	adaptationMock.On("TopDevices", ctx, testutil.TestOrgID, 5).Return(topDevices, nil)
 

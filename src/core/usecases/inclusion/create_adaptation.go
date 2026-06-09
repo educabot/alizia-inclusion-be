@@ -21,6 +21,10 @@ type CreateAdaptationRequest struct {
 	AdaptationStrategy  *string
 	AdaptationType      string
 	Notes               *string
+	// Origen IA (HU-4): de qué conversación/mensaje salió y si el docente la editó.
+	SourceConversationID *int64
+	SourceMessageID      *int64
+	WasEdited            bool
 }
 
 const defaultAdaptationType = "actividad_adaptada"
@@ -64,17 +68,20 @@ func (uc *createAdaptationImpl) Execute(ctx context.Context, req CreateAdaptatio
 	}
 
 	adaptation := &entities.Adaptation{
-		OrganizationID:      req.OrgID,
-		StudentID:           req.StudentID,
-		TeacherID:           req.TeacherID,
-		DeviceID:            req.DeviceID,
-		Title:               req.Title,
-		Subject:             req.Subject,
-		ActivityDescription: req.ActivityDescription,
-		AdaptationStrategy:  req.AdaptationStrategy,
-		AdaptationType:      adaptationType,
-		Notes:               req.Notes,
-		Status:              "en_curso",
+		OrganizationID:       req.OrgID,
+		StudentID:            req.StudentID,
+		TeacherID:            req.TeacherID,
+		DeviceID:             req.DeviceID,
+		Title:                req.Title,
+		Subject:              req.Subject,
+		ActivityDescription:  req.ActivityDescription,
+		AdaptationStrategy:   req.AdaptationStrategy,
+		AdaptationType:       adaptationType,
+		Notes:                req.Notes,
+		Status:               "en_curso",
+		SourceConversationID: req.SourceConversationID,
+		SourceMessageID:      req.SourceMessageID,
+		WasEdited:            req.WasEdited,
 	}
 
 	if err := uc.adaptations.Create(ctx, adaptation); err != nil {

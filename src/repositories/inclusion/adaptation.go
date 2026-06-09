@@ -3,6 +3,7 @@ package inclusion
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,7 +21,7 @@ func NewAdaptationRepo(db *gorm.DB) providers.AdaptationProvider {
 	return &adaptationRepo{db: db}
 }
 
-func (r *adaptationRepo) List(ctx context.Context, orgID uuid.UUID, studentID *int64) ([]entities.Adaptation, error) {
+func (r *adaptationRepo) List(ctx context.Context, orgID uuid.UUID, filter providers.AdaptationFilter) ([]entities.Adaptation, error) {
 	var adaptations []entities.Adaptation
 	q := r.db.WithContext(ctx).
 		Preload("Student").
@@ -28,8 +29,20 @@ func (r *adaptationRepo) List(ctx context.Context, orgID uuid.UUID, studentID *i
 		Preload("Device").
 		Preload("Devices").
 		Where("organization_id = ?", orgID)
-	if studentID != nil {
-		q = q.Where("student_id = ?", *studentID)
+	if filter.TeacherID != nil {
+		q = q.Where("teacher_id = ?", *filter.TeacherID)
+	}
+	if filter.StudentID != nil {
+		q = q.Where("student_id = ?", *filter.StudentID)
+	}
+	if filter.DeviceID != nil {
+		// material de valija usado: device principal o cualquiera del m2m.
+		q = q.Where("device_id = ? OR id IN (SELECT adaptation_id FROM adaptation_devices WHERE device_id = ?)",
+			*filter.DeviceID, *filter.DeviceID)
+	}
+	if q2 := strings.TrimSpace(filter.Query); q2 != "" {
+		like := "%" + q2 + "%"
+		q = q.Where("subject ILIKE ? OR title ILIKE ? OR coalesce(activity_description, '') ILIKE ?", like, like, like)
 	}
 	err := q.Order("created_at DESC").Find(&adaptations).Error
 	if err != nil {
