@@ -2,7 +2,8 @@
 // Aplica archivos .sql idempotentes en orden, tolerando el proxy inestable.
 //
 // Uso:
-//   DB_URL="postgres://..." go run ./scripts/dbmigrate <archivo.sql> [archivo2.sql ...]
+//
+//	DB_URL="postgres://..." go run ./scripts/dbmigrate <archivo.sql> [archivo2.sql ...]
 //
 // Cada archivo se ejecuta entero (multi-statement, simple query protocol de lib/pq).
 // Si la conexión se resetea, reintenta el archivo completo (los .sql son idempotentes).
@@ -17,23 +18,27 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	dsn := os.Getenv("DB_URL")
 	if dsn == "" {
-		fmt.Println("falta DB_URL")
-		os.Exit(1)
+		return fmt.Errorf("falta DB_URL")
 	}
 	files := os.Args[1:]
 	if len(files) == 0 {
-		fmt.Println("uso: go run ./scripts/dbmigrate <archivo.sql> [...]")
-		os.Exit(1)
+		return fmt.Errorf("uso: go run ./scripts/dbmigrate <archivo.sql> [...]")
 	}
 
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
-		fmt.Println("open:", err)
-		os.Exit(1)
+		return fmt.Errorf("open: %w", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	db.SetMaxOpenConns(1)
 
 	// warmup: la primera query en frío suele resetear; reintento hasta tener conexión viva.
@@ -71,7 +76,8 @@ func main() {
 	}
 
 	if failed {
-		os.Exit(2)
+		return fmt.Errorf("una o más migraciones fallaron")
 	}
 	fmt.Println("Listo.")
+	return nil
 }
