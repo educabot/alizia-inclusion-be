@@ -97,6 +97,14 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 
 	recordAIUsage(ctx, uc.usage, req.OrgID, req.UserID, "assist", resp.Usage)
 
+	// Guardrail por código (HU-6): si la respuesta cruza un límite duro (ej. cita
+	// un DEVICE_ID inexistente) no se la mostramos al docente; caemos al off-ramp.
+	if gr := validateAnswer(resp.Content, deviceCatalogSet(devices)); !gr.Valid {
+		slog.WarnContext(ctx, "assist_classroom: guardrail rejected answer",
+			"violations", gr.Violations, "user_id", req.UserID, "mode", req.Mode)
+		resp.Content = offRampMessage
+	}
+
 	studentID := extractStudentID(resp.Content)
 	deviceID := extractDeviceID(resp.Content)
 	adaptation := extractAdaptationJSON(resp.Content)
