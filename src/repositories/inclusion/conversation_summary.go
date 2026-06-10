@@ -2,9 +2,12 @@ package inclusion
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
@@ -69,4 +72,48 @@ func (r *conversationSummaryRepo) RecentByTopic(ctx context.Context, orgID uuid.
 		return nil, err
 	}
 	return out, nil
+}
+
+// Upsert guarda/actualiza el resumen compactado de una conversación y revincula sus
+// cross-tables (alumnos / devices). Es idempotente por conversation_id: re-cerrar la
+// misma conversación reemplaza el resumen y sus vínculos en una sola transacción.
+func (r *conversationSummaryRepo) Upsert(ctx context.Context, summary *entities.ConversationSummary, studentIDs, deviceIDs []int64) error {
+	if summary == nil || summary.ConversationID == 0 {
+		return fmt.Errorf("%w: conversation_id is required to upsert a summary", providers.ErrValidation)
+	}
+
+	summary.UpdatedAt = time.Now()
+
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "conversation_id"}},
+			DoUpdates: clause.AssignmentColumns([]string{"summary", "topic_keywords", "token_count", "updated_at"}),
+		}).Create(summary).Error; err != nil {
+			return fmt.Errorf("upsert conversation summary: %w", err)
+		}
+
+		if err := relinkSummary(tx, "conversation_summary_students", "student_id", summary.ConversationID, studentIDs); err != nil {
+			return err
+		}
+		if err := relinkSummary(tx, "conversation_summary_devices", "device_id", summary.ConversationID, deviceIDs); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+// relinkSummary reemplaza los vínculos de un resumen con una dimensión (alumnos o
+// devices): borra los previos e inserta los actuales, dejando la tabla consistente
+// con el cierre más reciente. ON CONFLICT DO NOTHING tolera ids repetidos.
+func relinkSummary(tx *gorm.DB, table, fkColumn string, conversationID int64, ids []int64) error {
+	if err := tx.Exec("DELETE FROM "+table+" WHERE conversation_id = ?", conversationID).Error; err != nil {
+		return fmt.Errorf("clear %s: %w", table, err)
+	}
+	for _, id := range ids {
+		stmt := "INSERT INTO " + table + " (conversation_id, " + fkColumn + ") VALUES (?, ?) ON CONFLICT DO NOTHING"
+		if err := tx.Exec(stmt, conversationID, id).Error; err != nil {
+			return fmt.Errorf("link %s: %w", table, err)
+		}
+	}
+	return nil
 }

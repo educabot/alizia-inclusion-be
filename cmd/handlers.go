@@ -26,6 +26,7 @@ func NewHandlers(uc *UseCases, cfg *config.Config) *entrypoints.WebHandlerContai
 			RecommendDevice:          uc.RecommendDevice,
 			AssistClassroom:          uc.AssistClassroom,
 			OpenSession:              uc.OpenSession,
+			CloseSession:             uc.CloseSession,
 			BuildPromptContext:       uc.BuildPromptContext,
 			SearchPedagogicalContent: uc.SearchPedagogicalContent,
 			ListStudents:             uc.ListStudents,

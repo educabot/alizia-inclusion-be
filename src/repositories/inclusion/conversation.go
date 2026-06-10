@@ -3,6 +3,7 @@ package inclusion
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -37,6 +38,26 @@ func (r *conversationRepo) ListByUser(ctx context.Context, orgID uuid.UUID, user
 		return nil, err
 	}
 	return conversations, nil
+}
+
+// GetWithMessages trae una conversación con sus mensajes ordenados cronológicamente,
+// acotada por org. Devuelve ErrNotFound si no existe o pertenece a otra org. Se usa al
+// cerrar la sesión para compactar el historial en un resumen (HU-5).
+func (r *conversationRepo) GetWithMessages(ctx context.Context, orgID uuid.UUID, conversationID int64) (*entities.Conversation, error) {
+	var conv entities.Conversation
+	err := r.db.WithContext(ctx).
+		Preload("Messages", func(db *gorm.DB) *gorm.DB {
+			return db.Order("created_at ASC")
+		}).
+		Where("id = ? AND organization_id = ?", conversationID, orgID).
+		First(&conv).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, providers.ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &conv, nil
 }
 
 func (r *conversationRepo) AppendTurn(ctx context.Context, params providers.AppendTurnParams) (int64, error) {

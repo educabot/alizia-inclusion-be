@@ -11,6 +11,7 @@ type InclusionContainer struct {
 	RecommendDevice          inclusionuc.RecommendDevice
 	AssistClassroom          inclusionuc.AssistClassroom
 	OpenSession              inclusionuc.OpenSession
+	CloseSession             inclusionuc.CloseSession
 	BuildPromptContext       inclusionuc.BuildPromptContext
 	SearchPedagogicalContent inclusionuc.SearchPedagogicalContent
 

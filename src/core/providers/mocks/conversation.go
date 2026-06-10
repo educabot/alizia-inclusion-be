@@ -26,3 +26,11 @@ func (m *MockConversationProvider) AppendTurn(ctx context.Context, params provid
 	args := m.Called(ctx, params)
 	return args.Get(0).(int64), args.Error(1)
 }
+
+func (m *MockConversationProvider) GetWithMessages(ctx context.Context, orgID uuid.UUID, conversationID int64) (*entities.Conversation, error) {
+	args := m.Called(ctx, orgID, conversationID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entities.Conversation), args.Error(1)
+}

@@ -73,6 +73,9 @@ func ConfigureMappings(engine *gin.Engine, h *entrypoints.WebHandlerContainer, c
 	// Apertura de sesión (router / Prompt 0) — sin LLM, no requiere rate limit de IA
 	api.POST("/inclusion/open", webgin.Adapt(h.Inclusion.HandleOpenSession))
 
+	// Cierre de sesión (HU-5) — compacta la conversación en un resumen vía LLM
+	api.POST("/inclusion/close", aiRateLimit, webgin.Adapt(h.Inclusion.HandleCloseSession))
+
 	// Context Assembler (HU-2) — arma el contexto del alumno/valija/tema; sin LLM
 	api.POST("/inclusion/context", webgin.Adapt(h.Inclusion.HandleBuildContext))
 
