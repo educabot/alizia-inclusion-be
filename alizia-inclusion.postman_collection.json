@@ -1,533 +1,4086 @@
 {
-	"info": {
-		"name": "alizia-inclusion",
-		"description": "Coleccion completa de alizia-inclusion-be (35 requests).\n\nEjecutar con Newman o como Runner en Postman — el flujo es secuencial.\n\n1. Login guarda token automaticamente\n2. Creates guardan IDs en variables\n3. Updates/Deletes usan esos IDs dinamicos\n4. Nunca toca datos seed\n\nUsuarios demo: docente1@demo.edu / demo123, admin@demo.edu / demo123",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-	},
-	"variable": [
-		{ "key": "base_url", "value": "http://localhost:8080/api/v1" },
-		{ "key": "token", "value": "" },
-		{ "key": "created_classroom_id", "value": "" },
-		{ "key": "created_student_id", "value": "" },
-		{ "key": "created_adaptation_id", "value": "" }
-	],
-	"auth": {
-		"type": "bearer",
-		"bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
-	},
-	"item": [
-		{
-			"name": "01 - Health & Auth",
-			"item": [
-				{
-					"name": "Health Check",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('Health OK', function() { pm.response.to.have.status(200); });"
-					]}}],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": { "raw": "http://localhost:8080/health", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["health"] },
-						"auth": { "type": "noauth" }
-					}
-				},
-				{
-					"name": "Login (docente1)",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('Login OK', function() { pm.response.to.have.status(200); });",
-						"var json = pm.response.json();",
-						"var token = json.description ? json.description.token : json.token;",
-						"pm.collectionVariables.set('token', token);",
-						"console.log('Token saved');"
-					]}}],
-					"request": {
-						"method": "POST",
-						"header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\n    \"email\": \"docente1@demo.edu\",\n    \"password\": \"demo123\"\n}" },
-						"url": { "raw": "{{base_url}}/auth/login", "host": ["{{base_url}}"], "path": ["auth", "login"] },
-						"auth": { "type": "noauth" }
-					}
-				},
-				{
-					"name": "Login (admin)",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('Login admin OK', function() { pm.response.to.have.status(200); });",
-						"var json = pm.response.json();",
-						"var token = json.description ? json.description.token : json.token;",
-						"pm.collectionVariables.set('token', token);",
-						"console.log('Token switched to admin');"
-					]}}],
-					"request": {
-						"method": "POST",
-						"header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\n    \"email\": \"admin@demo.edu\",\n    \"password\": \"demo123\"\n}" },
-						"url": { "raw": "{{base_url}}/auth/login", "host": ["{{base_url}}"], "path": ["auth", "login"] },
-						"auth": { "type": "noauth" }
-					}
-				},
-				{
-					"name": "Login back (docente1)",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"var json = pm.response.json();",
-						"var token = json.description ? json.description.token : json.token;",
-						"pm.collectionVariables.set('token', token);"
-					]}}],
-					"request": {
-						"method": "POST",
-						"header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\n    \"email\": \"docente1@demo.edu\",\n    \"password\": \"demo123\"\n}" },
-						"url": { "raw": "{{base_url}}/auth/login", "host": ["{{base_url}}"], "path": ["auth", "login"] },
-						"auth": { "type": "noauth" }
-					}
-				},
-				{
-					"name": "Get Me",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('Get Me OK', function() { pm.response.to.have.status(200); });",
-						"var json = pm.response.json();",
-						"var user = json.description || json;",
-						"pm.test('Has email', function() { pm.expect(user.email).to.eql('docente1@demo.edu'); });"
-					]}}],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": { "raw": "{{base_url}}/auth/me", "host": ["{{base_url}}"], "path": ["auth", "me"] }
-					}
-				}
-			]
-		},
-		{
-			"name": "02 - Classrooms",
-			"item": [
-				{
-					"name": "List Classrooms",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('200', function() { pm.response.to.have.status(200); });",
-						"var json = pm.response.json();",
-						"var list = json.description || json;",
-						"pm.test('Has classrooms', function() { pm.expect(list.length).to.be.above(0); });"
-					]}}],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": { "raw": "{{base_url}}/classrooms", "host": ["{{base_url}}"], "path": ["classrooms"] }
-					}
-				},
-				{
-					"name": "Get Classroom (seed: 1)",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('200', function() { pm.response.to.have.status(200); });"
-					]}}],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": { "raw": "{{base_url}}/classrooms/1", "host": ["{{base_url}}"], "path": ["classrooms", "1"] }
-					}
-				},
-				{
-					"name": "Create Classroom",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('201', function() { pm.response.to.have.status(201); });",
-						"var json = pm.response.json();",
-						"var obj = json.description || json;",
-						"pm.collectionVariables.set('created_classroom_id', obj.id);",
-						"console.log('Created classroom ID: ' + obj.id);"
-					]}}],
-					"request": {
-						"method": "POST",
-						"header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\n    \"name\": \"6to Test\",\n    \"grade\": \"6\",\n    \"section\": \"T\"\n}" },
-						"url": { "raw": "{{base_url}}/classrooms", "host": ["{{base_url}}"], "path": ["classrooms"] }
-					}
-				},
-				{
-					"name": "Update Classroom (created)",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('200', function() { pm.response.to.have.status(200); });"
-					]}}],
-					"request": {
-						"method": "PUT",
-						"header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\n    \"name\": \"6to Test Updated\"\n}" },
-						"url": { "raw": "{{base_url}}/classrooms/{{created_classroom_id}}", "host": ["{{base_url}}"], "path": ["classrooms", "{{created_classroom_id}}"] }
-					}
-				},
-				{
-					"name": "List Classroom Students (seed: 1)",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('200', function() { pm.response.to.have.status(200); });"
-					]}}],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": { "raw": "{{base_url}}/classrooms/1/students", "host": ["{{base_url}}"], "path": ["classrooms", "1", "students"] }
-					}
-				}
-			]
-		},
-		{
-			"name": "03 - Teachers",
-			"item": [
-				{
-					"name": "List Teachers",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('200', function() { pm.response.to.have.status(200); });",
-						"var json = pm.response.json();",
-						"var list = json.description || json;",
-						"pm.test('Has teachers', function() { pm.expect(list.length).to.be.above(0); });"
-					]}}],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": { "raw": "{{base_url}}/teachers", "host": ["{{base_url}}"], "path": ["teachers"] }
-					}
-				}
-			]
-		},
-		{
-			"name": "04 - Students",
-			"item": [
-				{
-					"name": "List Students",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('200', function() { pm.response.to.have.status(200); });"
-					]}}],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": { "raw": "{{base_url}}/students", "host": ["{{base_url}}"], "path": ["students"] }
-					}
-				},
-				{
-					"name": "List Students (by classroom)",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('200', function() { pm.response.to.have.status(200); });"
-					]}}],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": { "raw": "{{base_url}}/students?classroom_id=1", "host": ["{{base_url}}"], "path": ["students"], "query": [{ "key": "classroom_id", "value": "1" }] }
-					}
-				},
-				{
-					"name": "Get Student (seed: 1)",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('200', function() { pm.response.to.have.status(200); });"
-					]}}],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": { "raw": "{{base_url}}/students/1", "host": ["{{base_url}}"], "path": ["students", "1"] }
-					}
-				},
-				{
-					"name": "Create Student",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('201', function() { pm.response.to.have.status(201); });",
-						"var json = pm.response.json();",
-						"var obj = json.description || json;",
-						"pm.collectionVariables.set('created_student_id', obj.id);",
-						"console.log('Created student ID: ' + obj.id);"
-					]}}],
-					"request": {
-						"method": "POST",
-						"header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\n    \"name\": \"Test Alumno Newman\",\n    \"classroom_id\": 2\n}" },
-						"url": { "raw": "{{base_url}}/students", "host": ["{{base_url}}"], "path": ["students"] }
-					}
-				},
-				{
-					"name": "Update Student (created)",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('200', function() { pm.response.to.have.status(200); });"
-					]}}],
-					"request": {
-						"method": "PUT",
-						"header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\n    \"name\": \"Test Alumno Updated\"\n}" },
-						"url": { "raw": "{{base_url}}/students/{{created_student_id}}", "host": ["{{base_url}}"], "path": ["students", "{{created_student_id}}"] }
-					}
-				}
-			]
-		},
-		{
-			"name": "05 - Student Profiles",
-			"item": [
-				{
-					"name": "Get Student Profile (seed: 1)",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('200', function() { pm.response.to.have.status(200); });"
-					]}}],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": { "raw": "{{base_url}}/students/1/profile", "host": ["{{base_url}}"], "path": ["students", "1", "profile"] }
-					}
-				},
-				{
-					"name": "Upsert Student Profile (seed: 1)",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('200', function() { pm.response.to.have.status(200); });"
-					]}}],
-					"request": {
-						"method": "PUT",
-						"header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\n    \"is_transitory\": false,\n    \"difficulties\": [\"motricidad_fina\", \"atencion\"],\n    \"free_description\": \"Test: dificultades de motricidad fina y atencion.\"\n}" },
-						"url": { "raw": "{{base_url}}/students/1/profile", "host": ["{{base_url}}"], "path": ["students", "1", "profile"] }
-					}
-				}
-			]
-		},
-		{
-			"name": "06 - Catalog (Ramps & Devices)",
-			"item": [
-				{
-					"name": "List Ramps",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('200', function() { pm.response.to.have.status(200); });",
-						"var json = pm.response.json();",
-						"var list = json.description || json;",
-						"pm.test('Has ramps', function() { pm.expect(list.length).to.be.above(0); });"
-					]}}],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": { "raw": "{{base_url}}/ramps", "host": ["{{base_url}}"], "path": ["ramps"] }
-					}
-				},
-				{
-					"name": "Get Ramp (1)",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('200', function() { pm.response.to.have.status(200); });"
-					]}}],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": { "raw": "{{base_url}}/ramps/1", "host": ["{{base_url}}"], "path": ["ramps", "1"] }
-					}
-				},
-				{
-					"name": "List Devices",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('200', function() { pm.response.to.have.status(200); });",
-						"var json = pm.response.json();",
-						"var list = json.description || json;",
-						"pm.test('Has devices', function() { pm.expect(list.length).to.be.above(0); });"
-					]}}],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": { "raw": "{{base_url}}/devices", "host": ["{{base_url}}"], "path": ["devices"] }
-					}
-				},
-				{
-					"name": "List Devices (by ramp)",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('200', function() { pm.response.to.have.status(200); });"
-					]}}],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": { "raw": "{{base_url}}/devices?ramp_id=1", "host": ["{{base_url}}"], "path": ["devices"], "query": [{ "key": "ramp_id", "value": "1" }] }
-					}
-				},
-				{
-					"name": "Get Device (1)",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('200', function() { pm.response.to.have.status(200); });"
-					]}}],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": { "raw": "{{base_url}}/devices/1", "host": ["{{base_url}}"], "path": ["devices", "1"] }
-					}
-				}
-			]
-		},
-		{
-			"name": "07 - Adaptations",
-			"item": [
-				{
-					"name": "List Adaptations",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('200', function() { pm.response.to.have.status(200); });"
-					]}}],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": { "raw": "{{base_url}}/adaptations", "host": ["{{base_url}}"], "path": ["adaptations"] }
-					}
-				},
-				{
-					"name": "Create Adaptation",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('201', function() { pm.response.to.have.status(201); });",
-						"var json = pm.response.json();",
-						"var obj = json.description || json;",
-						"pm.collectionVariables.set('created_adaptation_id', obj.id);",
-						"console.log('Created adaptation ID: ' + obj.id);"
-					]}}],
-					"request": {
-						"method": "POST",
-						"header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\n    \"student_id\": 1,\n    \"device_id\": 1,\n    \"subject\": \"Matematica\",\n    \"activity_description\": \"Fracciones con material concreto\",\n    \"adaptation_strategy\": \"Tablet con calculadora visual\",\n    \"notes\": \"Responde bien a estimulos visuales\"\n}" },
-						"url": { "raw": "{{base_url}}/adaptations", "host": ["{{base_url}}"], "path": ["adaptations"] }
-					}
-				},
-				{
-					"name": "List Adaptations (by student)",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('200', function() { pm.response.to.have.status(200); });"
-					]}}],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": { "raw": "{{base_url}}/adaptations?student_id=1", "host": ["{{base_url}}"], "path": ["adaptations"], "query": [{ "key": "student_id", "value": "1" }] }
-					}
-				},
-				{
-					"name": "Get Adaptation (created)",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('200', function() { pm.response.to.have.status(200); });"
-					]}}],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": { "raw": "{{base_url}}/adaptations/{{created_adaptation_id}}", "host": ["{{base_url}}"], "path": ["adaptations", "{{created_adaptation_id}}"] }
-					}
-				},
-				{
-					"name": "Update Adaptation (created)",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('200', function() { pm.response.to.have.status(200); });"
-					]}}],
-					"request": {
-						"method": "PUT",
-						"header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\n    \"status\": \"probado\",\n    \"outcome\": \"Completo la actividad con mayor autonomia\",\n    \"notes\": \"Funciono bien, repetir en proxima clase\"\n}" },
-						"url": { "raw": "{{base_url}}/adaptations/{{created_adaptation_id}}", "host": ["{{base_url}}"], "path": ["adaptations", "{{created_adaptation_id}}"] }
-					}
-				},
-				{
-					"name": "Delete Adaptation (created)",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('204', function() { pm.response.to.have.status(204); });"
-					]}}],
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": { "raw": "{{base_url}}/adaptations/{{created_adaptation_id}}", "host": ["{{base_url}}"], "path": ["adaptations", "{{created_adaptation_id}}"] }
-					}
-				}
-			]
-		},
-		{
-			"name": "08 - Chat History",
-			"item": [
-				{
-					"name": "Chat History (assist)",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('200', function() { pm.response.to.have.status(200); });"
-					]}}],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": { "raw": "{{base_url}}/chat/history/assist", "host": ["{{base_url}}"], "path": ["chat", "history", "assist"] }
-					}
-				},
-				{
-					"name": "Chat History (recommend)",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('200', function() { pm.response.to.have.status(200); });"
-					]}}],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": { "raw": "{{base_url}}/chat/history/recommend", "host": ["{{base_url}}"], "path": ["chat", "history", "recommend"] }
-					}
-				}
-			]
-		},
-		{
-			"name": "09 - Dashboard",
-			"item": [
-				{
-					"name": "Get Metrics",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('200', function() { pm.response.to.have.status(200); });",
-						"var json = pm.response.json();",
-						"var d = json.description || json;",
-						"pm.test('Has total_students', function() { pm.expect(d.total_students).to.be.a('number'); });"
-					]}}],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": { "raw": "{{base_url}}/dashboard/metrics", "host": ["{{base_url}}"], "path": ["dashboard", "metrics"] }
-					}
-				}
-			]
-		},
-		{
-			"name": "10 - AI Inclusion",
-			"item": [
-				{
-					"name": "Recommend Device",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('200', function() { pm.response.to.have.status(200); });",
-						"var json = pm.response.json();",
-						"var d = json.description || json;",
-						"pm.test('Has response', function() { pm.expect(d.response).to.be.a('string'); });"
-					]}}],
-					"request": {
-						"method": "POST",
-						"header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\n    \"student_id\": 1,\n    \"subject\": \"Lengua\",\n    \"objective\": \"Produccion de textos narrativos\",\n    \"duration\": \"40\",\n    \"dynamic\": \"Trabajo individual con apoyo docente\",\n    \"materials\": \"Cuaderno, lapiz\",\n    \"history\": []\n}" },
-						"url": { "raw": "{{base_url}}/inclusion/recommend", "host": ["{{base_url}}"], "path": ["inclusion", "recommend"] }
-					}
-				},
-				{
-					"name": "Assist Classroom",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('200', function() { pm.response.to.have.status(200); });",
-						"var json = pm.response.json();",
-						"var d = json.description || json;",
-						"pm.test('Has response', function() { pm.expect(d.response).to.be.a('string'); });"
-					]}}],
-					"request": {
-						"method": "POST",
-						"header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\n    \"classroom_id\": 1,\n    \"student_id\": 1,\n    \"message\": \"Lucas no logra sostener la atencion en actividades de escritura. Que puedo hacer?\",\n    \"history\": []\n}" },
-						"url": { "raw": "{{base_url}}/inclusion/assist", "host": ["{{base_url}}"], "path": ["inclusion", "assist"] }
-					}
-				}
-			]
-		},
-		{
-			"name": "11 - Cleanup (deletes test data)",
-			"item": [
-				{
-					"name": "Delete Student (created)",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('204', function() { pm.response.to.have.status(204); });"
-					]}}],
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": { "raw": "{{base_url}}/students/{{created_student_id}}", "host": ["{{base_url}}"], "path": ["students", "{{created_student_id}}"] }
-					}
-				},
-				{
-					"name": "Delete Classroom (created)",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"pm.test('204', function() { pm.response.to.have.status(204); });"
-					]}}],
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": { "raw": "{{base_url}}/classrooms/{{created_classroom_id}}", "host": ["{{base_url}}"], "path": ["classrooms", "{{created_classroom_id}}"] }
-					}
-				}
-			]
-		}
-	]
+  "info": {
+    "name": "alizia-inclusion (ENV=test)",
+    "description": "Colección completa de alizia-inclusion-be — TODOS los endpoints (54 requests).\n\nPensada para correr contra el server en **ENV=test** (auth mockeada: user 1 / org 00000000-...-0001, NO requiere token) con los seeds de prueba aplicados (alumnos 9001-9003, aula 9001, ramp 9001, devices 9001-9002, contenido pedagógico 1-3).\n\nFlujo secuencial (Runner/Newman): los Create guardan ids en variables, Assist guarda conversation_id, Cleanup borra lo creado. Cada request trae un Ejemplo de response REAL capturado.\n\nPara un deploy real detrás del auth-service, completá la variable {{token}} (auth bearer a nivel colección).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "host",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080/api/v1"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "created_classroom_id",
+      "value": ""
+    },
+    {
+      "key": "created_student_id",
+      "value": ""
+    },
+    {
+      "key": "created_adaptation_id",
+      "value": ""
+    },
+    {
+      "key": "conversation_id",
+      "value": "1"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "01 - Health & Auth",
+      "item": [
+        {
+          "name": "Health Check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host}}/health",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Liveness + ping a la DB. Sin auth ni prefijo /api/v1."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{host}}/health",
+                  "host": [
+                    "{{host}}"
+                  ],
+                  "path": [
+                    "health"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"db\":\"ok\",\"status\":\"ok\"}"
+            }
+          ]
+        },
+        {
+          "name": "Get Me",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Identidad autenticada. En ENV=test devuelve el usuario mock (test@educabot.com)."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/auth/me",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "me"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"id\":1,\"name\":\"Test User\",\"email\":\"test@educabot.com\",\"role\":\"teacher\"}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Classrooms",
+      "item": [
+        {
+          "name": "List Classrooms",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/classrooms",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "classrooms"
+              ]
+            },
+            "description": "Lista las aulas de la organización."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/classrooms",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "classrooms"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":[{\"id\":9001,\"name\":\"Aula de prueba\",\"grade\":\"4to\",\"section\":\"A\",\"student_count\":3}]}"
+            }
+          ]
+        },
+        {
+          "name": "Create Classroom",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () { pm.response.to.have.status(201); });",
+                  "var o = pm.response.json(); o = o.description || o;",
+                  "pm.collectionVariables.set('created_classroom_id', o.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/classrooms",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "classrooms"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Aula Newman\",\n    \"grade\": \"6\",\n    \"section\": \"B\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Crea un aula. Guarda el id para los siguientes requests."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (201)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/classrooms",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "classrooms"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"name\": \"Aula Newman\",\n    \"grade\": \"6\",\n    \"section\": \"B\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"id\":1,\"name\":\"Aula Newman\",\"grade\":\"6\",\"section\":\"B\",\"student_count\":0}"
+            }
+          ]
+        },
+        {
+          "name": "Get Classroom (created)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/classrooms/{{created_classroom_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "classrooms",
+                "{{created_classroom_id}}"
+              ]
+            },
+            "description": "Detalle del aula recién creada."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/classrooms/{{created_classroom_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "classrooms",
+                    "{{created_classroom_id}}"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"id\":1,\"name\":\"Aula Newman\",\"grade\":\"6\",\"section\":\"B\",\"student_count\":0}}"
+            }
+          ]
+        },
+        {
+          "name": "Update Classroom (created)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/classrooms/{{created_classroom_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "classrooms",
+                "{{created_classroom_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Aula Newman (editada)\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Actualiza el aula creada."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/classrooms/{{created_classroom_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "classrooms",
+                    "{{created_classroom_id}}"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"name\": \"Aula Newman (editada)\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"id\":1,\"name\":\"Aula Newman (editada)\",\"grade\":\"6\",\"section\":\"B\",\"student_count\":0}}"
+            }
+          ]
+        },
+        {
+          "name": "List Classroom Students (seed 9001)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/classrooms/9001/students",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "classrooms",
+                "9001",
+                "students"
+              ]
+            },
+            "description": "Alumnos del aula de prueba (9001): Tomás, Lucía, Mateo."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/classrooms/9001/students",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "classrooms",
+                    "9001",
+                    "students"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":[{\"id\":9002,\"name\":\"Lucía Demo\",\"classroom_id\":9001,\"profile\":{\"id\":2,\"student_id\":9002,\"student_name\":\"Lucía Demo\",\"is_transitory\":true,\"difficulties\":[\"dificultad_lectura\"],\"free_description\":\"Dificultad transitoria de lectura tras cambio de escuela; en proceso de adaptación.\"},\"created_at\":\"2026-06-10T21:22:47Z\"},{\"id\":9003,\"name\":\"Mateo Test\",\"classroom_id\":9001,\"profile\":{\"id\":3,\"student_id\":9003,\"student_name\":\"Mateo Test\",\"is_transitory\":false,\"difficulties\":[\"hipersensibilidad_sensorial\",\"rutinas_rigidas\"],\"free_description\":\"Necesita anticipación de cambios y entornos con baja estimulación sensorial.\"},\"created_at\":\"2026-06-10T21:22:47Z\"},{\"id\":9001,\"name\":\"Tomás Prueba\",\"classroom_id\":9001,\"profile\":{\"id\":1,\"student_id\":9001,\"student_name\":\"Tomás Prueba\",\"is_transitory\":false,\"difficulties\":[\"se_distrae_facilmente\",\"impulsividad\"],\"free_description\":\"Le cuesta sostener la atención en consignas largas; responde bien a pausas activas.\"},\"created_at\":\"2026-06-10T21:22:47Z\"}]}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Teachers",
+      "item": [
+        {
+          "name": "List Teachers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/teachers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "teachers"
+              ]
+            },
+            "description": "Lista los docentes de la organización."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/teachers",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "teachers"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":[{\"id\":1,\"name\":\"Test User\",\"email\":\"test@educabot.com\",\"role\":\"teacher\"}]}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 - Students",
+      "item": [
+        {
+          "name": "List Students",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/students",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "students"
+              ]
+            },
+            "description": "Lista los alumnos de la organización."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/students",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "students"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":[{\"id\":9002,\"name\":\"Lucía Demo\",\"classroom_id\":9001,\"profile\":{\"id\":2,\"student_id\":9002,\"student_name\":\"Lucía Demo\",\"is_transitory\":true,\"difficulties\":[\"dificultad_lectura\"],\"free_description\":\"Dificultad transitoria de lectura tras cambio de escuela; en proceso de adaptación.\"},\"created_at\":\"2026-06-10T21:22:47Z\"},{\"id\":9003,\"name\":\"Mateo Test\",\"classroom_id\":9001,\"profile\":{\"id\":3,\"student_id\":9003,\"student_name\":\"Mateo Test\",\"is_transitory\":false,\"difficulties\":[\"hipersensibilidad_sensorial\",\"rutinas_rigidas\"],\"free_description\":\"Necesita anticipación de cambios y entornos con baja estimulación sensorial.\"},\"created_at\":\"2026-06-10T21:22:47Z\"},{\"id\":9001,\"name\":\"Tomás Prueba\",\"classroom_id\":9001,\"profile\":{\"id\":1,\"student_id\":9001,\"student_name\":\"Tomás Prueba\",\"is_transitory\":false,\"difficulties\":[\"se_distrae_facilmente\",\"impulsividad\"],\"free_description\":\"Le cuesta sostener la atención en consignas largas; responde bien a pausas activas.\"},\"created_at\":\"2026-06-10T21:22:47Z\"}]}"
+            }
+          ]
+        },
+        {
+          "name": "List Students (by classroom)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/students?classroom_id=9001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "students"
+              ],
+              "query": [
+                {
+                  "key": "classroom_id",
+                  "value": "9001"
+                }
+              ]
+            },
+            "description": "Filtra alumnos por aula."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/students?classroom_id=9001",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "students"
+                  ],
+                  "query": [
+                    {
+                      "key": "classroom_id",
+                      "value": "9001"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":[{\"id\":9002,\"name\":\"Lucía Demo\",\"classroom_id\":9001,\"profile\":{\"id\":2,\"student_id\":9002,\"student_name\":\"Lucía Demo\",\"is_transitory\":true,\"difficulties\":[\"dificultad_lectura\"],\"free_description\":\"Dificultad transitoria de lectura tras cambio de escuela; en proceso de adaptación.\"},\"created_at\":\"2026-06-10T21:22:47Z\"},{\"id\":9003,\"name\":\"Mateo Test\",\"classroom_id\":9001,\"profile\":{\"id\":3,\"student_id\":9003,\"student_name\":\"Mateo Test\",\"is_transitory\":false,\"difficulties\":[\"hipersensibilidad_sensorial\",\"rutinas_rigidas\"],\"free_description\":\"Necesita anticipación de cambios y entornos con baja estimulación sensorial.\"},\"created_at\":\"2026-06-10T21:22:47Z\"},{\"id\":9001,\"name\":\"Tomás Prueba\",\"classroom_id\":9001,\"profile\":{\"id\":1,\"student_id\":9001,\"student_name\":\"Tomás Prueba\",\"is_transitory\":false,\"difficulties\":[\"se_distrae_facilmente\",\"impulsividad\"],\"free_description\":\"Le cuesta sostener la atención en consignas largas; responde bien a pausas activas.\"},\"created_at\":\"2026-06-10T21:22:47Z\"}]}"
+            }
+          ]
+        },
+        {
+          "name": "Get Student (seed 9001)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/students/9001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "students",
+                "9001"
+              ]
+            },
+            "description": "Detalle de Tomás Prueba (perfil rico de prueba)."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/students/9001",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "students",
+                    "9001"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"id\":9001,\"name\":\"Tomás Prueba\",\"classroom_id\":9001,\"profile\":{\"id\":1,\"student_id\":9001,\"student_name\":\"Tomás Prueba\",\"is_transitory\":false,\"difficulties\":[\"se_distrae_facilmente\",\"impulsividad\"],\"free_description\":\"Le cuesta sostener la atención en consignas largas; responde bien a pausas activas.\"},\"created_at\":\"2026-06-10T21:22:47Z\"}}"
+            }
+          ]
+        },
+        {
+          "name": "Create Student",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () { pm.response.to.have.status(201); });",
+                  "var o = pm.response.json(); o = o.description || o;",
+                  "pm.collectionVariables.set('created_student_id', o.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/students",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "students"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Alumno Newman\",\n    \"classroom_id\": 9001\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Crea un alumno en el aula de prueba."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (201)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/students",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "students"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"name\": \"Alumno Newman\",\n    \"classroom_id\": 9001\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"id\":1,\"name\":\"Alumno Newman\",\"classroom_id\":9001,\"created_at\":\"2026-06-10T19:24:42-03:00\"}"
+            }
+          ]
+        },
+        {
+          "name": "Update Student (created)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/students/{{created_student_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "students",
+                "{{created_student_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Alumno Newman (editado)\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Actualiza el alumno creado."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/students/{{created_student_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "students",
+                    "{{created_student_id}}"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"name\": \"Alumno Newman (editado)\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"id\":1,\"name\":\"Alumno Newman (editado)\",\"classroom_id\":9001,\"created_at\":\"2026-06-10T19:24:42Z\"}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 - Student Profiles",
+      "item": [
+        {
+          "name": "Get Student Profile (seed 9001)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/students/9001/profile",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "students",
+                "9001",
+                "profile"
+              ]
+            },
+            "description": "Perfil del alumno (dificultades, descripción libre)."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/students/9001/profile",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "students",
+                    "9001",
+                    "profile"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"id\":9001,\"name\":\"Tomás Prueba\",\"classroom_id\":9001,\"profile\":{\"id\":1,\"student_id\":9001,\"student_name\":\"Tomás Prueba\",\"is_transitory\":false,\"difficulties\":[\"se_distrae_facilmente\",\"impulsividad\"],\"free_description\":\"Le cuesta sostener la atención en consignas largas; responde bien a pausas activas.\"},\"created_at\":\"2026-06-10T21:22:47Z\"}}"
+            }
+          ]
+        },
+        {
+          "name": "Upsert Student Profile (created)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/students/{{created_student_id}}/profile",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "students",
+                "{{created_student_id}}",
+                "profile"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"is_transitory\": false,\n    \"difficulties\": [\n        \"motricidad_fina\",\n        \"atencion\"\n    ],\n    \"free_description\": \"Prueba: dificultades de motricidad fina y atención.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Crea/actualiza el perfil del alumno."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/students/{{created_student_id}}/profile",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "students",
+                    "{{created_student_id}}",
+                    "profile"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"is_transitory\": false,\n    \"difficulties\": [\n        \"motricidad_fina\",\n        \"atencion\"\n    ],\n    \"free_description\": \"Prueba: dificultades de motricidad fina y atención.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"id\":1,\"name\":\"Alumno Newman (editado)\",\"classroom_id\":9001,\"profile\":{\"id\":4,\"student_id\":1,\"student_name\":\"Alumno Newman (editado)\",\"is_transitory\":false,\"difficulties\":[\"motricidad_fina\",\"atencion\"],\"free_description\":\"Prueba: dificultades de motricidad fina y atención.\"},\"created_at\":\"2026-06-10T19:24:42Z\"}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 - Catalog",
+      "item": [
+        {
+          "name": "List Ramps",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ramps",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "ramps"
+              ]
+            },
+            "description": "Lista las rampas (agrupadores de dispositivos de la valija)."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/ramps",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "ramps"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":[{\"id\":9001,\"name\":\"Rampa de Atención\",\"description\":\"Apoyos para atención y autorregulación\",\"short_description\":\"Atención\",\"sort_order\":1,\"devices\":[{\"id\":9001,\"ramp_id\":9001,\"name\":\"Tablero de anticipación\",\"description\":\"Secuencia visual de la rutina de clase\",\"qr_code\":\"QR-TEST-9001\",\"useful_when\":\"Cuando el alumno no inicia la tarea o necesita anticipar pasos\",\"quantity\":1,\"sort_order\":1},{\"id\":9002,\"ramp_id\":9001,\"name\":\"Auriculares de aislamiento\",\"description\":\"Reducen estímulos sonoros para sostener la atención\",\"qr_code\":\"QR-TEST-9002\",\"useful_when\":\"Cuando el alumno se distrae o se desregula por ruido\",\"quantity\":1,\"sort_order\":2}]}]}"
+            }
+          ]
+        },
+        {
+          "name": "Get Ramp (9001)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ramps/9001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "ramps",
+                "9001"
+              ]
+            },
+            "description": "Detalle de una rampa."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/ramps/9001",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "ramps",
+                    "9001"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"id\":9001,\"name\":\"Rampa de Atención\",\"description\":\"Apoyos para atención y autorregulación\",\"short_description\":\"Atención\",\"sort_order\":1,\"devices\":[{\"id\":9001,\"ramp_id\":9001,\"name\":\"Tablero de anticipación\",\"description\":\"Secuencia visual de la rutina de clase\",\"qr_code\":\"QR-TEST-9001\",\"useful_when\":\"Cuando el alumno no inicia la tarea o necesita anticipar pasos\",\"quantity\":1,\"sort_order\":1},{\"id\":9002,\"ramp_id\":9001,\"name\":\"Auriculares de aislamiento\",\"description\":\"Reducen estímulos sonoros para sostener la atención\",\"qr_code\":\"QR-TEST-9002\",\"useful_when\":\"Cuando el alumno se distrae o se desregula por ruido\",\"quantity\":1,\"sort_order\":2}]}}"
+            }
+          ]
+        },
+        {
+          "name": "List Devices",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/devices",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "devices"
+              ]
+            },
+            "description": "Lista los dispositivos de la valija adaptativa."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/devices",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "devices"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":[{\"id\":9001,\"ramp_id\":9001,\"name\":\"Tablero de anticipación\",\"description\":\"Secuencia visual de la rutina de clase\",\"qr_code\":\"QR-TEST-9001\",\"useful_when\":\"Cuando el alumno no inicia la tarea o necesita anticipar pasos\",\"quantity\":1,\"sort_order\":1,\"ramp_name\":\"Rampa de Atención\"},{\"id\":9002,\"ramp_id\":9001,\"name\":\"Auriculares de aislamiento\",\"description\":\"Reducen estímulos sonoros para sostener la atención\",\"qr_code\":\"QR-TEST-9002\",\"useful_when\":\"Cuando el alumno se distrae o se desregula por ruido\",\"quantity\":1,\"sort_order\":2,\"ramp_name\":\"Rampa de Atención\"}]}"
+            }
+          ]
+        },
+        {
+          "name": "List Devices (by ramp)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/devices?ramp_id=9001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "devices"
+              ],
+              "query": [
+                {
+                  "key": "ramp_id",
+                  "value": "9001"
+                }
+              ]
+            },
+            "description": "Filtra dispositivos por rampa."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/devices?ramp_id=9001",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "devices"
+                  ],
+                  "query": [
+                    {
+                      "key": "ramp_id",
+                      "value": "9001"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":[{\"id\":9001,\"ramp_id\":9001,\"name\":\"Tablero de anticipación\",\"description\":\"Secuencia visual de la rutina de clase\",\"qr_code\":\"QR-TEST-9001\",\"useful_when\":\"Cuando el alumno no inicia la tarea o necesita anticipar pasos\",\"quantity\":1,\"sort_order\":1,\"ramp_name\":\"Rampa de Atención\"},{\"id\":9002,\"ramp_id\":9001,\"name\":\"Auriculares de aislamiento\",\"description\":\"Reducen estímulos sonoros para sostener la atención\",\"qr_code\":\"QR-TEST-9002\",\"useful_when\":\"Cuando el alumno se distrae o se desregula por ruido\",\"quantity\":1,\"sort_order\":2,\"ramp_name\":\"Rampa de Atención\"}]}"
+            }
+          ]
+        },
+        {
+          "name": "Get Device (9001)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/devices/9001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "devices",
+                "9001"
+              ]
+            },
+            "description": "Detalle de un dispositivo."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/devices/9001",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "devices",
+                    "9001"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"id\":9001,\"ramp_id\":9001,\"name\":\"Tablero de anticipación\",\"description\":\"Secuencia visual de la rutina de clase\",\"qr_code\":\"QR-TEST-9001\",\"useful_when\":\"Cuando el alumno no inicia la tarea o necesita anticipar pasos\",\"quantity\":1,\"sort_order\":1,\"ramp_name\":\"Rampa de Atención\"}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07 - Adaptations",
+      "item": [
+        {
+          "name": "List Adaptations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/adaptations",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "adaptations"
+              ]
+            },
+            "description": "Lista las adaptaciones (recursos) del docente."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/adaptations",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "adaptations"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":[]}"
+            }
+          ]
+        },
+        {
+          "name": "Create Adaptation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () { pm.response.to.have.status(201); });",
+                  "var o = pm.response.json(); o = o.description || o;",
+                  "pm.collectionVariables.set('created_adaptation_id', o.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/adaptations",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "adaptations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"student_id\": 9001,\n    \"device_id\": 9001,\n    \"subject\": \"Matemática\",\n    \"title\": \"Fracciones con material concreto\",\n    \"activity_description\": \"Fracciones con tablero de anticipación\",\n    \"adaptation_strategy\": \"Anticipar pasos con apoyo visual\",\n    \"adaptation_type\": \"actividad_adaptada\",\n    \"notes\": \"Responde bien a estímulos visuales\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Crea una adaptación vinculada a un alumno y un dispositivo."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (201)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/adaptations",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "adaptations"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"student_id\": 9001,\n    \"device_id\": 9001,\n    \"subject\": \"Matemática\",\n    \"title\": \"Fracciones con material concreto\",\n    \"activity_description\": \"Fracciones con tablero de anticipación\",\n    \"adaptation_strategy\": \"Anticipar pasos con apoyo visual\",\n    \"adaptation_type\": \"actividad_adaptada\",\n    \"notes\": \"Responde bien a estímulos visuales\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"id\":1,\"student_id\":9001,\"student_name\":\"Tomás Prueba\",\"teacher_id\":1,\"teacher_name\":\"Test User\",\"device_id\":9001,\"device_name\":\"Tablero de anticipación\",\"device_ids\":[],\"device_names\":[],\"title\":\"Fracciones con material concreto\",\"subject\":\"Matemática\",\"activity_description\":\"Fracciones con tablero de anticipación\",\"adaptation_strategy\":\"Anticipar pasos con apoyo visual\",\"adaptation_type\":\"actividad_adaptada\",\"notes\":\"Responde bien a estímulos visuales\",\"status\":\"en_curso\",\"was_edited\":false,\"created_at\":\"2026-06-10T19:24:42Z\",\"updated_at\":\"2026-06-10T19:24:42Z\"}"
+            }
+          ]
+        },
+        {
+          "name": "List Adaptations (by student)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/adaptations?student_id=9001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "adaptations"
+              ],
+              "query": [
+                {
+                  "key": "student_id",
+                  "value": "9001"
+                }
+              ]
+            },
+            "description": "Filtra adaptaciones por alumno."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/adaptations?student_id=9001",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "adaptations"
+                  ],
+                  "query": [
+                    {
+                      "key": "student_id",
+                      "value": "9001"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":[{\"id\":1,\"student_id\":9001,\"student_name\":\"Tomás Prueba\",\"teacher_id\":1,\"teacher_name\":\"Test User\",\"device_id\":9001,\"device_name\":\"Tablero de anticipación\",\"device_ids\":[],\"device_names\":[],\"title\":\"Fracciones con material concreto\",\"subject\":\"Matemática\",\"activity_description\":\"Fracciones con tablero de anticipación\",\"adaptation_strategy\":\"Anticipar pasos con apoyo visual\",\"adaptation_type\":\"actividad_adaptada\",\"notes\":\"Responde bien a estímulos visuales\",\"status\":\"en_curso\",\"was_edited\":false,\"created_at\":\"2026-06-10T19:24:42Z\",\"updated_at\":\"2026-06-10T19:24:42Z\"}]}"
+            }
+          ]
+        },
+        {
+          "name": "Get Adaptation (created)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/adaptations/{{created_adaptation_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "adaptations",
+                "{{created_adaptation_id}}"
+              ]
+            },
+            "description": "Detalle de la adaptación creada."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/adaptations/{{created_adaptation_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "adaptations",
+                    "{{created_adaptation_id}}"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"id\":1,\"student_id\":9001,\"student_name\":\"Tomás Prueba\",\"teacher_id\":1,\"teacher_name\":\"Test User\",\"device_id\":9001,\"device_name\":\"Tablero de anticipación\",\"device_ids\":[],\"device_names\":[],\"title\":\"Fracciones con material concreto\",\"subject\":\"Matemática\",\"activity_description\":\"Fracciones con tablero de anticipación\",\"adaptation_strategy\":\"Anticipar pasos con apoyo visual\",\"adaptation_type\":\"actividad_adaptada\",\"notes\":\"Responde bien a estímulos visuales\",\"status\":\"en_curso\",\"was_edited\":false,\"created_at\":\"2026-06-10T19:24:42Z\",\"updated_at\":\"2026-06-10T19:24:42Z\"}}"
+            }
+          ]
+        },
+        {
+          "name": "Update Adaptation (created)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/adaptations/{{created_adaptation_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "adaptations",
+                "{{created_adaptation_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"status\": \"probado\",\n    \"outcome\": \"Completó la actividad con más autonomía\",\n    \"notes\": \"Funcionó, repetir la próxima clase\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Actualiza estado/resultado de la adaptación."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/adaptations/{{created_adaptation_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "adaptations",
+                    "{{created_adaptation_id}}"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"status\": \"probado\",\n    \"outcome\": \"Completó la actividad con más autonomía\",\n    \"notes\": \"Funcionó, repetir la próxima clase\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"id\":1,\"student_id\":9001,\"student_name\":\"Tomás Prueba\",\"teacher_id\":1,\"teacher_name\":\"Test User\",\"device_id\":9001,\"device_name\":\"Tablero de anticipación\",\"device_ids\":[],\"device_names\":[],\"title\":\"Fracciones con material concreto\",\"subject\":\"Matemática\",\"activity_description\":\"Fracciones con tablero de anticipación\",\"adaptation_strategy\":\"Anticipar pasos con apoyo visual\",\"adaptation_type\":\"actividad_adaptada\",\"outcome\":\"Completó la actividad con más autonomía\",\"notes\":\"Funcionó, repetir la próxima clase\",\"status\":\"probado\",\"was_edited\":false,\"created_at\":\"2026-06-10T19:24:42Z\",\"updated_at\":\"2026-06-10T19:24:42Z\"}}"
+            }
+          ]
+        },
+        {
+          "name": "List Adaptation Resources (created)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/adaptations/{{created_adaptation_id}}/resources",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "adaptations",
+                "{{created_adaptation_id}}",
+                "resources"
+              ]
+            },
+            "description": "Recursos (materiales) ligados a la adaptación."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/adaptations/{{created_adaptation_id}}/resources",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "adaptations",
+                    "{{created_adaptation_id}}",
+                    "resources"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":[]}"
+            }
+          ]
+        },
+        {
+          "name": "Export Adaptation (md)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/adaptations/{{created_adaptation_id}}/export?format=md",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "adaptations",
+                "{{created_adaptation_id}}",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "md"
+                }
+              ]
+            },
+            "description": "Exporta la adaptación a Markdown (descarga). Content-Type text/markdown."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/adaptations/{{created_adaptation_id}}/export?format=md",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "adaptations",
+                    "{{created_adaptation_id}}",
+                    "export"
+                  ],
+                  "query": [
+                    {
+                      "key": "format",
+                      "value": "md"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "text/markdown; charset=utf-8"
+                }
+              ],
+              "body": "# Matemática\n\n**Alumno:** Tomás Prueba  \n**Docente:** Test User  \n**Tipo:** actividad_adaptada  \n**Estado:** Probado\n\n## Actividad\n\nFracciones con tablero de anticipación\n\n## Estrategia\n\nAnticipar pasos con apoyo visual\n\n## Dispositivos sugeridos\n\n### Tablero de anticipación\n\n\n## Notas para el docente\n\nFuncionó, repetir la próxima clase\n\n## Resultado\n\nCompletó la actividad con más autonomía\n\n---\n\n_Generado por Alizia · Educabot · 10/06/2026 · Adaptación #1_\n"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08 - Chat History",
+      "item": [
+        {
+          "name": "Chat History (assist)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/chat/history/assist",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "chat",
+                "history",
+                "assist"
+              ]
+            },
+            "description": "Historial de conversaciones del docente en el modo indicado (contextId)."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/chat/history/assist",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "chat",
+                    "history",
+                    "assist"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":[{\"id\":1,\"mode\":\"assist\",\"messages\":[{\"role\":\"user\",\"content\":\"Hola\",\"created_at\":\"2026-06-10T18:39:08Z\"},{\"role\":\"assistant\",\"content\":\"[stub] chat response\",\"created_at\":\"2026-06-10T18:39:08Z\"}],\"created_at\":\"2026-06-10T18:39:08Z\"}]}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "09 - Dashboard",
+      "item": [
+        {
+          "name": "Get Metrics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/dashboard/metrics",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "dashboard",
+                "metrics"
+              ]
+            },
+            "description": "Métricas agregadas (alumnos, adaptaciones, aulas)."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/dashboard/metrics",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "dashboard",
+                    "metrics"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"total_students\":4,\"students_with_profiles\":4,\"total_adaptations\":1,\"adaptations_by_status\":{\"probado\":1},\"adaptations_by_type\":{\"actividad_adaptada\":1},\"top_used_devices\":[],\"adaptations_this_week\":1,\"classroom_count\":2}}"
+            }
+          ]
+        },
+        {
+          "name": "Get AI Usage",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/dashboard/ai-usage",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "dashboard",
+                "ai-usage"
+              ]
+            },
+            "description": "Consumo de tokens de IA por la organización."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/dashboard/ai-usage",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "dashboard",
+                    "ai-usage"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"window_days\":30,\"total_requests\":0,\"prompt_tokens\":0,\"completion_tokens\":0,\"total_tokens\":0,\"by_mode\":[]}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "10 - Context Engine · HU-1 Apertura",
+      "item": [
+        {
+          "name": "Open · sin dimensión (saludo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/inclusion/open",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inclusion",
+                "open"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Sin dimensión: saluda y pregunta de qué hablar (needs_dimension=true)."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/inclusion/open",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "inclusion",
+                    "open"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"greeting\":\"¡Hola! Soy Alizia, tu asistente de inclusión. ¿De qué querés hablar: de un alumno, de la valija o de un tema?\",\"needs_dimension\":true}}"
+            }
+          ]
+        },
+        {
+          "name": "Open · dimensión ambigua",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/inclusion/open",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inclusion",
+                "open"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"dimension\": \"loquesea\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Dimensión no reconocida: repregunta."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/inclusion/open",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "inclusion",
+                    "open"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"dimension\": \"loquesea\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"greeting\":\"No me quedó claro. ¿Querés hablar de un alumno, de la valija o de un tema?\",\"needs_dimension\":true}}"
+            }
+          ]
+        },
+        {
+          "name": "Open · alumno sin id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/inclusion/open",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inclusion",
+                "open"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"dimension\": \"alumno\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Falta student_id: repregunta por el alumno."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/inclusion/open",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "inclusion",
+                    "open"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"dimension\": \"alumno\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"greeting\":\"Dale, ¿de qué alumno querés hablar?\",\"needs_dimension\":true}}"
+            }
+          ]
+        },
+        {
+          "name": "Open · alumno 9001",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/inclusion/open",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inclusion",
+                "open"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"dimension\": \"alumno\",\n    \"student_id\": 9001\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Abre sobre Tomás (9001) y recupera resúmenes previos del alumno."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/inclusion/open",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "inclusion",
+                    "open"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"dimension\": \"alumno\",\n    \"student_id\": 9001\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"greeting\":\"Listo, hablemos de Tomás Prueba.\",\"needs_dimension\":false,\"dimension\":\"alumno\",\"student\":{\"id\":9001,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"classroom_id\":9001,\"name\":\"Tomás Prueba\",\"age_range\":\"8-9\",\"grade_level\":\"4to\",\"preferred_name\":\"Tomi\",\"profile\":{\"id\":1,\"student_id\":9001,\"is_transitory\":false,\"difficulties\":[\"se_distrae_facilmente\",\"impulsividad\"],\"free_description\":\"Le cuesta sostener la atención en consignas largas; responde bien a pausas activas.\",\"support_level\":\"medio\",\"strengths\":[\"memoria visual\",\"creatividad\"],\"interests\":[\"dinosaurios\",\"dibujo\"],\"triggers\":[\"ruidos fuertes\",\"consignas extensas\"],\"effective_strategies\":[\"pausas activas\",\"consignas cortas paso a paso\"],\"ineffective_strategies\":[\"retos en público\"],\"situation_codes\":[\"no_inicia_tarea\",\"se_distrae\"],\"has_therapeutic_companion\":true,\"environment_notes\":\"Acompañante terapéutico 3 veces por semana; familia muy presente.\",\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"},\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"}}}"
+            }
+          ]
+        },
+        {
+          "name": "Open · alumno inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/inclusion/open",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inclusion",
+                "open"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"dimension\": \"alumno\",\n    \"student_id\": 999999\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Alumno inexistente: error."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (404)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/inclusion/open",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "inclusion",
+                    "open"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"dimension\": \"alumno\",\n    \"student_id\": 999999\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"code\":\"not_found\",\"description\":\"not found\"}"
+            }
+          ]
+        },
+        {
+          "name": "Open · tema sin topic",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/inclusion/open",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inclusion",
+                "open"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"dimension\": \"tema\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Falta el tema: repregunta."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/inclusion/open",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "inclusion",
+                    "open"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"dimension\": \"tema\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"greeting\":\"Perfecto, ¿sobre qué tema querés que busquemos?\",\"needs_dimension\":true}}"
+            }
+          ]
+        },
+        {
+          "name": "Open · tema TEA",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/inclusion/open",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inclusion",
+                "open"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"dimension\": \"tema\",\n    \"topic\": \"TEA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Abre sobre el tema TEA y recupera resúmenes por keyword."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/inclusion/open",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "inclusion",
+                    "open"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"dimension\": \"tema\",\n    \"topic\": \"TEA\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"greeting\":\"Buenísimo, trabajemos sobre TEA.\",\"needs_dimension\":false,\"dimension\":\"tema\"}}"
+            }
+          ]
+        },
+        {
+          "name": "Open · valija",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/inclusion/open",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inclusion",
+                "open"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"dimension\": \"valija\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Abre sobre la valija (sin alumno)."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/inclusion/open",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "inclusion",
+                    "open"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"dimension\": \"valija\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"greeting\":\"Genial, miremos la valija. ¿Qué necesitás resolver?\",\"needs_dimension\":false,\"dimension\":\"valija\"}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "11 - Context Engine · HU-2 Contexto",
+      "item": [
+        {
+          "name": "Context · alumno 9001 (perfil rico)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/inclusion/context",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inclusion",
+                "context"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"dimension\": \"alumno\",\n    \"student_id\": 9001\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Arma el contexto del alumno: perfil, PPI, diagnósticos, situaciones."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/inclusion/context",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "inclusion",
+                    "context"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"dimension\": \"alumno\",\n    \"student_id\": 9001\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"device_catalog\":[{\"id\":9001,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"ramp_id\":9001,\"name\":\"Tablero de anticipación\",\"description\":\"Secuencia visual de la rutina de clase\",\"qr_code\":\"QR-TEST-9001\",\"useful_when\":\"Cuando el alumno no inicia la tarea o necesita anticipar pasos\",\"quantity\":1,\"sort_order\":1,\"ramp\":{\"id\":9001,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"name\":\"Rampa de Atención\",\"description\":\"Apoyos para atención y autorregulación\",\"short_description\":\"Atención\",\"sort_order\":1,\"created_at\":\"2026-06-10T21:40:42.968007Z\",\"updated_at\":\"2026-06-10T21:40:42.968007Z\"},\"created_at\":\"2026-06-10T21:40:42.968007Z\",\"updated_at\":\"2026-06-10T21:40:42.968007Z\"},{\"id\":9002,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"ramp_id\":9001,\"name\":\"Auriculares de aislamiento\",\"description\":\"Reducen estímulos sonoros para sostener la atención\",\"qr_code\":\"QR-TEST-9002\",\"useful_when\":\"Cuando el alumno se distrae o se desregula por ruido\",\"quantity\":1,\"sort_order\":2,\"ramp\":{\"id\":9001,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"name\":\"Rampa de Atención\",\"description\":\"Apoyos para atención y autorregulación\",\"short_description\":\"Atención\",\"sort_order\":1,\"created_at\":\"2026-06-10T21:40:42.968007Z\",\"updated_at\":\"2026-06-10T21:40:42.968007Z\"},\"created_at\":\"2026-06-10T21:40:42.968007Z\",\"updated_at\":\"2026-06-10T21:40:42.968007Z\"}],\"situations\":[{\"id\":1,\"code\":\"no_inicia_tarea\",\"name\":\"No inicia la tarea\",\"description\":\"Cuesta arrancar; se queda sin empezar aunque entienda la consigna.\",\"phase\":\"durante\",\"sort_order\":1},{\"id\":2,\"code\":\"se_distrae\",\"name\":\"Se distrae constantemente\",\"description\":\"Pierde el foco con estímulos del entorno; atención intermitente.\",\"phase\":\"durante\",\"sort_order\":2},{\"id\":3,\"code\":\"se_desregula\",\"name\":\"Se desregula emocionalmente\",\"description\":\"Frustración, llanto o enojo que interrumpen el trabajo.\",\"phase\":\"durante\",\"sort_order\":3},{\"id\":4,\"code\":\"no_sostiene_atencion\",\"name\":\"No sostiene la atención\",\"description\":\"Mantiene el foco poco tiempo y abandona antes de terminar.\",\"phase\":\"durante\",\"sort_order\":4},{\"id\":5,\"code\":\"dificultad_consignas\",\"name\":\"Dificultad para comprender consignas\",\"description\":\"No interpreta lo que se pide; necesita reformulación o apoyo visual.\",\"phase\":\"preventiva\",\"sort_order\":5},{\"id\":6,\"code\":\"no_termina_tarea\",\"name\":\"No termina la tarea\",\"description\":\"Comienza pero no llega al cierre dentro del tiempo de clase.\",\"phase\":\"cierre\",\"sort_order\":6},{\"id\":7,\"code\":\"ritmo_lento\",\"name\":\"Trabaja a ritmo muy lento\",\"description\":\"Avanza por debajo del ritmo del grupo; necesita más tiempo.\",\"phase\":\"durante\",\"sort_order\":7},{\"id\":8,\"code\":\"dificultad_lectura\",\"name\":\"Dificultad en la lectura\",\"description\":\"Decodificación lenta o con errores; impacta la comprensión.\",\"phase\":\"durante\",\"sort_order\":8},{\"id\":9,\"code\":\"dificultad_escritura\",\"name\":\"Dificultad en la escritura\",\"description\":\"Trazo, ortografía u organización de ideas por escrito.\",\"phase\":\"durante\",\"sort_order\":9},{\"id\":10,\"code\":\"dificultad_matematica\",\"name\":\"Dificultad en matemática\",\"description\":\"Dificultad con conteo, operaciones o razonamiento numérico.\",\"phase\":\"durante\",\"sort_order\":10},{\"id\":11,\"code\":\"no_interactua_pares\",\"name\":\"No interactúa con pares\",\"description\":\"Se aísla o evita el trabajo en grupo.\",\"phase\":\"preventiva\",\"sort_order\":11},{\"id\":12,\"code\":\"conducta_disruptiva\",\"name\":\"Conducta disruptiva\",\"description\":\"Interrumpe la clase; comportamientos que afectan al grupo.\",\"phase\":\"durante\",\"sort_order\":12},{\"id\":13,\"code\":\"fatiga_sensorial\",\"name\":\"Sobrecarga sensorial\",\"description\":\"Ruido, luz o estímulos que generan saturación y bloqueo.\",\"phase\":\"preventiva\",\"sort_order\":13},{\"id\":14,\"code\":\"dependencia_adulto\",\"name\":\"Dependencia del adulto\",\"description\":\"No avanza sin acompañamiento individual constante.\",\"phase\":\"durante\",\"sort_order\":14},{\"id\":15,\"code\":\"dificultad_transiciones\",\"name\":\"Dificultad en las transiciones\",\"description\":\"Le cuesta el cambio de actividad o de espacio.\",\"phase\":\"preventiva\",\"sort_order\":15}],\"dimension\":\"alumno\",\"classroom\":{\"id\":9001,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"name\":\"Aula de prueba\",\"grade\":\"4to\",\"section\":\"A\",\"students\":[{\"id\":9001,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"classroom_id\":9001,\"name\":\"Tomás Prueba\",\"age_range\":\"8-9\",\"grade_level\":\"4to\",\"preferred_name\":\"Tomi\",\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"},{\"id\":9002,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"classroom_id\":9001,\"name\":\"Lucía Demo\",\"age_range\":\"9-10\",\"grade_level\":\"4to\",\"preferred_name\":\"Lu\",\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"},{\"id\":9003,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"classroom_id\":9001,\"name\":\"Mateo Test\",\"age_range\":\"8-9\",\"grade_level\":\"4to\",\"preferred_name\":\"Mate\",\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"},{\"id\":1,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"classroom_id\":9001,\"name\":\"Alumno Newman (editado)\",\"created_at\":\"2026-06-10T19:24:42.47151Z\",\"updated_at\":\"2026-06-10T19:24:42.48565Z\"}],\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"},\"classroom_students\":[{\"id\":1,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"classroom_id\":9001,\"name\":\"Alumno Newman (editado)\",\"profile\":{\"id\":4,\"student_id\":1,\"is_transitory\":false,\"difficulties\":[\"motricidad_fina\",\"atencion\"],\"free_description\":\"Prueba: dificultades de motricidad fina y atención.\",\"created_at\":\"2026-06-10T19:24:42.514491Z\",\"updated_at\":\"2026-06-10T19:24:42.514491Z\"},\"created_at\":\"2026-06-10T19:24:42.47151Z\",\"updated_at\":\"2026-06-10T19:24:42.48565Z\"},{\"id\":9002,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"classroom_id\":9001,\"name\":\"Lucía Demo\",\"age_range\":\"9-10\",\"grade_level\":\"4to\",\"preferred_name\":\"Lu\",\"profile\":{\"id\":2,\"student_id\":9002,\"is_transitory\":true,\"difficulties\":[\"dificultad_lectura\"],\"free_description\":\"Dificultad transitoria de lectura tras cambio de escuela; en proceso de adaptación.\",\"support_level\":\"bajo\",\"strengths\":[\"oralidad\"],\"interests\":[\"fútbol\"],\"effective_strategies\":[\"lectura compartida\"],\"situation_codes\":[\"dificultad_consignas\"],\"has_therapeutic_companion\":false,\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"},\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"},{\"id\":9003,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"classroom_id\":9001,\"name\":\"Mateo Test\",\"age_range\":\"8-9\",\"grade_level\":\"4to\",\"preferred_name\":\"Mate\",\"profile\":{\"id\":3,\"student_id\":9003,\"is_transitory\":false,\"difficulties\":[\"hipersensibilidad_sensorial\",\"rutinas_rigidas\"],\"free_description\":\"Necesita anticipación de cambios y entornos con baja estimulación sensorial.\",\"support_level\":\"alto\",\"strengths\":[\"atención al detalle\"],\"interests\":[\"trenes\",\"mapas\"],\"triggers\":[\"cambios imprevistos\",\"luces brillantes\"],\"effective_strategies\":[\"anticipación con pictogramas\",\"rincón de calma\"],\"ineffective_strategies\":[\"improvisar la rutina\"],\"situation_codes\":[\"se_desregula\",\"no_sostiene_atencion\"],\"has_therapeutic_companion\":true,\"environment_notes\":\"Sensibilidad sensorial alta; trabaja con fonoaudióloga externa.\",\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"},\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"},{\"id\":9001,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"classroom_id\":9001,\"name\":\"Tomás Prueba\",\"age_range\":\"8-9\",\"grade_level\":\"4to\",\"preferred_name\":\"Tomi\",\"profile\":{\"id\":1,\"student_id\":9001,\"is_transitory\":false,\"difficulties\":[\"se_distrae_facilmente\",\"impulsividad\"],\"free_description\":\"Le cuesta sostener la atención en consignas largas; responde bien a pausas activas.\",\"support_level\":\"medio\",\"strengths\":[\"memoria visual\",\"creatividad\"],\"interests\":[\"dinosaurios\",\"dibujo\"],\"triggers\":[\"ruidos fuertes\",\"consignas extensas\"],\"effective_strategies\":[\"pausas activas\",\"consignas cortas paso a paso\"],\"ineffective_strategies\":[\"retos en público\"],\"situation_codes\":[\"no_inicia_tarea\",\"se_distrae\"],\"has_therapeutic_companion\":true,\"environment_notes\":\"Acompañante terapéutico 3 veces por semana; familia muy presente.\",\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"},\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"}],\"target_student\":{\"id\":9001,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"classroom_id\":9001,\"name\":\"Tomás Prueba\",\"age_range\":\"8-9\",\"grade_level\":\"4to\",\"preferred_name\":\"Tomi\",\"profile\":{\"id\":1,\"student_id\":9001,\"is_transitory\":false,\"difficulties\":[\"se_distrae_facilmente\",\"impulsividad\"],\"free_description\":\"Le cuesta sostener la atención en consignas largas; responde bien a pausas activas.\",\"support_level\":\"medio\",\"strengths\":[\"memoria visual\",\"creatividad\"],\"interests\":[\"dinosaurios\",\"dibujo\"],\"triggers\":[\"ruidos fuertes\",\"consignas extensas\"],\"effective_strategies\":[\"pausas activas\",\"consignas cortas paso a paso\"],\"ineffective_strategies\":[\"retos en público\"],\"situation_codes\":[\"no_inicia_tarea\",\"se_distrae\"],\"has_therapeutic_companion\":true,\"environment_notes\":\"Acompañante terapéutico 3 veces por semana; familia muy presente.\",\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"},\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"},\"diagnoses\":[{\"id\":1,\"student_profile_id\":1,\"diagnosis_id\":9001,\"severity\":\"leve\",\"notes\":\"Diagnóstico de prueba para validar el Context Assembler.\",\"diagnosis\":{\"id\":9001,\"name\":\"TDAH (prueba)\",\"category\":\"neurodesarrollo\"},\"created_at\":\"2026-06-10T18:22:47.30357-03:00\"}],\"ppi\":{\"id\":9001,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"student_id\":9001,\"objectives\":[\"Sostener la atención 15 min con apoyos\",\"Iniciar la tarea de forma autónoma\"],\"curricular_adaptations\":\"Consignas segmentadas y tiempos extendidos en evaluaciones.\",\"follow_up\":\"Revisión mensual con la maestra integradora.\",\"status\":\"active\",\"created_at\":\"2026-06-10T18:22:47.30357-03:00\",\"updated_at\":\"2026-06-10T18:22:47.30357-03:00\"},\"past_adaptations\":[{\"id\":1,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"student_id\":9001,\"teacher_id\":1,\"device_id\":9001,\"title\":\"Fracciones con material concreto\",\"subject\":\"Matemática\",\"activity_description\":\"Fracciones con tablero de anticipación\",\"adaptation_strategy\":\"Anticipar pasos con apoyo visual\",\"adaptation_type\":\"actividad_adaptada\",\"outcome\":\"Completó la actividad con más autonomía\",\"notes\":\"Funcionó, repetir la próxima clase\",\"status\":\"probado\",\"was_edited\":false,\"student\":{\"id\":9001,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"classroom_id\":9001,\"name\":\"Tomás Prueba\",\"age_range\":\"8-9\",\"grade_level\":\"4to\",\"preferred_name\":\"Tomi\",\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"},\"teacher\":{\"id\":1,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"email\":\"test@educabot.com\",\"name\":\"Test User\",\"role\":\"teacher\",\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"},\"device\":{\"id\":9001,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"ramp_id\":9001,\"name\":\"Tablero de anticipación\",\"description\":\"Secuencia visual de la rutina de clase\",\"qr_code\":\"QR-TEST-9001\",\"useful_when\":\"Cuando el alumno no inicia la tarea o necesita anticipar pasos\",\"quantity\":1,\"sort_order\":1,\"created_at\":\"2026-06-10T21:40:42.968007Z\",\"updated_at\":\"2026-06-10T21:40:42.968007Z\"},\"created_at\":\"2026-06-10T19:24:42.574767Z\",\"updated_at\":\"2026-06-10T19:24:42.625869Z\"}],\"missing_data\":[\"perfil_docente\"]}}"
+            }
+          ]
+        },
+        {
+          "name": "Context · alumno 9003 (degradación)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/inclusion/context",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inclusion",
+                "context"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"dimension\": \"alumno\",\n    \"student_id\": 9003\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Alumno sin PPI: degrada con elegancia (missing_data incluye 'ppi')."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/inclusion/context",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "inclusion",
+                    "context"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"dimension\": \"alumno\",\n    \"student_id\": 9003\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"device_catalog\":[{\"id\":9001,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"ramp_id\":9001,\"name\":\"Tablero de anticipación\",\"description\":\"Secuencia visual de la rutina de clase\",\"qr_code\":\"QR-TEST-9001\",\"useful_when\":\"Cuando el alumno no inicia la tarea o necesita anticipar pasos\",\"quantity\":1,\"sort_order\":1,\"ramp\":{\"id\":9001,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"name\":\"Rampa de Atención\",\"description\":\"Apoyos para atención y autorregulación\",\"short_description\":\"Atención\",\"sort_order\":1,\"created_at\":\"2026-06-10T21:40:42.968007Z\",\"updated_at\":\"2026-06-10T21:40:42.968007Z\"},\"created_at\":\"2026-06-10T21:40:42.968007Z\",\"updated_at\":\"2026-06-10T21:40:42.968007Z\"},{\"id\":9002,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"ramp_id\":9001,\"name\":\"Auriculares de aislamiento\",\"description\":\"Reducen estímulos sonoros para sostener la atención\",\"qr_code\":\"QR-TEST-9002\",\"useful_when\":\"Cuando el alumno se distrae o se desregula por ruido\",\"quantity\":1,\"sort_order\":2,\"ramp\":{\"id\":9001,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"name\":\"Rampa de Atención\",\"description\":\"Apoyos para atención y autorregulación\",\"short_description\":\"Atención\",\"sort_order\":1,\"created_at\":\"2026-06-10T21:40:42.968007Z\",\"updated_at\":\"2026-06-10T21:40:42.968007Z\"},\"created_at\":\"2026-06-10T21:40:42.968007Z\",\"updated_at\":\"2026-06-10T21:40:42.968007Z\"}],\"situations\":[{\"id\":1,\"code\":\"no_inicia_tarea\",\"name\":\"No inicia la tarea\",\"description\":\"Cuesta arrancar; se queda sin empezar aunque entienda la consigna.\",\"phase\":\"durante\",\"sort_order\":1},{\"id\":2,\"code\":\"se_distrae\",\"name\":\"Se distrae constantemente\",\"description\":\"Pierde el foco con estímulos del entorno; atención intermitente.\",\"phase\":\"durante\",\"sort_order\":2},{\"id\":3,\"code\":\"se_desregula\",\"name\":\"Se desregula emocionalmente\",\"description\":\"Frustración, llanto o enojo que interrumpen el trabajo.\",\"phase\":\"durante\",\"sort_order\":3},{\"id\":4,\"code\":\"no_sostiene_atencion\",\"name\":\"No sostiene la atención\",\"description\":\"Mantiene el foco poco tiempo y abandona antes de terminar.\",\"phase\":\"durante\",\"sort_order\":4},{\"id\":5,\"code\":\"dificultad_consignas\",\"name\":\"Dificultad para comprender consignas\",\"description\":\"No interpreta lo que se pide; necesita reformulación o apoyo visual.\",\"phase\":\"preventiva\",\"sort_order\":5},{\"id\":6,\"code\":\"no_termina_tarea\",\"name\":\"No termina la tarea\",\"description\":\"Comienza pero no llega al cierre dentro del tiempo de clase.\",\"phase\":\"cierre\",\"sort_order\":6},{\"id\":7,\"code\":\"ritmo_lento\",\"name\":\"Trabaja a ritmo muy lento\",\"description\":\"Avanza por debajo del ritmo del grupo; necesita más tiempo.\",\"phase\":\"durante\",\"sort_order\":7},{\"id\":8,\"code\":\"dificultad_lectura\",\"name\":\"Dificultad en la lectura\",\"description\":\"Decodificación lenta o con errores; impacta la comprensión.\",\"phase\":\"durante\",\"sort_order\":8},{\"id\":9,\"code\":\"dificultad_escritura\",\"name\":\"Dificultad en la escritura\",\"description\":\"Trazo, ortografía u organización de ideas por escrito.\",\"phase\":\"durante\",\"sort_order\":9},{\"id\":10,\"code\":\"dificultad_matematica\",\"name\":\"Dificultad en matemática\",\"description\":\"Dificultad con conteo, operaciones o razonamiento numérico.\",\"phase\":\"durante\",\"sort_order\":10},{\"id\":11,\"code\":\"no_interactua_pares\",\"name\":\"No interactúa con pares\",\"description\":\"Se aísla o evita el trabajo en grupo.\",\"phase\":\"preventiva\",\"sort_order\":11},{\"id\":12,\"code\":\"conducta_disruptiva\",\"name\":\"Conducta disruptiva\",\"description\":\"Interrumpe la clase; comportamientos que afectan al grupo.\",\"phase\":\"durante\",\"sort_order\":12},{\"id\":13,\"code\":\"fatiga_sensorial\",\"name\":\"Sobrecarga sensorial\",\"description\":\"Ruido, luz o estímulos que generan saturación y bloqueo.\",\"phase\":\"preventiva\",\"sort_order\":13},{\"id\":14,\"code\":\"dependencia_adulto\",\"name\":\"Dependencia del adulto\",\"description\":\"No avanza sin acompañamiento individual constante.\",\"phase\":\"durante\",\"sort_order\":14},{\"id\":15,\"code\":\"dificultad_transiciones\",\"name\":\"Dificultad en las transiciones\",\"description\":\"Le cuesta el cambio de actividad o de espacio.\",\"phase\":\"preventiva\",\"sort_order\":15}],\"dimension\":\"alumno\",\"classroom\":{\"id\":9001,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"name\":\"Aula de prueba\",\"grade\":\"4to\",\"section\":\"A\",\"students\":[{\"id\":9001,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"classroom_id\":9001,\"name\":\"Tomás Prueba\",\"age_range\":\"8-9\",\"grade_level\":\"4to\",\"preferred_name\":\"Tomi\",\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"},{\"id\":9002,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"classroom_id\":9001,\"name\":\"Lucía Demo\",\"age_range\":\"9-10\",\"grade_level\":\"4to\",\"preferred_name\":\"Lu\",\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"},{\"id\":9003,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"classroom_id\":9001,\"name\":\"Mateo Test\",\"age_range\":\"8-9\",\"grade_level\":\"4to\",\"preferred_name\":\"Mate\",\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"},{\"id\":1,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"classroom_id\":9001,\"name\":\"Alumno Newman (editado)\",\"created_at\":\"2026-06-10T19:24:42.47151Z\",\"updated_at\":\"2026-06-10T19:24:42.48565Z\"}],\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"},\"classroom_students\":[{\"id\":1,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"classroom_id\":9001,\"name\":\"Alumno Newman (editado)\",\"profile\":{\"id\":4,\"student_id\":1,\"is_transitory\":false,\"difficulties\":[\"motricidad_fina\",\"atencion\"],\"free_description\":\"Prueba: dificultades de motricidad fina y atención.\",\"created_at\":\"2026-06-10T19:24:42.514491Z\",\"updated_at\":\"2026-06-10T19:24:42.514491Z\"},\"created_at\":\"2026-06-10T19:24:42.47151Z\",\"updated_at\":\"2026-06-10T19:24:42.48565Z\"},{\"id\":9002,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"classroom_id\":9001,\"name\":\"Lucía Demo\",\"age_range\":\"9-10\",\"grade_level\":\"4to\",\"preferred_name\":\"Lu\",\"profile\":{\"id\":2,\"student_id\":9002,\"is_transitory\":true,\"difficulties\":[\"dificultad_lectura\"],\"free_description\":\"Dificultad transitoria de lectura tras cambio de escuela; en proceso de adaptación.\",\"support_level\":\"bajo\",\"strengths\":[\"oralidad\"],\"interests\":[\"fútbol\"],\"effective_strategies\":[\"lectura compartida\"],\"situation_codes\":[\"dificultad_consignas\"],\"has_therapeutic_companion\":false,\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"},\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"},{\"id\":9003,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"classroom_id\":9001,\"name\":\"Mateo Test\",\"age_range\":\"8-9\",\"grade_level\":\"4to\",\"preferred_name\":\"Mate\",\"profile\":{\"id\":3,\"student_id\":9003,\"is_transitory\":false,\"difficulties\":[\"hipersensibilidad_sensorial\",\"rutinas_rigidas\"],\"free_description\":\"Necesita anticipación de cambios y entornos con baja estimulación sensorial.\",\"support_level\":\"alto\",\"strengths\":[\"atención al detalle\"],\"interests\":[\"trenes\",\"mapas\"],\"triggers\":[\"cambios imprevistos\",\"luces brillantes\"],\"effective_strategies\":[\"anticipación con pictogramas\",\"rincón de calma\"],\"ineffective_strategies\":[\"improvisar la rutina\"],\"situation_codes\":[\"se_desregula\",\"no_sostiene_atencion\"],\"has_therapeutic_companion\":true,\"environment_notes\":\"Sensibilidad sensorial alta; trabaja con fonoaudióloga externa.\",\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"},\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"},{\"id\":9001,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"classroom_id\":9001,\"name\":\"Tomás Prueba\",\"age_range\":\"8-9\",\"grade_level\":\"4to\",\"preferred_name\":\"Tomi\",\"profile\":{\"id\":1,\"student_id\":9001,\"is_transitory\":false,\"difficulties\":[\"se_distrae_facilmente\",\"impulsividad\"],\"free_description\":\"Le cuesta sostener la atención en consignas largas; responde bien a pausas activas.\",\"support_level\":\"medio\",\"strengths\":[\"memoria visual\",\"creatividad\"],\"interests\":[\"dinosaurios\",\"dibujo\"],\"triggers\":[\"ruidos fuertes\",\"consignas extensas\"],\"effective_strategies\":[\"pausas activas\",\"consignas cortas paso a paso\"],\"ineffective_strategies\":[\"retos en público\"],\"situation_codes\":[\"no_inicia_tarea\",\"se_distrae\"],\"has_therapeutic_companion\":true,\"environment_notes\":\"Acompañante terapéutico 3 veces por semana; familia muy presente.\",\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"},\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"}],\"target_student\":{\"id\":9003,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"classroom_id\":9001,\"name\":\"Mateo Test\",\"age_range\":\"8-9\",\"grade_level\":\"4to\",\"preferred_name\":\"Mate\",\"profile\":{\"id\":3,\"student_id\":9003,\"is_transitory\":false,\"difficulties\":[\"hipersensibilidad_sensorial\",\"rutinas_rigidas\"],\"free_description\":\"Necesita anticipación de cambios y entornos con baja estimulación sensorial.\",\"support_level\":\"alto\",\"strengths\":[\"atención al detalle\"],\"interests\":[\"trenes\",\"mapas\"],\"triggers\":[\"cambios imprevistos\",\"luces brillantes\"],\"effective_strategies\":[\"anticipación con pictogramas\",\"rincón de calma\"],\"ineffective_strategies\":[\"improvisar la rutina\"],\"situation_codes\":[\"se_desregula\",\"no_sostiene_atencion\"],\"has_therapeutic_companion\":true,\"environment_notes\":\"Sensibilidad sensorial alta; trabaja con fonoaudióloga externa.\",\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"},\"created_at\":\"2026-06-10T21:22:47.30357Z\",\"updated_at\":\"2026-06-10T21:22:47.30357Z\"},\"missing_data\":[\"perfil_docente\",\"diagnosticos\",\"ppi\"]}}"
+            }
+          ]
+        },
+        {
+          "name": "Context · valija (lazy)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/inclusion/context",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inclusion",
+                "context"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"dimension\": \"valija\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Contexto de valija: catálogo + situaciones, sin target_student."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/inclusion/context",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "inclusion",
+                    "context"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"dimension\": \"valija\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"device_catalog\":[{\"id\":9001,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"ramp_id\":9001,\"name\":\"Tablero de anticipación\",\"description\":\"Secuencia visual de la rutina de clase\",\"qr_code\":\"QR-TEST-9001\",\"useful_when\":\"Cuando el alumno no inicia la tarea o necesita anticipar pasos\",\"quantity\":1,\"sort_order\":1,\"ramp\":{\"id\":9001,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"name\":\"Rampa de Atención\",\"description\":\"Apoyos para atención y autorregulación\",\"short_description\":\"Atención\",\"sort_order\":1,\"created_at\":\"2026-06-10T21:40:42.968007Z\",\"updated_at\":\"2026-06-10T21:40:42.968007Z\"},\"created_at\":\"2026-06-10T21:40:42.968007Z\",\"updated_at\":\"2026-06-10T21:40:42.968007Z\"},{\"id\":9002,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"ramp_id\":9001,\"name\":\"Auriculares de aislamiento\",\"description\":\"Reducen estímulos sonoros para sostener la atención\",\"qr_code\":\"QR-TEST-9002\",\"useful_when\":\"Cuando el alumno se distrae o se desregula por ruido\",\"quantity\":1,\"sort_order\":2,\"ramp\":{\"id\":9001,\"organization_id\":\"00000000-0000-0000-0000-000000000001\",\"name\":\"Rampa de Atención\",\"description\":\"Apoyos para atención y autorregulación\",\"short_description\":\"Atención\",\"sort_order\":1,\"created_at\":\"2026-06-10T21:40:42.968007Z\",\"updated_at\":\"2026-06-10T21:40:42.968007Z\"},\"created_at\":\"2026-06-10T21:40:42.968007Z\",\"updated_at\":\"2026-06-10T21:40:42.968007Z\"}],\"situations\":[{\"id\":1,\"code\":\"no_inicia_tarea\",\"name\":\"No inicia la tarea\",\"description\":\"Cuesta arrancar; se queda sin empezar aunque entienda la consigna.\",\"phase\":\"durante\",\"sort_order\":1},{\"id\":2,\"code\":\"se_distrae\",\"name\":\"Se distrae constantemente\",\"description\":\"Pierde el foco con estímulos del entorno; atención intermitente.\",\"phase\":\"durante\",\"sort_order\":2},{\"id\":3,\"code\":\"se_desregula\",\"name\":\"Se desregula emocionalmente\",\"description\":\"Frustración, llanto o enojo que interrumpen el trabajo.\",\"phase\":\"durante\",\"sort_order\":3},{\"id\":4,\"code\":\"no_sostiene_atencion\",\"name\":\"No sostiene la atención\",\"description\":\"Mantiene el foco poco tiempo y abandona antes de terminar.\",\"phase\":\"durante\",\"sort_order\":4},{\"id\":5,\"code\":\"dificultad_consignas\",\"name\":\"Dificultad para comprender consignas\",\"description\":\"No interpreta lo que se pide; necesita reformulación o apoyo visual.\",\"phase\":\"preventiva\",\"sort_order\":5},{\"id\":6,\"code\":\"no_termina_tarea\",\"name\":\"No termina la tarea\",\"description\":\"Comienza pero no llega al cierre dentro del tiempo de clase.\",\"phase\":\"cierre\",\"sort_order\":6},{\"id\":7,\"code\":\"ritmo_lento\",\"name\":\"Trabaja a ritmo muy lento\",\"description\":\"Avanza por debajo del ritmo del grupo; necesita más tiempo.\",\"phase\":\"durante\",\"sort_order\":7},{\"id\":8,\"code\":\"dificultad_lectura\",\"name\":\"Dificultad en la lectura\",\"description\":\"Decodificación lenta o con errores; impacta la comprensión.\",\"phase\":\"durante\",\"sort_order\":8},{\"id\":9,\"code\":\"dificultad_escritura\",\"name\":\"Dificultad en la escritura\",\"description\":\"Trazo, ortografía u organización de ideas por escrito.\",\"phase\":\"durante\",\"sort_order\":9},{\"id\":10,\"code\":\"dificultad_matematica\",\"name\":\"Dificultad en matemática\",\"description\":\"Dificultad con conteo, operaciones o razonamiento numérico.\",\"phase\":\"durante\",\"sort_order\":10},{\"id\":11,\"code\":\"no_interactua_pares\",\"name\":\"No interactúa con pares\",\"description\":\"Se aísla o evita el trabajo en grupo.\",\"phase\":\"preventiva\",\"sort_order\":11},{\"id\":12,\"code\":\"conducta_disruptiva\",\"name\":\"Conducta disruptiva\",\"description\":\"Interrumpe la clase; comportamientos que afectan al grupo.\",\"phase\":\"durante\",\"sort_order\":12},{\"id\":13,\"code\":\"fatiga_sensorial\",\"name\":\"Sobrecarga sensorial\",\"description\":\"Ruido, luz o estímulos que generan saturación y bloqueo.\",\"phase\":\"preventiva\",\"sort_order\":13},{\"id\":14,\"code\":\"dependencia_adulto\",\"name\":\"Dependencia del adulto\",\"description\":\"No avanza sin acompañamiento individual constante.\",\"phase\":\"durante\",\"sort_order\":14},{\"id\":15,\"code\":\"dificultad_transiciones\",\"name\":\"Dificultad en las transiciones\",\"description\":\"Le cuesta el cambio de actividad o de espacio.\",\"phase\":\"preventiva\",\"sort_order\":15}],\"dimension\":\"valija\",\"missing_data\":[\"perfil_docente\"]}}"
+            }
+          ]
+        },
+        {
+          "name": "Context · alumno inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/inclusion/context",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inclusion",
+                "context"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"dimension\": \"alumno\",\n    \"student_id\": 999999\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Alumno inexistente: error."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (404)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/inclusion/context",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "inclusion",
+                    "context"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"dimension\": \"alumno\",\n    \"student_id\": 999999\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"code\":\"not_found\",\"description\":\"not found\"}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "12 - Context Engine · HU-3 Contenido",
+      "item": [
+        {
+          "name": "Search · 'autismo desregula' (match TEA)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/inclusion/search-content",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inclusion",
+                "search-content"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"query\": \"autismo desregula\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Busca material pedagógico por keyword/full-text. Devuelve el doc TEA."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/inclusion/search-content",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "inclusion",
+                    "search-content"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"query\": \"autismo desregula\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"query\":\"autismo desregula\",\"results\":[{\"content_id\":2,\"chunk_id\":2,\"title\":\"Estrategias para acompañar a estudiantes con TEA en el aula\",\"type\":\"material\",\"keywords\":[\"TEA\",\"autismo\",\"autorregulacion\",\"anticipacion\",\"transiciones\"],\"preview\":\"Anticipar los cambios con apoyos visuales, ofrecer un rincón de calma y materiales para regular estímulos (auriculares, time timer). Dividir las consignas en pasos cortos y mantener rutinas predecibles favorece la autorregulación.\",\"score\":0.33435988426208496}]}}"
+            }
+          ]
+        },
+        {
+          "name": "Search · 'lectura dislexia'",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/inclusion/search-content",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inclusion",
+                "search-content"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"query\": \"lectura dislexia\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Devuelve el documento de dislexia."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/inclusion/search-content",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "inclusion",
+                    "search-content"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"query\": \"lectura dislexia\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"query\":\"lectura dislexia\",\"results\":[{\"content_id\":3,\"chunk_id\":3,\"title\":\"Técnicas de lectura para estudiantes con dislexia\",\"type\":\"material\",\"keywords\":[\"dislexia\",\"lectura\",\"comprension\",\"accesibilidad\"],\"preview\":\"Presentar textos en fragmentos cortos, con tipografía accesible e interlineado amplio. Combinar lectura con audio y evaluar la comprensión de forma oral, separada de la decodificación.\",\"score\":0.790727436542511}]}}"
+            }
+          ]
+        },
+        {
+          "name": "Search · 'quimica organica' (sin match)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/inclusion/search-content",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inclusion",
+                "search-content"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"query\": \"quimica organica\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Sin coincidencias: no inventa, devuelve results vacío."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/inclusion/search-content",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "inclusion",
+                    "search-content"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"query\": \"quimica organica\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"query\":\"quimica organica\",\"results\":[]}}"
+            }
+          ]
+        },
+        {
+          "name": "Search · query vacía",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/inclusion/search-content",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inclusion",
+                "search-content"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"query\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Query vacía: results vacío."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/inclusion/search-content",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "inclusion",
+                    "search-content"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"query\": \"\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"query\":\"\",\"results\":[]}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "13 - Context Engine · IA (recommend / assist)",
+      "item": [
+        {
+          "name": "Recommend Device",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/inclusion/recommend",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inclusion",
+                "recommend"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"student_id\": 9001,\n    \"subject\": \"Lengua\",\n    \"objective\": \"Producción de textos narrativos\",\n    \"duration\": \"40\",\n    \"dynamic\": \"Trabajo individual con apoyo docente\",\n    \"materials\": \"Cuaderno, lápiz\",\n    \"history\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Recomienda dispositivos de la valija para una actividad (LLM)."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/inclusion/recommend",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "inclusion",
+                    "recommend"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"student_id\": 9001,\n    \"subject\": \"Lengua\",\n    \"objective\": \"Producción de textos narrativos\",\n    \"duration\": \"40\",\n    \"dynamic\": \"Trabajo individual con apoyo docente\",\n    \"materials\": \"Cuaderno, lápiz\",\n    \"history\": []\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"response\":\"[stub] chat response\",\"conversation_id\":2}}"
+            }
+          ]
+        },
+        {
+          "name": "Assist Classroom",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var o = pm.response.json(); o = o.description || o;",
+                  "pm.collectionVariables.set('conversation_id', o.conversation_id);",
+                  "pm.test('has response', function () { pm.expect(o.response).to.be.a('string'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/inclusion/assist",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inclusion",
+                "assist"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"classroom_id\": 9001,\n    \"student_id\": 9001,\n    \"message\": \"Tomás no logra sostener la atención al escribir. ¿Qué hago?\",\n    \"history\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Chat asistente (loop agéntico con tools). Persiste la conversación."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/inclusion/assist",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "inclusion",
+                    "assist"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"classroom_id\": 9001,\n    \"student_id\": 9001,\n    \"message\": \"Tomás no logra sostener la atención al escribir. ¿Qué hago?\",\n    \"history\": []\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"response\":\"[stub] chat response\",\"conversation_id\":3}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "14 - Context Engine · HU-5 Memoria (close)",
+      "item": [
+        {
+          "name": "Close Session (compacta conversación)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/inclusion/close",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inclusion",
+                "close"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"conversation_id\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Compacta la conversación al cerrar: genera el resumen + tags (alumno/tema/valija)."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (200)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/inclusion/close",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "inclusion",
+                    "close"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"conversation_id\": 3\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"description\":{\"conversation_id\":3,\"summary\":\"[stub] chat response\",\"topic_keywords\":null,\"student_ids\":[9001]}}"
+            }
+          ]
+        },
+        {
+          "name": "Close Session · conversación inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/inclusion/close",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inclusion",
+                "close"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"conversation_id\": 999999\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Conversación inexistente: error."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (404)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/inclusion/close",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "inclusion",
+                    "close"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"conversation_id\": 999999\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"code\":\"not_found\",\"description\":\"not found\"}"
+            }
+          ]
+        },
+        {
+          "name": "Close Session · sin conversation_id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', function () { pm.response.to.have.status(400); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/inclusion/close",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inclusion",
+                "close"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Falta conversation_id: validación (400)."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (400)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/inclusion/close",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "inclusion",
+                    "close"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\"code\":\"validation_error\",\"description\":\"validation error: conversation_id is required\"}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "15 - Cleanup",
+      "item": [
+        {
+          "name": "Delete Adaptation (created)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 204', function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/adaptations/{{created_adaptation_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "adaptations",
+                "{{created_adaptation_id}}"
+              ]
+            },
+            "description": "Borra la adaptación creada."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (204)",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/adaptations/{{created_adaptation_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "adaptations",
+                    "{{created_adaptation_id}}"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 204,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            }
+          ]
+        },
+        {
+          "name": "Delete Student (created)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 204', function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/students/{{created_student_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "students",
+                "{{created_student_id}}"
+              ]
+            },
+            "description": "Borra el alumno creado."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (204)",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/students/{{created_student_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "students",
+                    "{{created_student_id}}"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 204,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            }
+          ]
+        },
+        {
+          "name": "Delete Classroom (created)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 204', function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/classrooms/{{created_classroom_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "classrooms",
+                "{{created_classroom_id}}"
+              ]
+            },
+            "description": "Borra el aula creada."
+          },
+          "response": [
+            {
+              "name": "Ejemplo (204)",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/classrooms/{{created_classroom_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "classrooms",
+                    "{{created_classroom_id}}"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 204,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
 }
