@@ -1,13 +1,13 @@
 package entrypoints_test
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/educabot/team-ai-toolkit/web"
 
@@ -18,6 +18,7 @@ import (
 	mgmtuc "github.com/educabot/alizia-inclusion-be/src/core/usecases/management"
 	"github.com/educabot/alizia-inclusion-be/src/entrypoints"
 	"github.com/educabot/alizia-inclusion-be/src/entrypoints/middleware"
+	mockusecases "github.com/educabot/alizia-inclusion-be/src/mocks/usecases"
 )
 
 var testOrgID = uuid.MustParse("00000000-0000-0000-0000-000000000001")
@@ -29,123 +30,25 @@ func newTenantRequest() *web.MockRequest {
 	return req
 }
 
-// --- Catalog usecase mocks ---
-
-type mockListRamps struct {
-	fn func(ctx context.Context, req cataloguc.ListRampsRequest) ([]entities.Ramp, error)
-}
-
-func (m *mockListRamps) Execute(ctx context.Context, req cataloguc.ListRampsRequest) ([]entities.Ramp, error) {
-	return m.fn(ctx, req)
-}
-
-type mockGetRamp struct {
-	fn func(ctx context.Context, req cataloguc.GetRampRequest) (*entities.Ramp, error)
-}
-
-func (m *mockGetRamp) Execute(ctx context.Context, req cataloguc.GetRampRequest) (*entities.Ramp, error) {
-	return m.fn(ctx, req)
-}
-
-type mockListDevices struct {
-	fn func(ctx context.Context, req cataloguc.ListDevicesRequest) ([]entities.Device, error)
-}
-
-func (m *mockListDevices) Execute(ctx context.Context, req cataloguc.ListDevicesRequest) ([]entities.Device, error) {
-	return m.fn(ctx, req)
-}
-
-type mockGetDevice struct {
-	fn func(ctx context.Context, req cataloguc.GetDeviceRequest) (*entities.Device, error)
-}
-
-func (m *mockGetDevice) Execute(ctx context.Context, req cataloguc.GetDeviceRequest) (*entities.Device, error) {
-	return m.fn(ctx, req)
-}
-
-// --- Management usecase mocks ---
-
-type mockListClassrooms struct {
-	fn func(ctx context.Context, req mgmtuc.ListClassroomsRequest) ([]entities.Classroom, error)
-}
-
-func (m *mockListClassrooms) Execute(ctx context.Context, req mgmtuc.ListClassroomsRequest) ([]entities.Classroom, error) {
-	return m.fn(ctx, req)
-}
-
-type mockGetClassroom struct {
-	fn func(ctx context.Context, req mgmtuc.GetClassroomRequest) (*entities.Classroom, error)
-}
-
-func (m *mockGetClassroom) Execute(ctx context.Context, req mgmtuc.GetClassroomRequest) (*entities.Classroom, error) {
-	return m.fn(ctx, req)
-}
-
-type mockCreateClassroom struct {
-	fn func(ctx context.Context, req mgmtuc.CreateClassroomRequest) (*entities.Classroom, error)
-}
-
-func (m *mockCreateClassroom) Execute(ctx context.Context, req mgmtuc.CreateClassroomRequest) (*entities.Classroom, error) {
-	return m.fn(ctx, req)
-}
-
-type mockDeleteClassroom struct {
-	fn func(ctx context.Context, req mgmtuc.DeleteClassroomRequest) error
-}
-
-func (m *mockDeleteClassroom) Execute(ctx context.Context, req mgmtuc.DeleteClassroomRequest) error {
-	return m.fn(ctx, req)
-}
-
-type mockListTeachers struct {
-	fn func(ctx context.Context, req mgmtuc.ListTeachersRequest) ([]entities.User, error)
-}
-
-func (m *mockListTeachers) Execute(ctx context.Context, req mgmtuc.ListTeachersRequest) ([]entities.User, error) {
-	return m.fn(ctx, req)
-}
-
-// --- Auth usecase mocks ---
-
-type mockGetMe struct {
-	fn func(ctx context.Context, req authuc.GetMeRequest) (*entities.User, error)
-}
-
-func (m *mockGetMe) Execute(ctx context.Context, req authuc.GetMeRequest) (*entities.User, error) {
-	return m.fn(ctx, req)
-}
-
-// --- Dashboard usecase mocks ---
-
-type mockGetMetrics struct {
-	fn func(ctx context.Context, req dashuc.GetMetricsRequest) (*dashuc.GetMetricsResponse, error)
-}
-
-func (m *mockGetMetrics) Execute(ctx context.Context, req dashuc.GetMetricsRequest) (*dashuc.GetMetricsResponse, error) {
-	return m.fn(ctx, req)
-}
-
 // ==================== Catalog Handler Tests ====================
 
 func TestHandleListRamps_ReturnsRamps(t *testing.T) {
-	container := &entrypoints.CatalogContainer{
-		ListRamps: &mockListRamps{fn: func(_ context.Context, req cataloguc.ListRampsRequest) ([]entities.Ramp, error) {
-			assert.Equal(t, testOrgID, req.OrgID)
-			return []entities.Ramp{{ID: 1, Name: "Comunicación"}}, nil
-		}},
-	}
+	uc := &mockusecases.MockListRamps{}
+	uc.On("Execute", mock.Anything, mock.MatchedBy(func(req cataloguc.ListRampsRequest) bool {
+		return req.OrgID == testOrgID
+	})).Return([]entities.Ramp{{ID: 1, Name: "Comunicación"}}, nil)
+	container := &entrypoints.CatalogContainer{ListRamps: uc}
 
 	resp := container.HandleListRamps(newTenantRequest())
 
 	assert.Equal(t, http.StatusOK, resp.Status)
+	uc.AssertExpectations(t)
 }
 
 func TestHandleListRamps_ReturnsError(t *testing.T) {
-	container := &entrypoints.CatalogContainer{
-		ListRamps: &mockListRamps{fn: func(_ context.Context, _ cataloguc.ListRampsRequest) ([]entities.Ramp, error) {
-			return nil, errNotFound
-		}},
-	}
+	uc := &mockusecases.MockListRamps{}
+	uc.On("Execute", mock.Anything, mock.Anything).Return(nil, errNotFound)
+	container := &entrypoints.CatalogContainer{ListRamps: uc}
 
 	resp := container.HandleListRamps(newTenantRequest())
 
@@ -153,18 +56,18 @@ func TestHandleListRamps_ReturnsError(t *testing.T) {
 }
 
 func TestHandleGetRamp_ReturnsByID(t *testing.T) {
-	container := &entrypoints.CatalogContainer{
-		GetRamp: &mockGetRamp{fn: func(_ context.Context, req cataloguc.GetRampRequest) (*entities.Ramp, error) {
-			assert.Equal(t, int64(5), req.RampID)
-			return &entities.Ramp{ID: 5, Name: "Sensorial"}, nil
-		}},
-	}
+	uc := &mockusecases.MockGetRamp{}
+	uc.On("Execute", mock.Anything, mock.MatchedBy(func(req cataloguc.GetRampRequest) bool {
+		return req.RampID == 5
+	})).Return(&entities.Ramp{ID: 5, Name: "Sensorial"}, nil)
+	container := &entrypoints.CatalogContainer{GetRamp: uc}
 	req := newTenantRequest()
 	req.Params["id"] = "5"
 
 	resp := container.HandleGetRamp(req)
 
 	assert.Equal(t, http.StatusOK, resp.Status)
+	uc.AssertExpectations(t)
 }
 
 func TestHandleGetRamp_RejectsInvalidID(t *testing.T) {
@@ -179,11 +82,9 @@ func TestHandleGetRamp_RejectsInvalidID(t *testing.T) {
 }
 
 func TestHandleListDevices_ReturnsDevices(t *testing.T) {
-	container := &entrypoints.CatalogContainer{
-		ListDevices: &mockListDevices{fn: func(_ context.Context, _ cataloguc.ListDevicesRequest) ([]entities.Device, error) {
-			return []entities.Device{{ID: 1, Name: "Timer"}}, nil
-		}},
-	}
+	uc := &mockusecases.MockListDevices{}
+	uc.On("Execute", mock.Anything, mock.Anything).Return([]entities.Device{{ID: 1, Name: "Timer"}}, nil)
+	container := &entrypoints.CatalogContainer{ListDevices: uc}
 
 	resp := container.HandleListDevices(newTenantRequest())
 
@@ -191,19 +92,18 @@ func TestHandleListDevices_ReturnsDevices(t *testing.T) {
 }
 
 func TestHandleListDevices_FiltersByRampID(t *testing.T) {
-	container := &entrypoints.CatalogContainer{
-		ListDevices: &mockListDevices{fn: func(_ context.Context, req cataloguc.ListDevicesRequest) ([]entities.Device, error) {
-			assert.NotNil(t, req.RampID)
-			assert.Equal(t, int64(3), *req.RampID)
-			return []entities.Device{}, nil
-		}},
-	}
+	uc := &mockusecases.MockListDevices{}
+	uc.On("Execute", mock.Anything, mock.MatchedBy(func(req cataloguc.ListDevicesRequest) bool {
+		return req.RampID != nil && *req.RampID == 3
+	})).Return([]entities.Device{}, nil)
+	container := &entrypoints.CatalogContainer{ListDevices: uc}
 	req := newTenantRequest()
 	req.Queries["ramp_id"] = "3"
 
 	resp := container.HandleListDevices(req)
 
 	assert.Equal(t, http.StatusOK, resp.Status)
+	uc.AssertExpectations(t)
 }
 
 func TestHandleListDevices_RejectsInvalidRampID(t *testing.T) {
@@ -218,27 +118,26 @@ func TestHandleListDevices_RejectsInvalidRampID(t *testing.T) {
 }
 
 func TestHandleGetDevice_ReturnsDevice(t *testing.T) {
-	container := &entrypoints.CatalogContainer{
-		GetDevice: &mockGetDevice{fn: func(_ context.Context, req cataloguc.GetDeviceRequest) (*entities.Device, error) {
-			return &entities.Device{ID: req.DeviceID, Name: "Pictogramas"}, nil
-		}},
-	}
+	uc := &mockusecases.MockGetDevice{}
+	uc.On("Execute", mock.Anything, mock.MatchedBy(func(req cataloguc.GetDeviceRequest) bool {
+		return req.DeviceID == 7
+	})).Return(&entities.Device{ID: 7, Name: "Pictogramas"}, nil)
+	container := &entrypoints.CatalogContainer{GetDevice: uc}
 	req := newTenantRequest()
 	req.Params["id"] = "7"
 
 	resp := container.HandleGetDevice(req)
 
 	assert.Equal(t, http.StatusOK, resp.Status)
+	uc.AssertExpectations(t)
 }
 
 // ==================== Management Handler Tests ====================
 
 func TestHandleListClassrooms_ReturnsClassrooms(t *testing.T) {
-	container := &entrypoints.ManagementContainer{
-		ListClassrooms: &mockListClassrooms{fn: func(_ context.Context, _ mgmtuc.ListClassroomsRequest) ([]entities.Classroom, error) {
-			return []entities.Classroom{{ID: 1, Name: "3ro A"}}, nil
-		}},
-	}
+	uc := &mockusecases.MockListClassrooms{}
+	uc.On("Execute", mock.Anything, mock.Anything).Return([]entities.Classroom{{ID: 1, Name: "3ro A"}}, nil)
+	container := &entrypoints.ManagementContainer{ListClassrooms: uc}
 
 	resp := container.HandleListClassrooms(newTenantRequest())
 
@@ -246,25 +145,24 @@ func TestHandleListClassrooms_ReturnsClassrooms(t *testing.T) {
 }
 
 func TestHandleGetClassroom_ReturnsClassroom(t *testing.T) {
-	container := &entrypoints.ManagementContainer{
-		GetClassroom: &mockGetClassroom{fn: func(_ context.Context, req mgmtuc.GetClassroomRequest) (*entities.Classroom, error) {
-			return &entities.Classroom{ID: req.ClassroomID, Name: "4to B"}, nil
-		}},
-	}
+	uc := &mockusecases.MockGetClassroom{}
+	uc.On("Execute", mock.Anything, mock.MatchedBy(func(req mgmtuc.GetClassroomRequest) bool {
+		return req.ClassroomID == 2
+	})).Return(&entities.Classroom{ID: 2, Name: "4to B"}, nil)
+	container := &entrypoints.ManagementContainer{GetClassroom: uc}
 	req := newTenantRequest()
 	req.Params["id"] = "2"
 
 	resp := container.HandleGetClassroom(req)
 
 	assert.Equal(t, http.StatusOK, resp.Status)
+	uc.AssertExpectations(t)
 }
 
 func TestHandleGetClassroom_Returns404ForNotFound(t *testing.T) {
-	container := &entrypoints.ManagementContainer{
-		GetClassroom: &mockGetClassroom{fn: func(_ context.Context, _ mgmtuc.GetClassroomRequest) (*entities.Classroom, error) {
-			return nil, errNotFound
-		}},
-	}
+	uc := &mockusecases.MockGetClassroom{}
+	uc.On("Execute", mock.Anything, mock.Anything).Return(nil, errNotFound)
+	container := &entrypoints.ManagementContainer{GetClassroom: uc}
 	req := newTenantRequest()
 	req.Params["id"] = "999"
 
@@ -275,11 +173,11 @@ func TestHandleGetClassroom_Returns404ForNotFound(t *testing.T) {
 
 func TestHandleCreateClassroom_CreatesClassroom(t *testing.T) {
 	grade := "3ro"
-	container := &entrypoints.ManagementContainer{
-		CreateClassroom: &mockCreateClassroom{fn: func(_ context.Context, req mgmtuc.CreateClassroomRequest) (*entities.Classroom, error) {
-			return &entities.Classroom{ID: 10, Name: req.Name, Grade: req.Grade}, nil
-		}},
-	}
+	uc := &mockusecases.MockCreateClassroom{}
+	uc.On("Execute", mock.Anything, mock.MatchedBy(func(req mgmtuc.CreateClassroomRequest) bool {
+		return req.Name == "5to A"
+	})).Return(&entities.Classroom{ID: 10, Name: "5to A", Grade: &grade}, nil)
+	container := &entrypoints.ManagementContainer{CreateClassroom: uc}
 	req := newTenantRequest()
 	req.BindJSONFn = func(dest any) error {
 		b, _ := json.Marshal(map[string]any{"name": "5to A", "grade": &grade})
@@ -289,29 +187,29 @@ func TestHandleCreateClassroom_CreatesClassroom(t *testing.T) {
 	resp := container.HandleCreateClassroom(req)
 
 	assert.Equal(t, http.StatusCreated, resp.Status)
+	uc.AssertExpectations(t)
 }
 
 func TestHandleDeleteClassroom_DeletesClassroom(t *testing.T) {
-	container := &entrypoints.ManagementContainer{
-		DeleteClassroom: &mockDeleteClassroom{fn: func(_ context.Context, req mgmtuc.DeleteClassroomRequest) error {
-			assert.Equal(t, int64(3), req.ClassroomID)
-			return nil
-		}},
-	}
+	uc := &mockusecases.MockDeleteClassroom{}
+	uc.On("Execute", mock.Anything, mock.MatchedBy(func(req mgmtuc.DeleteClassroomRequest) bool {
+		return req.ClassroomID == 3
+	})).Return(nil)
+	container := &entrypoints.ManagementContainer{DeleteClassroom: uc}
 	req := newTenantRequest()
 	req.Params["id"] = "3"
 
 	resp := container.HandleDeleteClassroom(req)
 
 	assert.Equal(t, http.StatusNoContent, resp.Status)
+	uc.AssertExpectations(t)
 }
 
 func TestHandleListTeachers_ReturnsTeachers(t *testing.T) {
-	container := &entrypoints.ManagementContainer{
-		ListTeachers: &mockListTeachers{fn: func(_ context.Context, _ mgmtuc.ListTeachersRequest) ([]entities.User, error) {
-			return []entities.User{{ID: 1, Name: "Ana", Email: "ana@test.com", Role: "teacher"}}, nil
-		}},
-	}
+	uc := &mockusecases.MockListTeachers{}
+	uc.On("Execute", mock.Anything, mock.Anything).
+		Return([]entities.User{{ID: 1, Name: "Ana", Email: "ana@test.com", Role: "teacher"}}, nil)
+	container := &entrypoints.ManagementContainer{ListTeachers: uc}
 
 	resp := container.HandleListTeachers(newTenantRequest())
 
@@ -321,24 +219,22 @@ func TestHandleListTeachers_ReturnsTeachers(t *testing.T) {
 // ==================== Auth Handler Tests ====================
 
 func TestHandleGetMe_ReturnsCurrentUser(t *testing.T) {
-	container := &entrypoints.AuthContainer{
-		GetMe: &mockGetMe{fn: func(_ context.Context, req authuc.GetMeRequest) (*entities.User, error) {
-			assert.Equal(t, int64(42), req.UserID)
-			return &entities.User{ID: 42, Name: "Test", Email: "test@test.com", Role: "teacher"}, nil
-		}},
-	}
+	uc := &mockusecases.MockGetMe{}
+	uc.On("Execute", mock.Anything, mock.MatchedBy(func(req authuc.GetMeRequest) bool {
+		return req.UserID == 42
+	})).Return(&entities.User{ID: 42, Name: "Test", Email: "test@test.com", Role: "teacher"}, nil)
+	container := &entrypoints.AuthContainer{GetMe: uc}
 
 	resp := container.HandleGetMe(newTenantRequest())
 
 	assert.Equal(t, http.StatusOK, resp.Status)
+	uc.AssertExpectations(t)
 }
 
 func TestHandleGetMe_ReturnsErrorWhenNotFound(t *testing.T) {
-	container := &entrypoints.AuthContainer{
-		GetMe: &mockGetMe{fn: func(_ context.Context, _ authuc.GetMeRequest) (*entities.User, error) {
-			return nil, errNotFound
-		}},
-	}
+	uc := &mockusecases.MockGetMe{}
+	uc.On("Execute", mock.Anything, mock.Anything).Return(nil, errNotFound)
+	container := &entrypoints.AuthContainer{GetMe: uc}
 
 	resp := container.HandleGetMe(newTenantRequest())
 
@@ -348,14 +244,12 @@ func TestHandleGetMe_ReturnsErrorWhenNotFound(t *testing.T) {
 // ==================== Dashboard Handler Tests ====================
 
 func TestHandleGetMetrics_ReturnsMetrics(t *testing.T) {
-	container := &entrypoints.DashboardContainer{
-		GetMetrics: &mockGetMetrics{fn: func(_ context.Context, _ dashuc.GetMetricsRequest) (*dashuc.GetMetricsResponse, error) {
-			return &dashuc.GetMetricsResponse{
-				TotalStudents:        10,
-				StudentsWithProfiles: 5,
-			}, nil
-		}},
-	}
+	uc := &mockusecases.MockGetMetrics{}
+	uc.On("Execute", mock.Anything, mock.Anything).Return(&dashuc.GetMetricsResponse{
+		TotalStudents:        10,
+		StudentsWithProfiles: 5,
+	}, nil)
+	container := &entrypoints.DashboardContainer{GetMetrics: uc}
 
 	resp := container.HandleGetMetrics(newTenantRequest())
 
@@ -363,11 +257,9 @@ func TestHandleGetMetrics_ReturnsMetrics(t *testing.T) {
 }
 
 func TestHandleGetMetrics_ReturnsError(t *testing.T) {
-	container := &entrypoints.DashboardContainer{
-		GetMetrics: &mockGetMetrics{fn: func(_ context.Context, _ dashuc.GetMetricsRequest) (*dashuc.GetMetricsResponse, error) {
-			return nil, errBadRequest
-		}},
-	}
+	uc := &mockusecases.MockGetMetrics{}
+	uc.On("Execute", mock.Anything, mock.Anything).Return(nil, errBadRequest)
+	container := &entrypoints.DashboardContainer{GetMetrics: uc}
 
 	resp := container.HandleGetMetrics(newTenantRequest())
 
