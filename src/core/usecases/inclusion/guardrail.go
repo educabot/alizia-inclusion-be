@@ -14,12 +14,6 @@ import (
 // que falla la validación NUNCA debe llegar al docente: el caller reintenta o cae
 // al off-ramp.
 
-// offRampMessage es el mensaje seguro por defecto cuando una respuesta no pasa el
-// guardrail y no se pudo reparar. El wording definitivo y su edición se afinan en
-// T-6.3 (off-ramp); acá vive como constante editable para no mostrar salida inválida.
-const offRampMessage = "Perdón, no pude armar una recomendación válida con la valija en este momento. " +
-	"¿Probamos de nuevo describiéndome la situación del alumno con otras palabras?"
-
 // GuardrailResult reporta el veredicto de la validación por código de una
 // respuesta generada. Violations describe, en lenguaje accionable para el log,
 // qué límite se cruzó (vacío cuando Valid es true).

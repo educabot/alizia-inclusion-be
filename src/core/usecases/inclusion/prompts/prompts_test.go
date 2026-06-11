@@ -55,3 +55,17 @@ func TestAssistSystem_OmitsRosterWhenNoStudents(t *testing.T) {
 
 	assert.False(t, strings.Contains(prompt, "ALUMNOS DEL AULA"))
 }
+
+func TestAssistSystem_EmbedsOutOfScopeOffRamp(t *testing.T) {
+	// El marco le indica al modelo el wording exacto del paso al costado (T-6.3).
+	prompt := prompts.AssistSystem(nil, nil)
+
+	assert.Contains(t, prompt, prompts.OffRampOutOfScope)
+}
+
+func TestOffRamp_WordingDoesNotDiagnose(t *testing.T) {
+	// El paso al costado deriva, nunca diagnostica (HU-6).
+	assert.NotEmpty(t, prompts.OffRampInvalidOutput)
+	assert.Contains(t, prompts.OffRampOutOfScope, "derivar")
+	assert.Contains(t, prompts.OffRampOutOfScope, "No puedo")
+}

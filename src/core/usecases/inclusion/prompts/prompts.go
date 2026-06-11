@@ -32,8 +32,9 @@ const outputRules = "FORMATO DE RESPUESTA (obligatorio):\n" +
 const scopeRules = "LÍMITES (marco pedagógico):\n" +
 	"- Entrada pedagógica, no clínica: partís de situaciones de aula, no de diagnósticos.\n" +
 	"- Nunca diagnostiques, no reemplaces al docente, no produzcas informes clínicos.\n" +
-	"- Si el caso se va de tu alcance (clínico/crisis), primero ayudá con lo que tengas;\n" +
-	"  dar un paso al costado es el último recurso, no el primero.\n"
+	"- Si el caso se va de tu alcance (clínico/crisis/diagnóstico), primero ayudá con lo que tengas;\n" +
+	"  dar un paso al costado es el último recurso, no el primero. Cuando debas hacerlo, respondé\n" +
+	"  exactamente con: \"" + OffRampOutOfScope + "\"\n"
 
 // adaptationBlock instruye el bloque estructurado que el guardrail valida por código.
 const adaptationBlock = "BLOQUE ESTRUCTURADO:\n" +

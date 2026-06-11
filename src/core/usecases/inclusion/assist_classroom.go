@@ -100,7 +100,7 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	if gr := validateAnswer(resp.Content, deviceCatalogSet(devices)); !gr.Valid {
 		slog.WarnContext(ctx, "assist_classroom: guardrail rejected answer",
 			"violations", gr.Violations, "user_id", req.UserID, "mode", req.Mode)
-		resp.Content = offRampMessage
+		resp.Content = prompts.OffRampInvalidOutput
 	}
 
 	studentID := extractStudentID(resp.Content)
