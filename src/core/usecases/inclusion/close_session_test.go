@@ -24,12 +24,15 @@ type closeMocks struct {
 }
 
 func newCloseMocks() closeMocks {
-	return closeMocks{
+	m := closeMocks{
 		ai:            new(mockproviders.MockAIClient),
 		conversations: new(mockproviders.MockConversationProvider),
 		summaries:     new(mockproviders.MockConversationSummaryProvider),
 		usage:         new(mockproviders.MockAIUsageProvider),
 	}
+	// La traza por turno (HU-6, T-6.5) se graba best-effort; opcional para los tests.
+	m.usage.On("Record", mock.Anything, mock.AnythingOfType("providers.AIUsageRecord")).Return(nil).Maybe()
+	return m
 }
 
 func (m closeMocks) usecase() inclusion.CloseSession {

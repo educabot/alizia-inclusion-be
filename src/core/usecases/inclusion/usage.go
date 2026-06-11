@@ -23,25 +23,28 @@ type aiTrace struct {
 	usage          *providers.TokenUsage
 }
 
-// recordAIUsage persiste el uso + la traza de un turno de IA. Es best-effort: un
-// provider nil, sin datos de tokens o un request anónimo se saltean, y un fallo
-// de registro se loguea en vez de propagarse, para que nunca bloquee la respuesta
-// al docente.
+// recordAIUsage persiste el uso + la traza de un turno de IA. Cada turno deja traza
+// (HU-6, T-6.5): se registra aunque el provider no informe tokens (model, latencia,
+// tool_calls y contexto siguen siendo útiles). Es best-effort: un provider nil o un
+// request anónimo se saltean, y un fallo de registro se loguea en vez de propagarse,
+// para que nunca bloquee la respuesta al docente.
 func recordAIUsage(ctx context.Context, usage providers.AIUsageProvider, t aiTrace) {
-	if usage == nil || t.usage == nil || t.userID == 0 {
+	if usage == nil || t.userID == 0 {
 		return
 	}
 	record := providers.AIUsageRecord{
-		OrgID:            t.orgID,
-		UserID:           t.userID,
-		Mode:             t.mode,
-		PromptTokens:     t.usage.PromptTokens,
-		CompletionTokens: t.usage.CompletionTokens,
-		TotalTokens:      t.usage.TotalTokens,
-		Model:            t.model,
-		LatencyMs:        t.latencyMs,
-		ToolCalls:        t.toolCalls,
-		ContextSnapshot:  t.context,
+		OrgID:           t.orgID,
+		UserID:          t.userID,
+		Mode:            t.mode,
+		Model:           t.model,
+		LatencyMs:       t.latencyMs,
+		ToolCalls:       t.toolCalls,
+		ContextSnapshot: t.context,
+	}
+	if t.usage != nil {
+		record.PromptTokens = t.usage.PromptTokens
+		record.CompletionTokens = t.usage.CompletionTokens
+		record.TotalTokens = t.usage.TotalTokens
 	}
 	if t.conversationID > 0 {
 		record.ConversationID = &t.conversationID

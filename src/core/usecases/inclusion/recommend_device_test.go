@@ -33,7 +33,7 @@ type recommendMocks struct {
 }
 
 func newRecommendMocks() recommendMocks {
-	return recommendMocks{
+	m := recommendMocks{
 		ai:            new(mockproviders.MockAIClient),
 		students:      new(mockproviders.MockStudentProvider),
 		devices:       new(mockproviders.MockDeviceProvider),
@@ -41,6 +41,9 @@ func newRecommendMocks() recommendMocks {
 		conversations: new(mockproviders.MockConversationProvider),
 		usage:         new(mockproviders.MockAIUsageProvider),
 	}
+	// La traza por turno (HU-6, T-6.5) se graba best-effort; opcional para los tests.
+	m.usage.On("Record", mock.Anything, mock.AnythingOfType("providers.AIUsageRecord")).Return(nil).Maybe()
+	return m
 }
 
 func (m recommendMocks) usecase() inclusion.RecommendDevice {
