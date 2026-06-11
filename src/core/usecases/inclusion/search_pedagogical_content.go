@@ -11,6 +11,11 @@ import (
 // defaultSearchContentLimit acota el top-N por defecto del RAG.
 const defaultSearchContentLimit = 5
 
+// maxSearchContentLimit es el techo del top-N que un caller puede pedir. Acota el
+// trabajo del RAG aunque el request pida un Limit desmedido (la query viene de la
+// API; sin techo, un LIMIT enorme golpearía la DB sin sentido para un top-N).
+const maxSearchContentLimit = 20
+
 type SearchContentRequest struct {
 	OrgID uuid.UUID
 	Query string
@@ -52,6 +57,9 @@ func (uc *searchPedagogicalContentImpl) Execute(ctx context.Context, req SearchC
 	limit := req.Limit
 	if limit <= 0 {
 		limit = defaultSearchContentLimit
+	}
+	if limit > maxSearchContentLimit {
+		limit = maxSearchContentLimit
 	}
 
 	results, err := uc.content.SearchChunks(ctx, req.OrgID, req.Query, limit)

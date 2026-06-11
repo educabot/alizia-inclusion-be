@@ -50,6 +50,26 @@ func TestSearchContent_AppliesDefaultLimitAndReturnsResults(t *testing.T) {
 	content.AssertExpectations(t)
 }
 
+func TestSearchContent_ClampsExcessiveLimitToMax(t *testing.T) {
+	// Arrange: un caller pide un top-N desmedido; el usecase lo acota a 20 antes
+	// de tocar la DB (sin techo, el LIMIT enorme golpearía el RAG sin sentido).
+	content := new(mockproviders.MockPedagogicalContentProvider)
+	content.On("SearchChunks", mock.Anything, testutil.TestOrgID, "TEA", 20).
+		Return([]providers.ContentSearchResult{}, nil)
+	uc := inclusion.NewSearchPedagogicalContent(content)
+
+	// Act
+	_, err := uc.Execute(context.Background(), inclusion.SearchContentRequest{
+		OrgID: testutil.TestOrgID,
+		Query: "TEA",
+		Limit: 100000,
+	})
+
+	// Assert
+	require.NoError(t, err)
+	content.AssertExpectations(t)
+}
+
 func TestSearchContent_NoMatchReturnsEmptySliceNotNil(t *testing.T) {
 	// Arrange
 	content := new(mockproviders.MockPedagogicalContentProvider)
