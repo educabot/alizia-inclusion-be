@@ -87,7 +87,7 @@ func (uc *recommendDeviceImpl) Execute(ctx context.Context, req RecommendDeviceR
 	}
 	latencyMs := int(time.Since(start).Milliseconds())
 
-	// Guardrail (HU-6, T-6.2): recommend is the heaviest path for DEVICE_ID/ADAPTATION_JSON;
+	// Guardrail: recommend is the heaviest path for DEVICE_ID/ADAPTATION_JSON;
 	// a hallucinated device ID must never reach the teacher. Fall back to off-ramp, same as assist.
 	guardAnswer(ctx, resp, devices, "usecase", "recommend_device", "user_id", req.UserID, "student_id", req.StudentID)
 
@@ -100,7 +100,7 @@ func (uc *recommendDeviceImpl) Execute(ctx context.Context, req RecommendDeviceR
 		convID = req.ConversationID
 	}
 
-	// Per-turn trace (HU-6, T-6.5): IDs only, no PII. Best-effort.
+	// Per-turn trace: IDs only, no PII. Best-effort.
 	snapshot := map[string]any{"student_id": req.StudentID}
 	if deviceID != nil {
 		snapshot["recommended_device_id"] = *deviceID

@@ -19,7 +19,7 @@ import (
 // so the teacher can resume the thread without re-establishing full context.
 const maxSummaryInputTokens = 6000
 
-// maxTopicKeywords caps the number of topic-tag keywords stored per summary (HU-5).
+// maxTopicKeywords caps the number of topic-tag keywords stored per summary.
 const maxTopicKeywords = 8
 
 // CloseSessionRequest triggers compaction of a conversation when it is closed.
@@ -64,7 +64,7 @@ func NewCloseSession(ai providers.AIClient, conversations providers.Conversation
 	return &closeSessionImpl{ai: ai, conversations: conversations, summaries: summaries, usage: usage}
 }
 
-// Execute compacts a conversation on close (HU-5, §6.4): fetches its messages,
+// Execute compacts a conversation on close: fetches its messages,
 // generates a compressed summary via LLM with three-dimension tags (student / topic /
 // device), and persists it idempotently by conversation_id.
 func (uc *closeSessionImpl) Execute(ctx context.Context, req CloseSessionRequest) (*CloseSessionResponse, error) {
@@ -96,7 +96,7 @@ func (uc *closeSessionImpl) Execute(ctx context.Context, req CloseSessionRequest
 	summaryText, keywords := parseSummary(resp.Content)
 	studentIDs, deviceIDs := collectEntities(conv)
 
-	// Per-turn trace (HU-6, T-6.5): IDs only, no PII. Best-effort.
+	// Per-turn trace: IDs only, no PII. Best-effort.
 	recordAIUsage(ctx, uc.usage, aiTrace{
 		orgID: req.OrgID, userID: req.UserID, mode: modeClose,
 		model: uc.ai.Model(), latencyMs: int(time.Since(start).Milliseconds()),

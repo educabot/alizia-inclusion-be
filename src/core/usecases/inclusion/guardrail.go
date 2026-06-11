@@ -25,7 +25,7 @@ func guardAnswer(ctx context.Context, resp *providers.ChatResponse, devices []en
 	resp.Content = prompts.OffRampInvalidOutput
 }
 
-// Code-level guardrail (HU-6, §6.7). Before surfacing a response to the teacher,
+// Code-level guardrail. Before surfacing a response to the teacher,
 // we enforce hard limits in code — not solely via prompt — ensuring that any
 // DEVICE_ID mentioned exists in the org's device catalog and that an embedded
 // ADAPTATION_JSON only references real devices. A response that fails validation

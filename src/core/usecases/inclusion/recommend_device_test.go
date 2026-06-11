@@ -42,7 +42,7 @@ func newRecommendMocks() recommendMocks {
 		conversations: new(mockproviders.MockConversationProvider),
 		usage:         new(mockproviders.MockAIUsageProvider),
 	}
-	// Per-turn usage trace (HU-6, T-6.5) is best-effort; tests treat it as optional.
+	// Per-turn usage trace is best-effort; tests treat it as optional.
 	m.usage.On("Record", mock.Anything, mock.AnythingOfType("providers.AIUsageRecord")).Return(nil).Maybe()
 	return m
 }
@@ -90,7 +90,7 @@ func TestRecommendDevice_ReturnsRecommendationWithDevice(t *testing.T) {
 
 func TestRecommendDevice_GuardrailRejectsHallucinatedDeviceID(t *testing.T) {
 	// The model cites a DEVICE_ID not in the catalog (only ID 1 exists):
-	// the guardrail (HU-6, T-6.2) discards it and falls back to the off-ramp.
+	// the guardrail discards it and falls back to the off-ramp.
 	aiResp := `Te recomiendo el Dispositivo Mágico [DEVICE_ID:999] para esto.`
 	m := recommendDeviceMocks(t, aiResp, nil)
 

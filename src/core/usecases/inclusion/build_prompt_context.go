@@ -21,7 +21,7 @@ const (
 	missingDiagnoses      = "diagnosticos"
 )
 
-// PromptContext is the typed context fed into the prompt. Ordered for caching (§8):
+// PromptContext is the typed context fed into the prompt. Ordered for caching:
 // static fields first (eager, org-level cacheable), dynamic fields second (lazy,
 // driven by the Prompt 0 router dimension). All dynamic blocks are optional —
 // Alizia operates with whatever is available.

@@ -12,7 +12,7 @@ type closeSessionBody struct {
 	ConversationID int64 `json:"conversation_id"`
 }
 
-// HandleCloseSession compacts the conversation when the session closes (HU-5):
+// HandleCloseSession compacts the conversation when the session closes:
 // it creates/updates the compressed summary in DB, tagged across three dimensions
 // (student / topic / device kit).
 func (c *InclusionContainer) HandleCloseSession(req web.Request) web.Response {

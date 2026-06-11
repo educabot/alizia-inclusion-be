@@ -12,7 +12,7 @@ import (
 type ListAdaptationsRequest struct {
 	OrgID     uuid.UUID
 	StudentID *int64
-	// TeacherID scopes the listing to a specific teacher (HU-4 privacy); DeviceID/Query filter
+	// TeacherID scopes the listing to a specific teacher (privacy); DeviceID/Query filter
 	// by suitcase material and topic respectively.
 	TeacherID *int64
 	DeviceID  *int64

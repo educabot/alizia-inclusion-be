@@ -72,7 +72,7 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 
 	allStudents, _ := uc.students.ListByClassroom(ctx, req.OrgID, req.ClassroomID)
 
-	// Pedagogical framework is owned by the prompts package (HU-6, T-6.1).
+	// Pedagogical framework is owned by the prompts package.
 	systemPrompt := prompts.AssistSystem(devices, allStudents)
 	messages := buildChatMessages(systemPrompt, req.History, req.Message)
 
@@ -89,7 +89,7 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	}
 	latencyMs := int(time.Since(start).Milliseconds())
 
-	// Hard guardrail (HU-6): if the response references a non-existent DEVICE_ID
+	// Hard guardrail: if the response references a non-existent DEVICE_ID
 	// or crosses another hard limit, suppress it and fall back to the off-ramp.
 	guardAnswer(ctx, resp, devices, "usecase", "assist_classroom", "user_id", req.UserID, "mode", req.Mode)
 
@@ -103,7 +103,7 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 		convID = req.ConversationID
 	}
 
-	// Per-turn trace (HU-6, T-6.5): IDs only, no PII. Best-effort.
+	// Per-turn trace: IDs only, no PII. Best-effort.
 	recordAIUsage(ctx, uc.usage, aiTrace{
 		orgID: req.OrgID, userID: req.UserID, mode: modeAssist,
 		model: uc.ai.Model(), latencyMs: latencyMs, toolCalls: toolCalls,
@@ -121,7 +121,7 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 }
 
 // assistContextSnapshot builds the per-turn context snapshot using IDs only (no PII):
-// classroom, student, and recommended device references (HU-6, T-6.5).
+// classroom, student, and recommended device references.
 func assistContextSnapshot(req AssistClassroomRequest, studentID, deviceID *int64) map[string]any {
 	snap := map[string]any{}
 	if req.ClassroomID > 0 {

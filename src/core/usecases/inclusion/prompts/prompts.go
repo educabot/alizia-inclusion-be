@@ -1,4 +1,4 @@
-// Package prompts is the editable layer of Alizia's pedagogical framework (HU-6, T-6.1).
+// Package prompts is the editable layer of Alizia's pedagogical framework.
 // It separates the engine (usecases) from prompt text across two layers:
 //
 //   - Layer 1 (static, cacheable): role, guidelines, scope limits, output format,
@@ -17,7 +17,7 @@ import (
 
 // ---------- Layer 1 — static framework (cacheable) ----------
 
-// outputRules enforces the output format required by HU-6 (T-6.6): few actions,
+// outputRules enforces the required output format: few actions,
 // with differentiation levels, immediately actionable, in Rioplatense Spanish register.
 const outputRules = "FORMATO DE RESPUESTA (obligatorio):\n" +
 	"- Ofrecé 1 a 3 acciones concretas, ordenadas por impacto.\n" +
@@ -25,8 +25,8 @@ const outputRules = "FORMATO DE RESPUESTA (obligatorio):\n" +
 	"- Aplicable en menos de 1 minuto de lectura: breve y al grano.\n" +
 	"- Español rioplatense, tono cálido, sin jerga clínica.\n"
 
-// scopeRules establishes the hard boundaries of the framework (HU-6): never diagnose,
-// never replace the teacher; the off-ramp is the last resort, not the first (T-6.3).
+// scopeRules establishes the hard boundaries of the framework: never diagnose,
+// never replace the teacher; the off-ramp is the last resort, not the first.
 const scopeRules = "LÍMITES (marco pedagógico):\n" +
 	"- Entrada pedagógica, no clínica: partís de situaciones de aula, no de diagnósticos.\n" +
 	"- Nunca diagnostiques, no reemplaces al docente, no produzcas informes clínicos.\n" +
@@ -64,7 +64,7 @@ const fewShot = "EJEMPLO DE BUENA RESPUESTA:\n" +
 // ---------- Layer 2 — dynamic turn context ----------
 
 // AssistSystem builds the in-class assistant system prompt: static framework +
-// classroom context (students + kit) + few-shot. Single mode (HU-6, T-6.1).
+// classroom context (students + kit) + few-shot. Single mode.
 func AssistSystem(devices []entities.Device, students []entities.Student) string {
 	var b strings.Builder
 	b.WriteString(assistFramework)

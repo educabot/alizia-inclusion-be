@@ -1,6 +1,6 @@
 package prompts
 
-// Off-ramp default wording (HU-6, T-6.3), editable at the prompts layer.
+// Off-ramp default wording, editable at the prompts layer.
 // Handoff is the LAST resort, not the first: Alizia always attempts to help
 // with available resources (see scopeRules). The off-ramp is used in two cases only:
 //

@@ -43,7 +43,7 @@ func assistClassroomMocks(t *testing.T, aiContent string, aiErr error) (
 		Return([]entities.Device{testutil.NewDevice(1, 1, "Pictogramas")}, nil)
 	students.On("ListByClassroom", mock.Anything, testutil.TestOrgID, int64(1)).
 		Return([]entities.Student{testutil.NewStudent(1, 1, "Lucas")}, nil)
-	// Per-turn usage trace (HU-6, T-6.5) is recorded best-effort; tests may omit it.
+	// Per-turn usage trace is recorded best-effort; tests may omit it.
 	usage.On("Record", mock.Anything, mock.AnythingOfType("providers.AIUsageRecord")).Return(nil).Maybe()
 	if aiErr != nil {
 		ai.On("Chat", mock.Anything, mock.AnythingOfType("[]providers.ChatMessage")).

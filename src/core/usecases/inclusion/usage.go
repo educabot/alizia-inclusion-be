@@ -9,7 +9,7 @@ import (
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
 )
 
-// aiTrace captures one AI turn for usage recording and trace (HU-6, T-6.5).
+// aiTrace captures one AI turn for usage recording and trace.
 // ContextSnapshot must contain only IDs (no PII): student_id, classroom_id, etc.
 type aiTrace struct {
 	orgID          uuid.UUID
@@ -23,7 +23,7 @@ type aiTrace struct {
 	usage          *providers.TokenUsage
 }
 
-// recordAIUsage persists the usage record and trace for one AI turn (HU-6, T-6.5).
+// recordAIUsage persists the usage record and trace for one AI turn.
 // Every turn is traced even when the provider reports no token counts — model, latency,
 // tool_calls, and context are still valuable. Best-effort: a nil provider or anonymous
 // request is skipped, and a record failure is logged rather than propagated so it never

@@ -14,7 +14,7 @@ type buildContextBody struct {
 	Topic     string `json:"topic"`
 }
 
-// HandleBuildContext exposes the Context Assembler (HU-2): builds the typed context
+// HandleBuildContext exposes the Context Assembler: builds the typed context
 // for a dimension (student / toolkit / topic) and returns it. Useful for validating
 // what context reaches the prompt (profile + situations + IEP + diagnoses +
 // prior adaptations), degrading gracefully when data is missing.

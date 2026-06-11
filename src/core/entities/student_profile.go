@@ -8,7 +8,7 @@ type StudentProfile struct {
 	IsTransitory    bool           `json:"is_transitory"`
 	Difficulties    pq.StringArray `json:"difficulties" gorm:"type:text[]"`
 	FreeDescription *string        `json:"free_description,omitempty"`
-	// Rich needs layer (HU-2, all optional). situation_codes uses the controlled
+	// Rich needs layer (all optional). situation_codes uses the controlled
 	// vocabulary from situations_catalog; remaining fields enrich student context
 	// (strengths, interests, triggers, strategies, environment) with no required values.
 	SupportLevel            *string        `json:"support_level,omitempty"`

@@ -15,7 +15,7 @@ type DeviceUsageStat struct {
 	Count      int
 }
 
-// AdaptationFilter narrows the adaptation listing (HU-4). TeacherID scopes results
+// AdaptationFilter narrows the adaptation listing. TeacherID scopes results
 // to a specific teacher (privacy); StudentID/DeviceID/Query filter by student,
 // device, or free-text across subject/title/activity fields.
 type AdaptationFilter struct {

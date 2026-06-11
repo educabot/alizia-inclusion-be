@@ -95,7 +95,7 @@ type createAdaptationBody struct {
 	AdaptationStrategy  *string `json:"adaptation_strategy"`
 	AdaptationType      string  `json:"adaptation_type"`
 	Notes               *string `json:"notes"`
-	// AI-origin fields (HU-4): source conversation/message and whether the teacher edited before saving.
+	// AI-origin fields: source conversation/message and whether the teacher edited before saving.
 	SourceConversationID *int64 `json:"source_conversation_id"`
 	SourceMessageID      *int64 `json:"source_message_id"`
 	WasEdited            bool   `json:"was_edited"`

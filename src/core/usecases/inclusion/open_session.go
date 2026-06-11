@@ -10,7 +10,7 @@ import (
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
 )
 
-// Dimensions a teacher can use to open a session (HU-1). There is no mode selection;
+// Dimensions a teacher can use to open a session. There is no mode selection;
 // Alizia adapts its behaviour based on the dimension and the current context.
 const (
 	DimensionStudent = "alumno"

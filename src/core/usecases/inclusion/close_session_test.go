@@ -30,7 +30,7 @@ func newCloseMocks() closeMocks {
 		summaries:     new(mockproviders.MockConversationSummaryProvider),
 		usage:         new(mockproviders.MockAIUsageProvider),
 	}
-	// Per-turn usage trace (HU-6, T-6.5) is best-effort; optional in tests.
+	// Per-turn usage trace is best-effort; optional in tests.
 	m.usage.On("Record", mock.Anything, mock.AnythingOfType("providers.AIUsageRecord")).Return(nil).Maybe()
 	return m
 }

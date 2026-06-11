@@ -42,7 +42,7 @@ func (r *conversationRepo) ListByUser(ctx context.Context, orgID uuid.UUID, user
 
 // GetWithMessages loads a conversation with its messages ordered chronologically,
 // scoped to the given org. Returns ErrNotFound if the record does not exist or belongs
-// to a different org. Used at session close to compact history into a summary (HU-5).
+// to a different org. Used at session close to compact history into a summary.
 func (r *conversationRepo) GetWithMessages(ctx context.Context, orgID uuid.UUID, conversationID int64) (*entities.Conversation, error) {
 	var conv entities.Conversation
 	err := r.db.WithContext(ctx).

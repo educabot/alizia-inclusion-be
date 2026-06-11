@@ -7,7 +7,7 @@ import (
 )
 
 // ConversationSummary is the compressed summary of a conversation (1:1 with conversations).
-// Written at session end (HU-5) and retrieved per entity on open (HU-1).
+// Written at session end and retrieved per entity on open.
 type ConversationSummary struct {
 	ConversationID int64          `json:"conversation_id" gorm:"primaryKey"`
 	Summary        string         `json:"summary"`
