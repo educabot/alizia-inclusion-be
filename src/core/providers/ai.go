@@ -50,4 +50,7 @@ type AIClient interface {
 	Generate(ctx context.Context, params GenerateParams) (string, error)
 	Chat(ctx context.Context, messages []ChatMessage) (*ChatResponse, error)
 	ChatWithTools(ctx context.Context, messages []ChatMessage, tools []ToolDefinition) (*ChatResponse, error)
+	// Model devuelve el identificador del modelo/deployment activo, para la traza
+	// por turno (HU-6, T-6.5).
+	Model() string
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -84,12 +85,12 @@ func (uc *recommendDeviceImpl) Execute(ctx context.Context, req RecommendDeviceR
 	messages = append(messages, providers.ChatMessage{Role: "user", Content: userPrompt})
 	messages = capMessages(messages, defaultMaxHistoryTokens)
 
+	start := time.Now()
 	resp, err := uc.ai.Chat(ctx, messages)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", providers.ErrServiceUnavailable, err)
 	}
-
-	recordAIUsage(ctx, uc.usage, req.OrgID, req.UserID, "recommend", resp.Usage)
+	latencyMs := int(time.Since(start).Milliseconds())
 
 	deviceID := extractDeviceID(resp.Content)
 	adaptation := extractAdaptationJSON(resp.Content)
@@ -99,6 +100,17 @@ func (uc *recommendDeviceImpl) Execute(ctx context.Context, req RecommendDeviceR
 		slog.WarnContext(ctx, "recommend_device: persist turn failed", "error", persistErr, "user_id", req.UserID, "student_id", req.StudentID)
 		convID = req.ConversationID
 	}
+
+	// Traza por turno (HU-6, T-6.5): solo IDs, sin PII. Best-effort.
+	snapshot := map[string]any{"student_id": req.StudentID}
+	if deviceID != nil {
+		snapshot["recommended_device_id"] = *deviceID
+	}
+	recordAIUsage(ctx, uc.usage, aiTrace{
+		orgID: req.OrgID, userID: req.UserID, mode: "recommend",
+		model: uc.ai.Model(), latencyMs: latencyMs,
+		conversationID: convID, usage: resp.Usage, context: snapshot,
+	})
 
 	return &RecommendDeviceResponse{
 		Response:       resp.Content,

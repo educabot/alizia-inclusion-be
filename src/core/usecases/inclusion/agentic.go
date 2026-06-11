@@ -13,7 +13,9 @@ import (
 
 // maxAgenticIterations caps how many tool-calling rounds a single chat turn may
 // run before we force the model to answer, preventing an infinite tool loop.
-const maxAgenticIterations = 4
+// MVP (HU-6, T-6.4): una pasada de tools, dos como máximo — mantiene la latencia
+// baja en clase y acota el costo. Se sube si el flywheel lo justifica (Futuro).
+const maxAgenticIterations = 2
 
 // toolDispatcher executes a tool the model asked for and returns its result as a
 // JSON string that is fed back to the model.
@@ -36,19 +38,21 @@ func runAgenticChat(
 	dispatcher toolDispatcher,
 	orgID uuid.UUID,
 	maxIters int,
-) (*providers.ChatResponse, error) {
+) (*providers.ChatResponse, int, error) {
 	// No tools: collapse to a single plain Chat, identical to non-agentic behavior.
 	if len(tools) == 0 {
-		return ai.Chat(ctx, messages)
+		resp, err := ai.Chat(ctx, messages)
+		return resp, 0, err
 	}
 
 	var totalUsage providers.TokenUsage
 	var sawUsage bool
+	toolCalls := 0 // total de tool calls ejecutados en el turno (traza, HU-6 T-6.5)
 
 	for range maxIters {
 		resp, err := ai.ChatWithTools(ctx, messages, tools)
 		if err != nil {
-			return nil, err
+			return nil, toolCalls, err
 		}
 		if resp.Usage != nil {
 			sawUsage = true
@@ -61,8 +65,9 @@ func runAgenticChat(
 			if sawUsage {
 				resp.Usage = &totalUsage
 			}
-			return resp, nil
+			return resp, toolCalls, nil
 		}
+		toolCalls += len(resp.ToolCalls)
 
 		// Echo the assistant turn (with its tool calls) so the model keeps context.
 		messages = append(messages, providers.ChatMessage{
@@ -88,7 +93,7 @@ func runAgenticChat(
 	// Iteration budget exhausted: ask once more without tools to force an answer.
 	final, err := ai.Chat(ctx, messages)
 	if err != nil {
-		return nil, err
+		return nil, toolCalls, err
 	}
 	if final.Usage != nil {
 		sawUsage = true
@@ -99,7 +104,7 @@ func runAgenticChat(
 	if sawUsage {
 		final.Usage = &totalUsage
 	}
-	return final, nil
+	return final, toolCalls, nil
 }
 
 // inclusionTools are the domain tools Alizia can call to ground its answers in

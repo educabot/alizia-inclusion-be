@@ -2,9 +2,11 @@ package inclusion
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
@@ -27,6 +29,15 @@ func (r *aiUsageRepo) Record(ctx context.Context, record providers.AIUsageRecord
 		PromptTokens:     record.PromptTokens,
 		CompletionTokens: record.CompletionTokens,
 		TotalTokens:      record.TotalTokens,
+		Model:            record.Model,
+		LatencyMs:        record.LatencyMs,
+		ToolCalls:        record.ToolCalls,
+		ConversationID:   record.ConversationID,
+	}
+	if len(record.ContextSnapshot) > 0 {
+		if b, err := json.Marshal(record.ContextSnapshot); err == nil {
+			usage.ContextSnapshot = datatypes.JSON(b)
+		}
 	}
 	return r.db.WithContext(ctx).Create(&usage).Error
 }

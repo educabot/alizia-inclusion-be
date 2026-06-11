@@ -22,6 +22,8 @@ type fakeAIClient struct {
 	calls       int
 }
 
+func (f *fakeAIClient) Model() string { return "fake" }
+
 func (f *fakeAIClient) Generate(_ context.Context, _ providers.GenerateParams) (string, error) {
 	f.calls++
 	if f.generateErr != nil {

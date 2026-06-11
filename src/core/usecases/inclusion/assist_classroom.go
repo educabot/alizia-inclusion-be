@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -90,12 +91,12 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	}
 	dispatcher := inclusionDispatcher{students: uc.students, devices: uc.devices, summaries: uc.summaries, adaptations: uc.adaptations, content: uc.content, userID: req.UserID, conversationID: req.ConversationID}
 
-	resp, err := runAgenticChat(ctx, uc.ai, messages, tools, dispatcher, req.OrgID, maxAgenticIterations)
+	start := time.Now()
+	resp, toolCalls, err := runAgenticChat(ctx, uc.ai, messages, tools, dispatcher, req.OrgID, maxAgenticIterations)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", providers.ErrServiceUnavailable, err)
 	}
-
-	recordAIUsage(ctx, uc.usage, req.OrgID, req.UserID, "assist", resp.Usage)
+	latencyMs := int(time.Since(start).Milliseconds())
 
 	// Guardrail por código (HU-6): si la respuesta cruza un límite duro (ej. cita
 	// un DEVICE_ID inexistente) no se la mostramos al docente; caemos al off-ramp.
@@ -115,6 +116,14 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 		convID = req.ConversationID
 	}
 
+	// Traza por turno (HU-6, T-6.5): solo IDs, sin PII. Best-effort.
+	recordAIUsage(ctx, uc.usage, aiTrace{
+		orgID: req.OrgID, userID: req.UserID, mode: "assist",
+		model: uc.ai.Model(), latencyMs: latencyMs, toolCalls: toolCalls,
+		conversationID: convID, usage: resp.Usage,
+		context: assistContextSnapshot(req, studentID, deviceID),
+	})
+
 	return &AssistClassroomResponse{
 		Response:          resp.Content,
 		ConversationID:    convID,
@@ -122,6 +131,25 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 		RecommendedDevice: deviceID,
 		Adaptation:        adaptation,
 	}, nil
+}
+
+// assistContextSnapshot arma el snapshot de contexto del turno SOLO con IDs (sin
+// PII): qué aula/alumno se mencionó y qué dispositivo se recomendó (HU-6, T-6.5).
+func assistContextSnapshot(req AssistClassroomRequest, studentID, deviceID *int64) map[string]any {
+	snap := map[string]any{}
+	if req.ClassroomID > 0 {
+		snap["classroom_id"] = req.ClassroomID
+	}
+	if req.StudentID != nil {
+		snap["student_id"] = *req.StudentID
+	}
+	if studentID != nil {
+		snap["identified_student_id"] = *studentID
+	}
+	if deviceID != nil {
+		snap["recommended_device_id"] = *deviceID
+	}
+	return snap
 }
 
 func (uc *assistClassroomImpl) persistTurn(ctx context.Context, req AssistClassroomRequest, assistantContent string, studentID, deviceID *int64, adaptation *GeneratedAdaptation) (int64, error) {

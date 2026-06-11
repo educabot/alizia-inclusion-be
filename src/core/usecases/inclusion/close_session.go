@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
@@ -84,6 +85,7 @@ func (uc *closeSessionImpl) Execute(ctx context.Context, req CloseSessionRequest
 
 	transcript := buildTranscript(conv.Messages, maxSummaryInputTokens)
 
+	start := time.Now()
 	resp, err := uc.ai.Chat(ctx, []providers.ChatMessage{
 		{Role: "system", Content: summarizerSystemPrompt},
 		{Role: "user", Content: transcript},
@@ -91,10 +93,17 @@ func (uc *closeSessionImpl) Execute(ctx context.Context, req CloseSessionRequest
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", providers.ErrServiceUnavailable, err)
 	}
-	recordAIUsage(ctx, uc.usage, req.OrgID, req.UserID, "close", resp.Usage)
 
 	summaryText, keywords := parseSummary(resp.Content)
 	studentIDs, deviceIDs := collectEntities(conv)
+
+	// Traza por turno (HU-6, T-6.5): solo IDs, sin PII. Best-effort.
+	recordAIUsage(ctx, uc.usage, aiTrace{
+		orgID: req.OrgID, userID: req.UserID, mode: "close",
+		model: uc.ai.Model(), latencyMs: int(time.Since(start).Milliseconds()),
+		conversationID: conv.ID, usage: resp.Usage,
+		context: map[string]any{"student_ids": studentIDs, "device_ids": deviceIDs},
+	})
 
 	summary := &entities.ConversationSummary{
 		ConversationID: conv.ID,
