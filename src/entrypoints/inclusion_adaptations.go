@@ -95,7 +95,7 @@ type createAdaptationBody struct {
 	AdaptationStrategy  *string `json:"adaptation_strategy"`
 	AdaptationType      string  `json:"adaptation_type"`
 	Notes               *string `json:"notes"`
-	// Origen IA (HU-4): de qué conversación/mensaje salió y si el docente la editó.
+	// AI-origin fields (HU-4): source conversation/message and whether the teacher edited before saving.
 	SourceConversationID *int64 `json:"source_conversation_id"`
 	SourceMessageID      *int64 `json:"source_message_id"`
 	WasEdited            bool   `json:"was_edited"`
@@ -133,7 +133,7 @@ func (c *InclusionContainer) HandleListAdaptations(req web.Request) web.Response
 		deviceID = &id
 	}
 
-	// Recurso privado del docente: salvo que se pida ?all=true, se acota al usuario actual.
+	// Private teacher scope: restrict to the current user unless ?all=true is requested.
 	var teacherID *int64
 	if req.Query("all") != "true" {
 		uid := middleware.UserID(req)

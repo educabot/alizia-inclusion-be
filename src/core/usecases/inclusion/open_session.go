@@ -10,15 +10,15 @@ import (
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
 )
 
-// Dimensiones por las que el docente puede abrir una sesión (HU-1). Una sola forma de
-// responder: no hay elección de modo, Alizia se adapta según la dimensión y el contexto.
+// Dimensions a teacher can use to open a session (HU-1). There is no mode selection;
+// Alizia adapts its behaviour based on the dimension and the current context.
 const (
 	DimensionStudent = "alumno"
 	DimensionToolkit = "valija"
 	DimensionTopic   = "tema"
 )
 
-// maxPriorSummaries acota el retrieval de resúmenes al abrir (fallback anti-detonación).
+// maxPriorSummaries caps summary retrieval at session open to prevent context explosion.
 const maxPriorSummaries = 10
 
 const (
@@ -32,10 +32,10 @@ const (
 type OpenSessionRequest struct {
 	OrgID     uuid.UUID
 	UserID    int64
-	Dimension string // alumno / valija / tema; vacío = solo saludo
-	StudentID *int64 // cuando Dimension = alumno
-	DeviceID  *int64 // cuando Dimension = valija (opcional)
-	Topic     string // cuando Dimension = tema
+	Dimension string // alumno / valija / tema; empty = greeting only
+	StudentID *int64 // required when Dimension = alumno
+	DeviceID  *int64 // optional when Dimension = valija
+	Topic     string // required when Dimension = tema
 }
 
 func (r OpenSessionRequest) Validate() error {
@@ -78,7 +78,6 @@ func (uc *openSessionImpl) Execute(ctx context.Context, req OpenSessionRequest) 
 
 	switch dimension {
 	case "":
-		// Saludo + pregunta de dimensión.
 		return &OpenSessionResponse{Greeting: welcomeText, NeedsDimension: true}, nil
 
 	case DimensionStudent:
@@ -91,14 +90,13 @@ func (uc *openSessionImpl) Execute(ctx context.Context, req OpenSessionRequest) 
 		return uc.openTopic(ctx, req)
 
 	default:
-		// Dimensión ambigua: repreguntar en lugar de asumir.
+		// Ambiguous dimension: ask again rather than assume.
 		return &OpenSessionResponse{Greeting: clarifyText, NeedsDimension: true}, nil
 	}
 }
 
 func (uc *openSessionImpl) openStudent(ctx context.Context, req OpenSessionRequest) (*OpenSessionResponse, error) {
 	if req.StudentID == nil || *req.StudentID <= 0 {
-		// Falta el alumno: repreguntar.
 		return &OpenSessionResponse{Greeting: askStudent, NeedsDimension: true}, nil
 	}
 
@@ -121,8 +119,8 @@ func (uc *openSessionImpl) openStudent(ctx context.Context, req OpenSessionReque
 }
 
 func (uc *openSessionImpl) openToolkit(ctx context.Context, req OpenSessionRequest) (*OpenSessionResponse, error) {
-	// La valija viaja como catálogo en contexto (no por retrieval). Solo recuperamos
-	// resúmenes previos si se abrió sobre un dispositivo puntual.
+	// The toolkit is injected as a catalogue in context, not via retrieval. Prior summaries
+	// are fetched only when a specific device is targeted.
 	var summaries []entities.ConversationSummary
 	if req.DeviceID != nil && *req.DeviceID > 0 {
 		var err error
@@ -141,7 +139,6 @@ func (uc *openSessionImpl) openToolkit(ctx context.Context, req OpenSessionReque
 func (uc *openSessionImpl) openTopic(ctx context.Context, req OpenSessionRequest) (*OpenSessionResponse, error) {
 	topic := strings.TrimSpace(req.Topic)
 	if topic == "" {
-		// Falta el tema: repreguntar.
 		return &OpenSessionResponse{Greeting: askTopic, NeedsDimension: true}, nil
 	}
 

@@ -30,7 +30,7 @@ func newCloseMocks() closeMocks {
 		summaries:     new(mockproviders.MockConversationSummaryProvider),
 		usage:         new(mockproviders.MockAIUsageProvider),
 	}
-	// La traza por turno (HU-6, T-6.5) se graba best-effort; opcional para los tests.
+	// Per-turn usage trace (HU-6, T-6.5) is best-effort; optional in tests.
 	m.usage.On("Record", mock.Anything, mock.AnythingOfType("providers.AIUsageRecord")).Return(nil).Maybe()
 	return m
 }
@@ -121,7 +121,7 @@ func TestCloseSession_CompactsAndUpsertsWithTags(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(7), got.ConversationID)
 	assert.Contains(t, got.Summary, "pausas sensoriales")
-	// keywords normalizadas a minúscula y deduplicadas ("TEA" y "tea" colapsan).
+	// Keywords are lowercased and deduplicated ("TEA" and "tea" collapse into one).
 	assert.Equal(t, []string{"tea", "autorregulación"}, got.TopicKeywords)
 	assert.Equal(t, []int64{3}, got.StudentIDs)
 	assert.Equal(t, []int64{12}, got.DeviceIDs)

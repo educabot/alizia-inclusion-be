@@ -29,7 +29,7 @@ func NewAzureClient(endpoint, apiKey, deployment string) providers.AIClient {
 	}
 }
 
-// Model devuelve el deployment de Azure como identificador del modelo (HU-6, T-6.5).
+// Model returns the Azure deployment name as the model identifier.
 func (c *AzureClient) Model() string { return c.deployment }
 
 type azureMessage struct {

@@ -109,7 +109,6 @@ func (cb *CircuitBreaker) record(err error) {
 }
 
 // Generate passes through to the wrapped client unless the circuit is open.
-// Model delega en el cliente envuelto (HU-6, T-6.5).
 func (cb *CircuitBreaker) Model() string { return cb.client.Model() }
 
 func (cb *CircuitBreaker) Generate(ctx context.Context, params providers.GenerateParams) (string, error) {

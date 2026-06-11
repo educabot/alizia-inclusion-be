@@ -15,9 +15,9 @@ type openSessionBody struct {
 	Topic     string `json:"topic"`
 }
 
-// HandleOpenSession es el Prompt 0 / router de apertura (HU-1): da la bienvenida, pregunta
-// la dimensión (alumno / valija / tema), dirige la carga de contexto y recupera resúmenes
-// previos de la entidad.
+// HandleOpenSession is the Prompt 0 / opening router (HU-1): greets the user, asks for the
+// dimension (student / kit / topic), directs context loading, and retrieves prior summaries
+// for the entity.
 func (c *InclusionContainer) HandleOpenSession(req web.Request) web.Response {
 	var body openSessionBody
 	if err := req.BindJSON(&body); err != nil {

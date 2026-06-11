@@ -1,13 +1,11 @@
-// Package prompts es la capa editable del marco pedagógico de Alizia (HU-6, T-6.1).
-// Separa el motor (usecases) del texto de los prompts, en dos capas:
+// Package prompts is the editable layer of Alizia's pedagogical framework (HU-6, T-6.1).
+// It separates the engine (usecases) from prompt text across two layers:
 //
-//   - Capa 1 (estática, cacheable): rol, lineamientos, límites, formato de salida
-//     y few-shot. Son constantes; cambiar el texto no rompe el formato de salida.
-//   - Capa 2 (dinámica): el contexto del turno (alumnos del aula, catálogo de la
-//     valija) que se arma por request.
+//   - Layer 1 (static, cacheable): role, guidelines, scope limits, output format,
+//     and few-shot examples. These are constants; changing text does not break output format.
+//   - Layer 2 (dynamic): per-request turn context (classroom students, adaptive kit catalog).
 //
-// Hay un solo modo: no se elige entre prompts según un "mode"; Alizia se adapta
-// por el contexto.
+// There is a single mode: Alizia adapts through context, not prompt selection.
 package prompts
 
 import (
@@ -17,18 +15,18 @@ import (
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 )
 
-// ---------- Capa 1 — marco estático (cacheable) ----------
+// ---------- Layer 1 — static framework (cacheable) ----------
 
-// outputRules fija el formato de salida exigido por HU-6 (T-6.6): pocas acciones,
-// con niveles de diferenciación, accionables al instante y en tono rioplatense.
+// outputRules enforces the output format required by HU-6 (T-6.6): few actions,
+// with differentiation levels, immediately actionable, in Rioplatense Spanish register.
 const outputRules = "FORMATO DE RESPUESTA (obligatorio):\n" +
 	"- Ofrecé 1 a 3 acciones concretas, ordenadas por impacto.\n" +
 	"- Incluí al menos 3 niveles de diferenciación (más simple / intermedio / más desafiante).\n" +
 	"- Aplicable en menos de 1 minuto de lectura: breve y al grano.\n" +
 	"- Español rioplatense, tono cálido, sin jerga clínica.\n"
 
-// scopeRules fija los límites duros del marco (HU-6): nunca diagnostica ni
-// reemplaza al docente; el paso al costado es el último recurso (off-ramp, T-6.3).
+// scopeRules establishes the hard boundaries of the framework (HU-6): never diagnose,
+// never replace the teacher; the off-ramp is the last resort, not the first (T-6.3).
 const scopeRules = "LÍMITES (marco pedagógico):\n" +
 	"- Entrada pedagógica, no clínica: partís de situaciones de aula, no de diagnósticos.\n" +
 	"- Nunca diagnostiques, no reemplaces al docente, no produzcas informes clínicos.\n" +
@@ -36,7 +34,7 @@ const scopeRules = "LÍMITES (marco pedagógico):\n" +
 	"  dar un paso al costado es el último recurso, no el primero. Cuando debas hacerlo, respondé\n" +
 	"  exactamente con: \"" + OffRampOutOfScope + "\"\n"
 
-// adaptationBlock instruye el bloque estructurado que el guardrail valida por código.
+// adaptationBlock instructs the structured block that the guardrail validates programmatically.
 const adaptationBlock = "BLOQUE ESTRUCTURADO:\n" +
 	"Cuando generes una recomendación de adaptación concreta, incluí al final exactamente:\n" +
 	`[ADAPTATION_JSON:{"title":"título corto","type":"tipo","strategy":"resumen","device_ids":[1],"device_names":["nombre"]}]` + "\n" +
@@ -54,19 +52,19 @@ const recommendFramework = "Sos Alizia, asistente de inclusión educativa de Edu
 	scopeRules + "\n" + outputRules +
 	"Incluí [DEVICE_ID:X] con el dispositivo principal recomendado.\n\n" + adaptationBlock
 
-// fewShot es un ejemplo estático curado (capa 1 cacheable) de situación de aula →
-// respuesta con acciones + niveles. El few-shot dinámico por alumno (a partir de
-// adaptaciones previas que funcionaron) es una extensión futura sobre esta base.
+// fewShot is a curated static example (layer 1, cacheable): classroom situation →
+// response with actions and differentiation levels. Per-student dynamic few-shot
+// (built from past successful adaptations) is a planned extension on this base.
 const fewShot = "EJEMPLO DE BUENA RESPUESTA:\n" +
 	"Situación: el alumno no inicia la tarea.\n" +
 	"1. Anticipá la consigna en pasos cortos en el pizarrón.\n" +
 	"   - Más simple: un paso por vez. Intermedio: 2-3 pasos. Más desafiante: que arme la secuencia él mismo.\n" +
 	"2. Dale un arranque concreto (\"empezá por...\") y un tiempo breve para el primer paso.\n"
 
-// ---------- Capa 2 — contexto dinámico del turno ----------
+// ---------- Layer 2 — dynamic turn context ----------
 
-// AssistSystem arma el system prompt del asistente en clase: marco estático +
-// contexto del aula (alumnos + valija) + few-shot. Un solo modo (HU-6, T-6.1).
+// AssistSystem builds the in-class assistant system prompt: static framework +
+// classroom context (students + kit) + few-shot. Single mode (HU-6, T-6.1).
 func AssistSystem(devices []entities.Device, students []entities.Student) string {
 	var b strings.Builder
 	b.WriteString(assistFramework)
@@ -78,8 +76,8 @@ func AssistSystem(devices []entities.Device, students []entities.Student) string
 	return b.String()
 }
 
-// RecommendSystem arma el system prompt de recomendación de dispositivos: marco +
-// catálogo detallado (fundamento / uso) + few-shot.
+// RecommendSystem builds the device recommendation system prompt: framework +
+// detailed catalog (rationale / how-to-use) + few-shot.
 func RecommendSystem(devices []entities.Device) string {
 	var b strings.Builder
 	b.WriteString(recommendFramework)
@@ -90,7 +88,7 @@ func RecommendSystem(devices []entities.Device) string {
 	return b.String()
 }
 
-// studentRoster lista los alumnos del aula con su id y dificultades (capa 2).
+// studentRoster lists classroom students with their ID and difficulties (layer 2).
 func studentRoster(students []entities.Student) string {
 	if len(students) == 0 {
 		return ""
@@ -109,8 +107,8 @@ func studentRoster(students []entities.Student) string {
 	return b.String()
 }
 
-// deviceCatalog lista la valija (capa 2). Con detailed agrega fundamento y uso,
-// para el prompt de recomendación; sin él, solo nombre y para qué sirve.
+// deviceCatalog lists the adaptive kit (layer 2). When detailed is true, adds rationale
+// and how-to-use fields for the recommendation prompt; otherwise only name and purpose.
 func deviceCatalog(devices []entities.Device, detailed bool) string {
 	var b strings.Builder
 	b.WriteString("DISPOSITIVOS DISPONIBLES:\n")

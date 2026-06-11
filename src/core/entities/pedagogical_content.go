@@ -7,10 +7,10 @@ import (
 	"github.com/lib/pq"
 )
 
-// PedagogicalContent es un documento del corpus pedagógico (libro / paper /
-// material / capítulo). Jerárquico tipo Notion (parent_id self-ref). Es
-// independiente de la valija: no tiene device_id ni ramp_id. organization_id
-// NULL = global (Educabot). El RAG busca por keywords[] (GIN).
+// PedagogicalContent is a document in the pedagogical corpus (book, paper,
+// material, chapter). Notion-style hierarchy via self-referencing parent_id.
+// Independent of device/ramp scope. organization_id NULL means global (Educabot).
+// RAG retrieval is driven by keywords[] with a GIN index.
 type PedagogicalContent struct {
 	ID             int64                     `json:"id" gorm:"primaryKey"`
 	ParentID       *int64                    `json:"parent_id,omitempty"`
@@ -28,11 +28,10 @@ func (PedagogicalContent) TableName() string {
 	return "pedagogical_content"
 }
 
-// PedagogicalContentChunk es un pedacito buscable de un documento. Para el MVP
-// 1 chunk = el documento entero; cuando lleguen libros solo cambia el paso de
-// partir en chunks (sin migración). La columna embedding existe en la tabla
-// pero queda inerte en el MVP (keyword/full-text first), por eso no se modela
-// en Go todavía.
+// PedagogicalContentChunk is a searchable unit of a document. For the MVP,
+// 1 chunk = the whole document; splitting logic changes when books arrive,
+// no migration needed. The embedding column exists in the table but is inert
+// for now (keyword/full-text first) and is therefore not modelled in Go yet.
 type PedagogicalContentChunk struct {
 	ID        int64          `json:"id" gorm:"primaryKey"`
 	ContentID int64          `json:"content_id"`

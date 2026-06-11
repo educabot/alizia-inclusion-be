@@ -73,7 +73,7 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 
 	allStudents, _ := uc.students.ListByClassroom(ctx, req.OrgID, req.ClassroomID)
 
-	// Un solo modo (HU-6, T-6.1): el marco pedagógico vive en el paquete prompts.
+	// Pedagogical framework is owned by the prompts package (HU-6, T-6.1).
 	systemPrompt := prompts.AssistSystem(devices, allStudents)
 
 	messages := make([]providers.ChatMessage, 0, len(req.History)+2)
@@ -95,8 +95,8 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	}
 	latencyMs := int(time.Since(start).Milliseconds())
 
-	// Guardrail por código (HU-6): si la respuesta cruza un límite duro (ej. cita
-	// un DEVICE_ID inexistente) no se la mostramos al docente; caemos al off-ramp.
+	// Hard guardrail (HU-6): if the response references a non-existent DEVICE_ID
+	// or crosses another hard limit, suppress it and fall back to the off-ramp.
 	if gr := validateAnswer(resp.Content, deviceCatalogSet(devices)); !gr.Valid {
 		slog.WarnContext(ctx, "assist_classroom: guardrail rejected answer",
 			"violations", gr.Violations, "user_id", req.UserID, "mode", req.Mode)
@@ -113,9 +113,9 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 		convID = req.ConversationID
 	}
 
-	// Traza por turno (HU-6, T-6.5): solo IDs, sin PII. Best-effort.
+	// Per-turn trace (HU-6, T-6.5): IDs only, no PII. Best-effort.
 	recordAIUsage(ctx, uc.usage, aiTrace{
-		orgID: req.OrgID, userID: req.UserID, mode: "assist",
+		orgID: req.OrgID, userID: req.UserID, mode: modeAssist,
 		model: uc.ai.Model(), latencyMs: latencyMs, toolCalls: toolCalls,
 		conversationID: convID, usage: resp.Usage,
 		context: assistContextSnapshot(req, studentID, deviceID),
@@ -130,8 +130,8 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	}, nil
 }
 
-// assistContextSnapshot arma el snapshot de contexto del turno SOLO con IDs (sin
-// PII): qué aula/alumno se mencionó y qué dispositivo se recomendó (HU-6, T-6.5).
+// assistContextSnapshot builds the per-turn context snapshot using IDs only (no PII):
+// classroom, student, and recommended device references (HU-6, T-6.5).
 func assistContextSnapshot(req AssistClassroomRequest, studentID, deviceID *int64) map[string]any {
 	snap := map[string]any{}
 	if req.ClassroomID > 0 {
@@ -155,7 +155,7 @@ func (uc *assistClassroomImpl) persistTurn(ctx context.Context, req AssistClassr
 	}
 	mode := req.Mode
 	if mode == "" {
-		mode = "assist"
+		mode = modeAssist
 	}
 	metadata := map[string]any{}
 	if studentID != nil {

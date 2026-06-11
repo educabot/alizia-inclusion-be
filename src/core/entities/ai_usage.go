@@ -15,8 +15,8 @@ type AIUsage struct {
 	PromptTokens     int       `json:"prompt_tokens"`
 	CompletionTokens int       `json:"completion_tokens"`
 	TotalTokens      int       `json:"total_tokens"`
-	// Traza por turno (HU-6, T-6.5; columnas nullable de la migración 000020).
-	// ContextSnapshot guarda solo IDs (sin PII): student_id, classroom_id, device_ids…
+	// Per-turn tracing (HU-6, T-6.5; nullable columns from migration 000020).
+	// ContextSnapshot stores IDs only (no PII): student_id, classroom_id, device_ids…
 	ConversationID  *int64         `json:"conversation_id,omitempty"`
 	MessageID       *int64         `json:"message_id,omitempty"`
 	Model           string         `json:"model,omitempty"`

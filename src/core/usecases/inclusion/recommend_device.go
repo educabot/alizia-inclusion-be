@@ -93,9 +93,8 @@ func (uc *recommendDeviceImpl) Execute(ctx context.Context, req RecommendDeviceR
 	}
 	latencyMs := int(time.Since(start).Milliseconds())
 
-	// Guardrail por código (HU-6, T-6.2): recommend es la ruta más densa en
-	// DEVICE_ID/ADAPTATION_JSON, así que un id alucinado es justo lo que no puede
-	// llegar al docente. Si cruza el límite, caemos al off-ramp como en assist.
+	// Guardrail (HU-6, T-6.2): recommend is the heaviest path for DEVICE_ID/ADAPTATION_JSON;
+	// a hallucinated device ID must never reach the teacher. Fall back to off-ramp, same as assist.
 	if gr := validateAnswer(resp.Content, deviceCatalogSet(devices)); !gr.Valid {
 		slog.WarnContext(ctx, "recommend_device: guardrail rejected answer",
 			"violations", gr.Violations, "user_id", req.UserID, "student_id", req.StudentID)
@@ -111,13 +110,13 @@ func (uc *recommendDeviceImpl) Execute(ctx context.Context, req RecommendDeviceR
 		convID = req.ConversationID
 	}
 
-	// Traza por turno (HU-6, T-6.5): solo IDs, sin PII. Best-effort.
+	// Per-turn trace (HU-6, T-6.5): IDs only, no PII. Best-effort.
 	snapshot := map[string]any{"student_id": req.StudentID}
 	if deviceID != nil {
 		snapshot["recommended_device_id"] = *deviceID
 	}
 	recordAIUsage(ctx, uc.usage, aiTrace{
-		orgID: req.OrgID, userID: req.UserID, mode: "recommend",
+		orgID: req.OrgID, userID: req.UserID, mode: modeRecommend,
 		model: uc.ai.Model(), latencyMs: latencyMs,
 		conversationID: convID, usage: resp.Usage, context: snapshot,
 	})
@@ -148,7 +147,7 @@ func (uc *recommendDeviceImpl) persistTurn(ctx context.Context, req RecommendDev
 		ConversationID:   req.ConversationID,
 		OrgID:            req.OrgID,
 		UserID:           req.UserID,
-		Mode:             "recommend",
+		Mode:             modeRecommend,
 		StudentID:        &studentIDCopy,
 		UserContent:      userContent,
 		AssistantContent: assistantContent,

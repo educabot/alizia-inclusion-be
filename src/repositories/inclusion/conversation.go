@@ -40,9 +40,9 @@ func (r *conversationRepo) ListByUser(ctx context.Context, orgID uuid.UUID, user
 	return conversations, nil
 }
 
-// GetWithMessages trae una conversación con sus mensajes ordenados cronológicamente,
-// acotada por org. Devuelve ErrNotFound si no existe o pertenece a otra org. Se usa al
-// cerrar la sesión para compactar el historial en un resumen (HU-5).
+// GetWithMessages loads a conversation with its messages ordered chronologically,
+// scoped to the given org. Returns ErrNotFound if the record does not exist or belongs
+// to a different org. Used at session close to compact history into a summary (HU-5).
 func (r *conversationRepo) GetWithMessages(ctx context.Context, orgID uuid.UUID, conversationID int64) (*entities.Conversation, error) {
 	var conv entities.Conversation
 	err := r.db.WithContext(ctx).

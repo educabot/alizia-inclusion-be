@@ -28,7 +28,7 @@ func TestRecommendSystem_ContainsDeviceInfo(t *testing.T) {
 }
 
 func TestAssistSystem_HasOutputFormatRules(t *testing.T) {
-	// El formato de salida exigido por T-6.6 vive en el marco estático.
+	// Output format required by T-6.6 lives in the static frame.
 	prompt := prompts.AssistSystem(nil, nil)
 
 	assert.Contains(t, prompt, "1 a 3 acciones")
@@ -57,14 +57,14 @@ func TestAssistSystem_OmitsRosterWhenNoStudents(t *testing.T) {
 }
 
 func TestAssistSystem_EmbedsOutOfScopeOffRamp(t *testing.T) {
-	// El marco le indica al modelo el wording exacto del paso al costado (T-6.3).
+	// The frame supplies the model with the exact off-ramp wording (T-6.3).
 	prompt := prompts.AssistSystem(nil, nil)
 
 	assert.Contains(t, prompt, prompts.OffRampOutOfScope)
 }
 
 func TestOffRamp_WordingDoesNotDiagnose(t *testing.T) {
-	// El paso al costado deriva, nunca diagnostica (HU-6).
+	// Off-ramp must redirect, never diagnose (HU-6).
 	assert.NotEmpty(t, prompts.OffRampInvalidOutput)
 	assert.Contains(t, prompts.OffRampOutOfScope, "derivar")
 	assert.Contains(t, prompts.OffRampOutOfScope, "No puedo")

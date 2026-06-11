@@ -16,8 +16,8 @@ type Adaptation struct {
 	Outcome             *string   `json:"outcome,omitempty"`
 	Notes               *string   `json:"notes,omitempty"`
 	Status              string    `json:"status" gorm:"default:en_curso"`
-	// Origen IA (Capa C, HU-4): liga la sugerencia de Alizia con su resultado real.
-	// was_edited = ¿el docente la modificó antes de guardar? (aceptación implícita).
+	// AI origin (Layer C, HU-4): links an Alizia suggestion to its real-world outcome.
+	// WasEdited indicates whether the teacher modified the suggestion before saving (implicit acceptance).
 	SourceConversationID *int64   `json:"source_conversation_id,omitempty"`
 	SourceMessageID      *int64   `json:"source_message_id,omitempty"`
 	WasEdited            bool     `json:"was_edited"`

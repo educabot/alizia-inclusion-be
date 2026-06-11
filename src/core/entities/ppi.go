@@ -7,9 +7,10 @@ import (
 	"github.com/lib/pq"
 )
 
-// PPI (Proyecto Pedagógico Individual, 1 por alumno): objetivos, adaptaciones
-// curriculares y seguimiento. Lo crea el docente y lo valida el Director. Es
-// contexto de primera línea cuando existe; todos los campos opcionales.
+// PPI (Individual Pedagogical Project) holds one record per student with learning
+// objectives, curricular adaptations, and follow-up notes. Created by the teacher,
+// validated by the Director. Treated as first-priority context when present; all
+// content fields are optional.
 type PPI struct {
 	ID                    int64          `json:"id" gorm:"primaryKey"`
 	OrganizationID        uuid.UUID      `json:"organization_id"`

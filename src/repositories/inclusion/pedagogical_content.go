@@ -21,23 +21,21 @@ func NewPedagogicalContentRepo(db *gorm.DB) providers.PedagogicalContentProvider
 	return &pedagogicalContentRepo{db: db}
 }
 
-// searchDocument arma el tsvector ponderado: título y keywords pesan más (peso A)
-// que tags (B) y cuerpo del chunk (C), de modo que un match por keyword rankee
-// por encima de un match suelto en el texto ("keyword-first" en el ranking).
+// searchDocument builds the weighted tsvector: title and keywords carry weight A,
+// tags weight B, and chunk body weight C — keyword matches rank above body matches.
 const searchDocument = `
 	setweight(to_tsvector('spanish', coalesce(pc.title, '')), 'A') ||
 	setweight(to_tsvector('spanish', array_to_string(pc.keywords, ' ')), 'A') ||
 	setweight(to_tsvector('spanish', array_to_string(c.tags, ' ')), 'B') ||
 	setweight(to_tsvector('spanish', coalesce(c.chunk_text, '')), 'C')`
 
-// orTSQuery convierte la consulta a un tsquery con semántica OR (matchea
-// cualquier keyword, no todas) y rankea por cuántas coinciden — el comportamiento
-// esperado de un RAG. plainto_tsquery une los términos con AND; cambiamos ' & '
-// por ' | '. El ? se liga al texto de la consulta.
+// orTSQuery converts the query to an OR-semantics tsquery (any keyword matches,
+// ranked by how many hit) — the expected RAG behavior. plainto_tsquery joins
+// terms with AND; we replace ' & ' with ' | ' to get OR semantics.
 const orTSQuery = `replace(plainto_tsquery('spanish', ?)::text, ' & ', ' | ')::tsquery`
 
-// searchRow espeja las columnas del SELECT; keywords entra como text[] vía
-// pq.StringArray y se convierte a []string en el resultado del provider.
+// searchRow mirrors the SELECT columns; keywords is scanned as pq.StringArray
+// and mapped to []string in the provider result.
 type searchRow struct {
 	ContentID int64
 	ChunkID   int64

@@ -6,8 +6,8 @@ import (
 	"github.com/lib/pq"
 )
 
-// ConversationSummary es el resumen comprimido de una conversación (1:1 con conversations).
-// Se escribe al fin de sesión (HU-5) y se recupera por entidad al abrir (HU-1).
+// ConversationSummary is the compressed summary of a conversation (1:1 with conversations).
+// Written at session end (HU-5) and retrieved per entity on open (HU-1).
 type ConversationSummary struct {
 	ConversationID int64          `json:"conversation_id" gorm:"primaryKey"`
 	Summary        string         `json:"summary"`

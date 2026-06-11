@@ -15,9 +15,9 @@ type DeviceUsageStat struct {
 	Count      int
 }
 
-// AdaptationFilter acota el listado de recursos (HU-4). TeacherID hace privado
-// el recurso por docente; StudentID/DeviceID/Query filtran por alumno / material
-// de valija / tema (texto en subject/title/actividad).
+// AdaptationFilter narrows the adaptation listing (HU-4). TeacherID scopes results
+// to a specific teacher (privacy); StudentID/DeviceID/Query filter by student,
+// device, or free-text across subject/title/activity fields.
 type AdaptationFilter struct {
 	StudentID *int64
 	TeacherID *int64

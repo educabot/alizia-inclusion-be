@@ -51,8 +51,8 @@ func TestSearchContent_AppliesDefaultLimitAndReturnsResults(t *testing.T) {
 }
 
 func TestSearchContent_ClampsExcessiveLimitToMax(t *testing.T) {
-	// Arrange: un caller pide un top-N desmedido; el usecase lo acota a 20 antes
-	// de tocar la DB (sin techo, el LIMIT enorme golpearía el RAG sin sentido).
+	// Arrange: caller requests an excessively large top-N; the usecase clamps it to 20
+	// before hitting the DB (an unbounded LIMIT would hammer the RAG index pointlessly).
 	content := new(mockproviders.MockPedagogicalContentProvider)
 	content.On("SearchChunks", mock.Anything, testutil.TestOrgID, "TEA", 20).
 		Return([]providers.ContentSearchResult{}, nil)
