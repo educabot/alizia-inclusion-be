@@ -3,6 +3,7 @@ package inclusion
 import (
 	"context"
 	"errors"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -34,6 +35,9 @@ const searchDocument = `
 // terms with AND; we replace ' & ' with ' | ' to get OR semantics.
 const orTSQuery = `replace(plainto_tsquery('spanish', ?)::text, ' & ', ' | ')::tsquery`
 
+// previewMaxChars caps the chunk preview returned by the RAG search.
+const previewMaxChars = 280
+
 // searchRow mirrors the SELECT columns; keywords is scanned as pq.StringArray
 // and mapped to []string in the provider result.
 type searchRow struct {
@@ -58,7 +62,7 @@ func (r *pedagogicalContentRepo) SearchChunks(ctx context.Context, orgID uuid.UU
 		       coalesce(pc.title, '') AS title,
 		       coalesce(pc.type, '') AS type,
 		       pc.keywords AS keywords,
-		       left(coalesce(c.chunk_text, ''), 280) AS preview,
+		       left(coalesce(c.chunk_text, ''), ` + strconv.Itoa(previewMaxChars) + `) AS preview,
 		       ts_rank((` + searchDocument + `), ` + orTSQuery + `) AS score
 		FROM pedagogical_content_chunks c
 		JOIN pedagogical_content pc ON pc.id = c.content_id

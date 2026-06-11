@@ -1,11 +1,29 @@
 package inclusion
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"strconv"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
+	"github.com/educabot/alizia-inclusion-be/src/core/providers"
+	"github.com/educabot/alizia-inclusion-be/src/core/usecases/inclusion/prompts"
 )
+
+// guardAnswer enforces the hard guardrail on a generated answer just before it is
+// surfaced: if it references a device outside the catalog, it logs the violations
+// and swaps the content for the off-ramp. Shared by assist and recommend so the
+// post-generation check lives in one place. Extra key/value pairs are appended to
+// the warning log for caller context (user_id, mode, student_id, ...).
+func guardAnswer(ctx context.Context, resp *providers.ChatResponse, devices []entities.Device, logKV ...any) {
+	gr := validateAnswer(resp.Content, deviceCatalogSet(devices))
+	if gr.Valid {
+		return
+	}
+	slog.WarnContext(ctx, "guardrail rejected answer", append([]any{"violations", gr.Violations}, logKV...)...)
+	resp.Content = prompts.OffRampInvalidOutput
+}
 
 // Code-level guardrail (HU-6, §6.7). Before surfacing a response to the teacher,
 // we enforce hard limits in code — not solely via prompt — ensuring that any
@@ -30,7 +48,7 @@ func validateAnswer(content string, validDeviceIDs map[int64]bool) GuardrailResu
 	// 1) Inline DEVICE_ID tokens ([DEVICE_ID:X]) must exist in the catalog.
 	for _, id := range extractDeviceIDs(content) {
 		if !validDeviceIDs[id] {
-			violations = append(violations, fmt.Sprintf("DEVICE_ID %d no existe en el catálogo", id))
+			violations = append(violations, fmt.Sprintf("DEVICE_ID %d is not in the catalog", id))
 		}
 	}
 
@@ -38,7 +56,7 @@ func validateAnswer(content string, validDeviceIDs map[int64]bool) GuardrailResu
 	if adaptation := extractAdaptationJSON(content); adaptation != nil {
 		for _, id := range adaptation.DeviceIDs {
 			if !validDeviceIDs[id] {
-				violations = append(violations, fmt.Sprintf("ADAPTATION_JSON referencia DEVICE_ID %d inexistente", id))
+				violations = append(violations, fmt.Sprintf("ADAPTATION_JSON references non-existent DEVICE_ID %d", id))
 			}
 		}
 	}

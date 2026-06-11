@@ -90,7 +90,7 @@ func (uc *closeSessionImpl) Execute(ctx context.Context, req CloseSessionRequest
 		{Role: "user", Content: transcript},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", providers.ErrServiceUnavailable, err)
+		return nil, wrapServiceUnavailable(err)
 	}
 
 	summaryText, keywords := parseSummary(resp.Content)
@@ -213,10 +213,10 @@ func collectEntities(conv *entities.Conversation) (studentIDs, deviceIDs []int64
 	}
 	for i := range conv.Messages {
 		meta := decodeMessageMeta(conv.Messages[i].Metadata)
-		if id, ok := metaInt64(meta, "identified_student"); ok {
+		if id, ok := metaInt64(meta, metaKeyIdentifiedStudent); ok {
 			students.add(id)
 		}
-		if id, ok := metaInt64(meta, "recommended_device"); ok {
+		if id, ok := metaInt64(meta, metaKeyRecommendedDevice); ok {
 			devices.add(id)
 		}
 	}

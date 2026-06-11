@@ -2,7 +2,6 @@ package inclusion
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -75,12 +74,7 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 
 	// Pedagogical framework is owned by the prompts package (HU-6, T-6.1).
 	systemPrompt := prompts.AssistSystem(devices, allStudents)
-
-	messages := make([]providers.ChatMessage, 0, len(req.History)+2)
-	messages = append(messages, providers.ChatMessage{Role: "system", Content: systemPrompt})
-	messages = append(messages, req.History...)
-	messages = append(messages, providers.ChatMessage{Role: "user", Content: req.Message})
-	messages = capMessages(messages, defaultMaxHistoryTokens)
+	messages := buildChatMessages(systemPrompt, req.History, req.Message)
 
 	var tools []providers.ToolDefinition
 	if uc.agentic {
@@ -91,17 +85,13 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	start := time.Now()
 	resp, toolCalls, err := runAgenticChat(ctx, uc.ai, messages, tools, dispatcher, req.OrgID, maxAgenticIterations)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", providers.ErrServiceUnavailable, err)
+		return nil, wrapServiceUnavailable(err)
 	}
 	latencyMs := int(time.Since(start).Milliseconds())
 
 	// Hard guardrail (HU-6): if the response references a non-existent DEVICE_ID
 	// or crosses another hard limit, suppress it and fall back to the off-ramp.
-	if gr := validateAnswer(resp.Content, deviceCatalogSet(devices)); !gr.Valid {
-		slog.WarnContext(ctx, "assist_classroom: guardrail rejected answer",
-			"violations", gr.Violations, "user_id", req.UserID, "mode", req.Mode)
-		resp.Content = prompts.OffRampInvalidOutput
-	}
+	guardAnswer(ctx, resp, devices, "usecase", "assist_classroom", "user_id", req.UserID, "mode", req.Mode)
 
 	studentID := extractStudentID(resp.Content)
 	deviceID := extractDeviceID(resp.Content)
@@ -159,13 +149,13 @@ func (uc *assistClassroomImpl) persistTurn(ctx context.Context, req AssistClassr
 	}
 	metadata := map[string]any{}
 	if studentID != nil {
-		metadata["identified_student"] = *studentID
+		metadata[metaKeyIdentifiedStudent] = *studentID
 	}
 	if deviceID != nil {
-		metadata["recommended_device"] = *deviceID
+		metadata[metaKeyRecommendedDevice] = *deviceID
 	}
 	if adaptation != nil {
-		metadata["adaptation"] = adaptation
+		metadata[metaKeyAdaptation] = adaptation
 	}
 	return uc.conversations.AppendTurn(ctx, providers.AppendTurnParams{
 		ConversationID:   req.ConversationID,
