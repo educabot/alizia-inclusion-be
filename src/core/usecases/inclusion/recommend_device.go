@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
+	"github.com/educabot/alizia-inclusion-be/src/core/usecases/inclusion/prompts"
 )
 
 type RecommendDeviceRequest struct {
@@ -76,7 +77,7 @@ func (uc *recommendDeviceImpl) Execute(ctx context.Context, req RecommendDeviceR
 		return nil, err
 	}
 
-	systemPrompt := buildRecommendSystemPrompt(devices)
+	systemPrompt := prompts.RecommendSystem(devices)
 	userPrompt := buildRecommendUserPrompt(student, req)
 
 	messages := make([]providers.ChatMessage, 0, len(req.History)+2)

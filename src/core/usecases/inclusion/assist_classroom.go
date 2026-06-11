@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
+	"github.com/educabot/alizia-inclusion-be/src/core/usecases/inclusion/prompts"
 )
 
 type AssistClassroomRequest struct {
@@ -72,12 +73,8 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 
 	allStudents, _ := uc.students.ListByClassroom(ctx, req.OrgID, req.ClassroomID)
 
-	var systemPrompt string
-	if req.Mode == "guided" {
-		systemPrompt = buildGuidedAssistPrompt(devices, allStudents)
-	} else {
-		systemPrompt = buildAssistSystemPrompt(devices, allStudents)
-	}
+	// Un solo modo (HU-6, T-6.1): el marco pedagógico vive en el paquete prompts.
+	systemPrompt := prompts.AssistSystem(devices, allStudents)
 
 	messages := make([]providers.ChatMessage, 0, len(req.History)+2)
 	messages = append(messages, providers.ChatMessage{Role: "system", Content: systemPrompt})
