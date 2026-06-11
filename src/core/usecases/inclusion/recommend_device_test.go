@@ -13,6 +13,7 @@ import (
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
 	mockproviders "github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
 	"github.com/educabot/alizia-inclusion-be/src/core/usecases/inclusion"
+	"github.com/educabot/alizia-inclusion-be/src/core/usecases/inclusion/prompts"
 	"github.com/educabot/alizia-inclusion-be/src/testutil"
 )
 
@@ -85,6 +86,20 @@ func TestRecommendDevice_ReturnsRecommendationWithDevice(t *testing.T) {
 	assert.Equal(t, "Timer para fracciones", got.Adaptation.Title)
 	m.ai.AssertExpectations(t)
 	m.students.AssertExpectations(t)
+}
+
+func TestRecommendDevice_GuardrailRejectsHallucinatedDeviceID(t *testing.T) {
+	// El modelo cita un DEVICE_ID que no está en el catálogo (sólo existe el 1):
+	// el guardrail (HU-6, T-6.2) lo descarta y caemos al off-ramp, sin filtrar el id.
+	aiResp := `Te recomiendo el Dispositivo Mágico [DEVICE_ID:999] para esto.`
+	m := recommendDeviceMocks(t, aiResp, nil)
+
+	got, err := m.usecase().Execute(context.Background(), baseRecommendRequest)
+
+	require.NoError(t, err)
+	assert.Equal(t, prompts.OffRampInvalidOutput, got.Response)
+	assert.Nil(t, got.DeviceID, "no se expone el device alucinado")
+	assert.Nil(t, got.Adaptation)
 }
 
 func TestRecommendDevice_HandlesResponseWithoutMarkers(t *testing.T) {

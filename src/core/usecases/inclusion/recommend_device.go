@@ -93,6 +93,15 @@ func (uc *recommendDeviceImpl) Execute(ctx context.Context, req RecommendDeviceR
 	}
 	latencyMs := int(time.Since(start).Milliseconds())
 
+	// Guardrail por código (HU-6, T-6.2): recommend es la ruta más densa en
+	// DEVICE_ID/ADAPTATION_JSON, así que un id alucinado es justo lo que no puede
+	// llegar al docente. Si cruza el límite, caemos al off-ramp como en assist.
+	if gr := validateAnswer(resp.Content, deviceCatalogSet(devices)); !gr.Valid {
+		slog.WarnContext(ctx, "recommend_device: guardrail rejected answer",
+			"violations", gr.Violations, "user_id", req.UserID, "student_id", req.StudentID)
+		resp.Content = prompts.OffRampInvalidOutput
+	}
+
 	deviceID := extractDeviceID(resp.Content)
 	adaptation := extractAdaptationJSON(resp.Content)
 
