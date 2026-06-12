@@ -164,8 +164,7 @@ func TestInclusionDispatcher_RejectsUnknownTool(t *testing.T) {
 
 	_, err := d.Dispatch(context.Background(), uuid.New(), providers.ToolCall{Name: "delete_everything"})
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unknown tool")
+	require.ErrorIs(t, err, errUnknownTool)
 }
 
 func TestInclusionDispatcher_RejectsMalformedArguments(t *testing.T) {

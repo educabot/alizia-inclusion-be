@@ -58,8 +58,7 @@ func TestInclusionDispatcher_GetStudentHistoryUnavailableWhenProviderNil(t *test
 	})
 
 	// Assert
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no disponible")
+	require.ErrorIs(t, err, errToolUnavailable)
 }
 
 func TestInclusionDispatcher_GetPastAdaptationsReturnsStatusAndOutcome(t *testing.T) {

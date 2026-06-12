@@ -327,7 +327,7 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 
 	case "get_student_history":
 		if d.summaries == nil {
-			return "", fmt.Errorf("get_student_history no disponible")
+			return "", fmt.Errorf("get_student_history %w", errToolUnavailable)
 		}
 		var args struct {
 			StudentID int64 `json:"student_id"`
@@ -356,7 +356,7 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 
 	case "get_past_adaptations":
 		if d.adaptations == nil {
-			return "", fmt.Errorf("get_past_adaptations no disponible")
+			return "", fmt.Errorf("get_past_adaptations %w", errToolUnavailable)
 		}
 		var args struct {
 			StudentID int64 `json:"student_id"`
@@ -386,7 +386,7 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 
 	case "search_content":
 		if d.content == nil {
-			return "", fmt.Errorf("search_content no disponible")
+			return "", fmt.Errorf("search_content %w", errToolUnavailable)
 		}
 		var args struct {
 			Query string `json:"query"`
@@ -404,7 +404,7 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 
 	case "get_content":
 		if d.content == nil {
-			return "", fmt.Errorf("get_content no disponible")
+			return "", fmt.Errorf("get_content %w", errToolUnavailable)
 		}
 		var args struct {
 			ContentID int64 `json:"content_id"`
@@ -420,7 +420,7 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 
 	case "create_student":
 		if d.students == nil {
-			return "", fmt.Errorf("create_student no disponible")
+			return "", fmt.Errorf("create_student %w", errToolUnavailable)
 		}
 		var args struct {
 			Name        string `json:"name"`
@@ -442,7 +442,7 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 
 	case "create_recurso":
 		if d.adaptations == nil {
-			return "", fmt.Errorf("create_recurso no disponible")
+			return "", fmt.Errorf("create_recurso %w", errToolUnavailable)
 		}
 		var args struct {
 			StudentID           int64   `json:"student_id"`
@@ -493,7 +493,7 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 
 	case "relate_student_recurso":
 		if d.adaptations == nil {
-			return "", fmt.Errorf("relate_student_recurso no disponible")
+			return "", fmt.Errorf("relate_student_recurso %w", errToolUnavailable)
 		}
 		var args struct {
 			StudentID int64 `json:"student_id"`
@@ -517,7 +517,7 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 		return marshalToolResult(map[string]any{"saved": true, "recurso": recurso})
 
 	default:
-		return "", fmt.Errorf("unknown tool: %s", call.Name)
+		return "", fmt.Errorf("%w: %s", errUnknownTool, call.Name)
 	}
 }
 

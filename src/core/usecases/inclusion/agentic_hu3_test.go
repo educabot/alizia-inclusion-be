@@ -105,9 +105,8 @@ func TestInclusionDispatcher_ContentToolsUnavailableWhenProviderNil(t *testing.T
 	})
 
 	// Assert
-	require.Error(t, errSearch)
-	require.Error(t, errGet)
-	assert.Contains(t, errSearch.Error(), "no disponible")
+	require.ErrorIs(t, errSearch, errToolUnavailable)
+	require.ErrorIs(t, errGet, errToolUnavailable)
 }
 
 func TestInclusionTools_ExposeSearchAndGetContent(t *testing.T) {

@@ -119,7 +119,7 @@ func (a *AzureClient) doRequest(ctx context.Context, req azureRequest) (*azureRe
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("azure openai error (status %d): %s", resp.StatusCode, string(respBody))
+		return nil, &UpstreamStatusError{StatusCode: resp.StatusCode, Body: string(respBody)}
 	}
 
 	var azResp azureResponse
@@ -150,7 +150,7 @@ func (a *AzureClient) Generate(ctx context.Context, params providers.GeneratePar
 	}
 
 	if len(resp.Choices) == 0 {
-		return "", fmt.Errorf("azure generate: empty response")
+		return "", ErrEmptyResponse
 	}
 
 	return resp.Choices[0].Message.Content, nil

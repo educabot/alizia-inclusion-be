@@ -1,10 +1,18 @@
 package inclusion
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
 )
+
+// errToolUnavailable indicates a tool was invoked but its backing provider
+// dependency was not wired into the dispatcher.
+var errToolUnavailable = errors.New("no disponible")
+
+// errUnknownTool indicates the model requested a tool the dispatcher does not implement.
+var errUnknownTool = errors.New("unknown tool")
 
 var (
 	errOrgIDRequired          = fmt.Errorf("%w: organization_id is required", providers.ErrValidation)
