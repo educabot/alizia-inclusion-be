@@ -39,3 +39,6 @@ node_modules/
 # Claude Code / Arcane local state
 .claude/
 production/
+
+# coverage artifacts
+*.out
