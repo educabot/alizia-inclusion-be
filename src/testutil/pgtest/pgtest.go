@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 	"github.com/testcontainers/testcontainers-go"
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
@@ -29,7 +30,13 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+
+	"github.com/educabot/alizia-inclusion-be/src/testutil"
 )
+
+// OtherOrgID is a second seeded organization used to assert tenant isolation:
+// a repo scoped to testutil.TestOrgID must never read OtherOrgID's rows.
+var OtherOrgID = uuid.MustParse("b2c3d4e5-f6a7-8901-bcde-f23456789012")
 
 var (
 	once    sync.Once
@@ -96,6 +103,16 @@ func start() {
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
+		setupErr = err
+		return
+	}
+
+	// Seed the tenant rows once (committed, outside any test tx) so every test can
+	// reference them via FK. Per-test data is created inside the rolled-back tx.
+	if err := gdb.Exec(
+		"INSERT INTO organizations (id, name) VALUES (?, 'Test Org'), (?, 'Other Org') ON CONFLICT (id) DO NOTHING",
+		testutil.TestOrgID, OtherOrgID,
+	).Error; err != nil {
 		setupErr = err
 		return
 	}
