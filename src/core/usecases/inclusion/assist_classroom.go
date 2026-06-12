@@ -97,6 +97,13 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	deviceID := extractDeviceID(resp.Content)
 	adaptation := extractAdaptationJSON(resp.Content)
 
+	// Never surface a "save resource" card on the opening turn: a pedagogical resource
+	// is only offered after the teacher has discussed it and confirmed across turns.
+	// This is a hard backend guarantee independent of the prompt's confirmation protocol.
+	if len(req.History) == 0 {
+		adaptation = nil
+	}
+
 	convID, persistErr := uc.persistTurn(ctx, req, resp.Content, studentID, deviceID, adaptation)
 	if persistErr != nil {
 		slog.WarnContext(ctx, "assist_classroom: persist turn failed", "error", persistErr, "user_id", req.UserID, "mode", req.Mode)

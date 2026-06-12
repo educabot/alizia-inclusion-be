@@ -79,6 +79,37 @@ func TestAssistClassroom_WorksInGuidedMode(t *testing.T) {
 	ai.AssertExpectations(t)
 }
 
+// adaptationContent is an assistant reply that emits a valid ADAPTATION_JSON block,
+// which (outside the opening turn) surfaces the "save resource" card.
+const adaptationContent = `Listo, te la dejo guardada. [ADAPTATION_JSON:{"title":"Pasos cortos","type":"estrategia_aula","strategy":"Anticipar la consigna","device_ids":[1],"device_names":["Pictogramas"]}]`
+
+func TestAssistClassroom_SuppressesAdaptationOnOpeningTurn(t *testing.T) {
+	ai, students, devices, conversations, usage := assistClassroomMocks(t, adaptationContent, nil)
+	req := assistClassroomBaseRequest // no History: this is the opening turn
+
+	got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, nil, nil, nil, usage, false).
+		Execute(context.Background(), req)
+
+	require.NoError(t, err)
+	assert.Nil(t, got.Adaptation, "no resource is offered on the first message, even if the model emits the block")
+}
+
+func TestAssistClassroom_SurfacesAdaptationAfterConversation(t *testing.T) {
+	ai, students, devices, conversations, usage := assistClassroomMocks(t, adaptationContent, nil)
+	req := assistClassroomBaseRequest
+	req.History = []providers.ChatMessage{
+		{Role: "user", Content: "Mati no arranca la tarea"},
+		{Role: "assistant", Content: "¿Querés que la guarde como recurso para Mati?"},
+	}
+
+	got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, nil, nil, nil, usage, false).
+		Execute(context.Background(), req)
+
+	require.NoError(t, err)
+	require.NotNil(t, got.Adaptation, "once the conversation is underway, a confirmed adaptation surfaces")
+	assert.Equal(t, "Pasos cortos", got.Adaptation.Title)
+}
+
 func TestAssistClassroom_WrapsAIError(t *testing.T) {
 	ai, students, devices, conversations, usage := assistClassroomMocks(t, "", errDB)
 

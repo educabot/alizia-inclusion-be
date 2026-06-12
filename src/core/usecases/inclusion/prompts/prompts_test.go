@@ -27,14 +27,25 @@ func TestRecommendSystem_ContainsDeviceInfo(t *testing.T) {
 	assert.Contains(t, prompt, "Estructura el tiempo", "el catálogo detallado incluye el fundamento")
 }
 
-func TestAssistSystem_HasOutputFormatRules(t *testing.T) {
-	// Required output format lives in the static frame.
+func TestAssistSystem_HasConversationalRules(t *testing.T) {
+	// The assist frame is conversation-first: short by default, asks when intent is
+	// unclear, and gates the save offer behind explicit confirmation.
 	prompt := prompts.AssistSystem(nil, nil)
 
-	assert.Contains(t, prompt, "1 a 3 acciones")
-	assert.Contains(t, prompt, "3 niveles de diferenciación")
+	assert.Contains(t, prompt, "breve y al grano")
+	assert.Contains(t, prompt, "una sola pregunta")
 	assert.Contains(t, prompt, "rioplatense")
-	assert.Contains(t, prompt, "EJEMPLO DE BUENA RESPUESTA", "incluye el few-shot estático")
+	assert.Contains(t, prompt, "guarde como recurso", "ofrece guardar solo tras confirmación")
+	assert.Contains(t, prompt, "EJEMPLOS DE CONVERSACIÓN", "incluye el few-shot conversacional")
+}
+
+func TestAssistSystem_DoesNotMandateDifferentiationMatrix(t *testing.T) {
+	// The old prompt forced a 3-level matrix on every turn; the new one offers it
+	// only when an adaptation is actually being built.
+	prompt := prompts.AssistSystem(nil, nil)
+
+	assert.NotContains(t, prompt, "obligatorio")
+	assert.NotContains(t, prompt, "al menos 3 niveles")
 }
 
 func TestAssistSystem_ListsStudentsAndDevices(t *testing.T) {

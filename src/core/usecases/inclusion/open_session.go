@@ -22,9 +22,9 @@ const (
 const maxPriorSummaries = 10
 
 const (
-	welcomeText = "¡Hola! Soy Alizia, tu asistente de inclusión. ¿De qué querés hablar: " +
-		"de un alumno, de la valija o de un tema?"
-	clarifyText = "No me quedó claro. ¿Querés hablar de un alumno, de la valija o de un tema?"
+	welcomeText = "¡Hola! Soy Alizia, tu asistente de inclusión. ¿Surgió algo con algún alumno, " +
+		"querés ver algo de la valija, o trabajamos sobre un tema?"
+	clarifyText = "No me quedó claro. ¿Es sobre un alumno, sobre la valija o sobre un tema?"
 	askStudent  = "Dale, ¿de qué alumno querés hablar?"
 	askTopic    = "Perfecto, ¿sobre qué tema querés que busquemos?"
 )
