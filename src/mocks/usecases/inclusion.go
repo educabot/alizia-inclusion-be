@@ -210,3 +210,13 @@ func (m *MockGetChatHistory) Execute(ctx context.Context, req inclusionuc.GetCha
 	}
 	return args.Get(0).([]entities.Conversation), args.Error(1)
 }
+
+type MockGetConversation struct{ mock.Mock }
+
+func (m *MockGetConversation) Execute(ctx context.Context, req inclusionuc.GetConversationRequest) (*entities.Conversation, error) {
+	args := m.Called(ctx, req)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entities.Conversation), args.Error(1)
+}

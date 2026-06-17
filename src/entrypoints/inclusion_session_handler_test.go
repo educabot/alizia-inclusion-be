@@ -95,6 +95,32 @@ func TestHandleGetChatHistory_ReturnsConversations(t *testing.T) {
 	uc.AssertExpectations(t)
 }
 
+func TestHandleGetConversation_ReturnsConversation(t *testing.T) {
+	uc := &mockusecases.MockGetConversation{}
+	uc.On("Execute", mock.Anything, mock.MatchedBy(func(req inclusionuc.GetConversationRequest) bool {
+		return req.ConversationID == 42
+	})).Return(&entities.Conversation{ID: 42, Mode: "assist"}, nil)
+	container := &entrypoints.InclusionContainer{GetConversation: uc}
+	req := newTenantRequest()
+	req.Params["id"] = "42"
+
+	resp := container.HandleGetConversation(req)
+
+	assert.Equal(t, http.StatusOK, resp.Status)
+	uc.AssertExpectations(t)
+}
+
+func TestHandleGetConversation_RejectsInvalidID(t *testing.T) {
+	container := &entrypoints.InclusionContainer{}
+	req := newTenantRequest()
+	req.Params["id"] = "x"
+
+	resp := container.HandleGetConversation(req)
+
+	assert.NotEqual(t, http.StatusOK, resp.Status)
+	assert.NotEqual(t, 0, resp.Status)
+}
+
 func TestHandleListAdaptationResources_ReturnsResources(t *testing.T) {
 	uc := &mockusecases.MockListAdaptationResources{}
 	uc.On("Execute", mock.Anything, mock.MatchedBy(func(req inclusionuc.ListAdaptationResourcesRequest) bool {

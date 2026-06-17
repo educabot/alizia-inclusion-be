@@ -66,6 +66,9 @@ func ConfigureMappings(engine *gin.Engine, h *entrypoints.WebHandlerContainer, c
 	// Chat history
 	api.GET("/chat/history/:contextId", webgin.Adapt(h.Inclusion.HandleGetChatHistory))
 
+	// Single conversation by id — used to resume a resource's originating conversation
+	api.GET("/conversation/:id", webgin.Adapt(h.Inclusion.HandleGetConversation))
+
 	// Dashboard
 	api.GET("/dashboard/metrics", webgin.Adapt(h.Dashboard.HandleGetMetrics))
 	api.GET("/dashboard/ai-usage", webgin.Adapt(h.Dashboard.HandleGetAIUsage))
