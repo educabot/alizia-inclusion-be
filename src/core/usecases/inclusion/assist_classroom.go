@@ -38,6 +38,17 @@ type AssistClassroomResponse struct {
 	IdentifiedStudent *int64               `json:"identified_student,omitempty"`
 	RecommendedDevice *int64               `json:"recommended_device,omitempty"`
 	Adaptation        *GeneratedAdaptation `json:"adaptation,omitempty"`
+	// ReferencedContent lists the pedagogical materials the assistant cited this turn
+	// (via [CONTENT_ID:X]), so the frontend can deep-link a chip to the exact document
+	// instead of the materials list. Omitted when nothing was cited.
+	ReferencedContent []ContentRef `json:"referenced_content,omitempty"`
+}
+
+// ContentRef is a lightweight reference to a pedagogical content document the
+// assistant cited, carrying just what the frontend needs to render and link a chip.
+type ContentRef struct {
+	ID    int64  `json:"id"`
+	Title string `json:"title"`
 }
 
 type AssistClassroom interface {
@@ -96,12 +107,19 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	studentID := extractStudentID(resp.Content)
 	deviceID := extractDeviceID(resp.Content)
 	adaptation := extractAdaptationJSON(resp.Content)
+	referencedContent := uc.resolveReferencedContent(ctx, req.OrgID, extractContentIDs(resp.Content))
 
 	// Never surface a "save resource" card on the opening turn: a pedagogical resource
 	// is only offered after the teacher has discussed it and confirmed across turns.
 	// This is a hard backend guarantee independent of the prompt's confirmation protocol.
 	if len(req.History) == 0 {
 		adaptation = nil
+	}
+
+	// Carry the identified student into the adaptation so the frontend can build the
+	// save request from a single object (it previously had to read the sibling field).
+	if adaptation != nil && adaptation.StudentID == nil {
+		adaptation.StudentID = studentID
 	}
 
 	convID, persistErr := uc.persistTurn(ctx, req, resp.Content, studentID, deviceID, adaptation)
@@ -124,7 +142,33 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 		IdentifiedStudent: studentID,
 		RecommendedDevice: deviceID,
 		Adaptation:        adaptation,
+		ReferencedContent: referencedContent,
 	}, nil
+}
+
+// resolveReferencedContent turns cited content ids into {id, title} refs, scoped to
+// the org. Missing or cross-org ids are silently skipped (best-effort): a broken chip
+// reference must never fail the chat turn.
+func (uc *assistClassroomImpl) resolveReferencedContent(ctx context.Context, orgID uuid.UUID, ids []int64) []ContentRef {
+	if len(ids) == 0 || uc.content == nil {
+		return nil
+	}
+	refs := make([]ContentRef, 0, len(ids))
+	for _, id := range ids {
+		doc, err := uc.content.GetContent(ctx, orgID, id)
+		if err != nil || doc == nil {
+			continue
+		}
+		title := ""
+		if doc.Title != nil {
+			title = *doc.Title
+		}
+		refs = append(refs, ContentRef{ID: id, Title: title})
+	}
+	if len(refs) == 0 {
+		return nil
+	}
+	return refs
 }
 
 // assistContextSnapshot builds the per-turn context snapshot using IDs only (no PII):
