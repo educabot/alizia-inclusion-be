@@ -13,7 +13,10 @@ type Config struct {
 	AzureOpenAIEndpoint string
 	AzureOpenAIModel    string
 
-	JWTPublicKey string
+	// AuthPublicKey es la clave pública RS256 de auth-service (PEM). Env canónica
+	// AUTH_PUBLIC_KEY (unificada con alizia-be/seguridad); acepta el alias legacy
+	// JWT_PUBLIC_KEY como fallback durante la migración.
+	AuthPublicKey string
 
 	DBMaxOpenConns    int
 	DBMaxIdleConns    int
@@ -48,7 +51,7 @@ func Load() *Config {
 		AzureOpenAIEndpoint: bcfg.EnvOr("AZURE_OPENAI_ENDPOINT", ""),
 		AzureOpenAIModel:    bcfg.EnvOr("AZURE_OPENAI_MODEL", "gpt-4o-mini"),
 
-		JWTPublicKey: bcfg.EnvOr("JWT_PUBLIC_KEY", ""),
+		AuthPublicKey: bcfg.EnvOr("AUTH_PUBLIC_KEY", bcfg.EnvOr("JWT_PUBLIC_KEY", "")),
 
 		DBMaxOpenConns:    boundedUintToInt(bcfg.GetEnvUint("DB_MAX_OPEN_CONNS", "25")),
 		DBMaxIdleConns:    boundedUintToInt(bcfg.GetEnvUint("DB_MAX_IDLE_CONNS", "10")),

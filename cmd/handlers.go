@@ -55,7 +55,7 @@ func NewHandlers(uc *UseCases, cfg *config.Config) *entrypoints.WebHandlerContai
 			GetMetrics: uc.GetMetrics,
 			GetAIUsage: uc.GetAIUsage,
 		},
-		AuthMiddleware:   middleware.RS256AuthMiddleware(cfg.JWTPublicKey, bcfg.Environment(cfg.Env)),
+		AuthMiddleware:   middleware.RS256AuthMiddleware(cfg.AuthPublicKey, bcfg.Environment(cfg.Env)),
 		TenantMiddleware: middleware.TenantMiddleware(),
 	}
 }
