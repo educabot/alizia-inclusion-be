@@ -44,7 +44,17 @@ type Config struct {
 }
 
 func Load() *Config {
-	base := bcfg.LoadBase()
+	// BaseConfig armado a mano (en vez de bcfg.LoadBase) para NO exigir JWT_SECRET: este
+	// servicio no usa el token system HS256 del toolkit; la auth es 100% RS256 contra
+	// auth-service (AUTH_PUBLIC_KEY). El resto replica LoadBase exactamente (mismas envs y
+	// defaults), igual que alizia-be/seguridad.
+	base := bcfg.BaseConfig{
+		Port:           bcfg.EnvOr("PORT", "8080"),
+		Env:            bcfg.Environment(bcfg.EnvOr("ENV", "local")),
+		DatabaseURL:    bcfg.MustEnv("DATABASE_URL"),
+		AllowedOrigins: bcfg.EnvSplit("ALLOWED_ORIGINS", ",", []string{"*"}),
+		BugsnagAPIKey:  bcfg.EnvOr("API_KEY_BUGSNAG", ""),
+	}
 	return &Config{
 		BaseConfig:          base,
 		AzureOpenAIKey:      bcfg.EnvOr("AZURE_OPENAI_API_KEY", ""),
