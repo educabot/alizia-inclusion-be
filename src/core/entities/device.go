@@ -19,6 +19,10 @@ type Device struct {
 	EvaluationCriteria *string          `json:"evaluation_criteria,omitempty"`
 	Quantity           int              `json:"quantity"`
 	SortOrder          int              `json:"sort_order"`
+	ProductCode        *string          `json:"product_code,omitempty"`
+	ProductFamily      *string          `json:"product_family,omitempty"`
+	Stage              *int16           `json:"stage,omitempty"`
+	IsActive           bool             `json:"is_active" gorm:"default:true"`
 	Ramp               *Ramp            `json:"ramp,omitempty" gorm:"foreignKey:RampID"`
 	Resources          []DeviceResource `json:"-" gorm:"foreignKey:DeviceID"`
 	TimeTrackedEntity

@@ -24,7 +24,8 @@ func (r *deviceRepo) ListDevices(ctx context.Context, orgID uuid.UUID, rampID *i
 	q := r.db.WithContext(ctx).
 		Preload("Ramp").
 		Preload("Resources").
-		Where("organization_id = ?", orgID)
+		Where("organization_id = ?", orgID).
+		Where("is_active = ?", true)
 
 	if rampID != nil {
 		q = q.Where("ramp_id = ?", *rampID)
