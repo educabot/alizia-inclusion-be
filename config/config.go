@@ -41,6 +41,8 @@ type Config struct {
 }
 
 func Load() *Config {
+	// Desde team-ai-toolkit v1.10.0, LoadBase() ya NO exige JWT_SECRET (lo lee opcional):
+	// este servicio no firma tokens HS256, la auth es RS256 contra el auth-service.
 	base := bcfg.LoadBase()
 	return &Config{
 		BaseConfig:          base,
@@ -48,7 +50,8 @@ func Load() *Config {
 		AzureOpenAIEndpoint: bcfg.EnvOr("AZURE_OPENAI_ENDPOINT", ""),
 		AzureOpenAIModel:    bcfg.EnvOr("AZURE_OPENAI_MODEL", "gpt-4o-mini"),
 
-		JWTPublicKey: bcfg.EnvOr("JWT_PUBLIC_KEY", ""),
+		// AUTH_PUBLIC_KEY es el nombre nuevo (auth-service actualizado); JWT_PUBLIC_KEY queda como fallback.
+		JWTPublicKey: bcfg.EnvOr("AUTH_PUBLIC_KEY", bcfg.EnvOr("JWT_PUBLIC_KEY", "")),
 
 		DBMaxOpenConns:    boundedUintToInt(bcfg.GetEnvUint("DB_MAX_OPEN_CONNS", "25")),
 		DBMaxIdleConns:    boundedUintToInt(bcfg.GetEnvUint("DB_MAX_IDLE_CONNS", "10")),
