@@ -229,3 +229,21 @@ func extractAdaptationJSON(content string) *GeneratedAdaptation {
 	}
 	return &adaptation
 }
+
+var (
+	multiSpaceRegex       = regexp.MustCompile(`[ \t]{2,}`)
+	spaceBeforePunctRegex = regexp.MustCompile(`[ \t]+([,.;:!?)])`)
+)
+
+// stripInternalMarkers quita los marcadores internos ([STUDENT_ID:X], [DEVICE_ID:X],
+// [ADAPTATION_JSON:{...}]) del texto del modelo ANTES de mostrarlo al docente o
+// persistirlo. Los ids/JSON ya se extrajeron aparte: estos tags son internos del
+// backend y nunca deben aparecer en el chat. Limpia los espacios que deja el borrado.
+func stripInternalMarkers(content string) string {
+	content = studentIDRegex.ReplaceAllString(content, "")
+	content = deviceIDRegex.ReplaceAllString(content, "")
+	content = adaptationJSONRegex.ReplaceAllString(content, "")
+	content = multiSpaceRegex.ReplaceAllString(content, " ")
+	content = spaceBeforePunctRegex.ReplaceAllString(content, "$1")
+	return strings.TrimSpace(content)
+}

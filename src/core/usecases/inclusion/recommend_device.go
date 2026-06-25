@@ -93,15 +93,16 @@ func (uc *recommendDeviceImpl) Execute(ctx context.Context, req RecommendDeviceR
 
 	deviceID := extractDeviceID(resp.Content)
 	adaptation := extractAdaptationJSON(resp.Content)
+	cleaned := stripInternalMarkers(resp.Content)
 
-	convID, persistErr := uc.persistTurn(ctx, req, userPrompt, resp.Content, deviceID, adaptation)
+	convID, persistErr := uc.persistTurn(ctx, req, userPrompt, cleaned, deviceID, adaptation)
 	if persistErr != nil {
 		slog.WarnContext(ctx, "recommend_device: persist turn failed", "error", persistErr, "user_id", req.UserID, "student_id", req.StudentID)
 		convID = req.ConversationID
 	}
 
 	return &RecommendDeviceResponse{
-		Response:       resp.Content,
+		Response:       cleaned,
 		ConversationID: convID,
 		DeviceID:       deviceID,
 		Adaptation:     adaptation,

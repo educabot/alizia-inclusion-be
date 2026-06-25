@@ -102,15 +102,18 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	studentID := extractStudentID(resp.Content)
 	deviceID := extractDeviceID(resp.Content)
 	adaptation := extractAdaptationJSON(resp.Content)
+	// Los ids/JSON ya están extraídos: limpiamos los marcadores internos para que no
+	// se filtren al texto que ve el docente ni al historial persistido.
+	cleaned := stripInternalMarkers(resp.Content)
 
-	convID, persistErr := uc.persistTurn(ctx, req, resp.Content, studentID, deviceID, adaptation)
+	convID, persistErr := uc.persistTurn(ctx, req, cleaned, studentID, deviceID, adaptation)
 	if persistErr != nil {
 		slog.WarnContext(ctx, "assist_classroom: persist turn failed", "error", persistErr, "user_id", req.UserID, "mode", req.Mode)
 		convID = req.ConversationID
 	}
 
 	return &AssistClassroomResponse{
-		Response:          resp.Content,
+		Response:          cleaned,
 		ConversationID:    convID,
 		IdentifiedStudent: studentID,
 		RecommendedDevice: deviceID,
