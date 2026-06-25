@@ -62,8 +62,8 @@ func (uc *getMetricsImpl) Execute(ctx context.Context, req GetMetricsRequest) (*
 	}
 
 	withProfiles := 0
-	for _, s := range students {
-		if s.Profile != nil {
+	for i := range students {
+		if students[i].Profile != nil {
 			withProfiles++
 		}
 	}

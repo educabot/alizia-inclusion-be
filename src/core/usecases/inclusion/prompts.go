@@ -111,7 +111,8 @@ func buildAssistSystemPrompt(devices []entities.Device, students []entities.Stud
 
 	if len(students) > 0 {
 		b.WriteString("ALUMNOS DEL AULA:\n")
-		for _, s := range students {
+		for i := range students {
+			s := &students[i]
 			fmt.Fprintf(&b, "- [ID:%d] %s", s.ID, s.Name)
 			if s.Profile != nil {
 				fmt.Fprintf(&b, " — Dificultades: %s", strings.Join(s.Profile.Difficulties, ", "))
@@ -162,7 +163,8 @@ func buildGuidedAssistPrompt(devices []entities.Device, students []entities.Stud
 
 	if len(students) > 0 {
 		b.WriteString("ALUMNOS DEL AULA:\n")
-		for _, s := range students {
+		for i := range students {
+			s := &students[i]
 			fmt.Fprintf(&b, "- [ID:%d] %s", s.ID, s.Name)
 			if s.Profile != nil {
 				fmt.Fprintf(&b, " — Dificultades: %s", strings.Join(s.Profile.Difficulties, ", "))

@@ -141,14 +141,78 @@ func inclusionTools() []providers.ToolDefinition {
 				"properties": map[string]any{},
 			},
 		},
+		{
+			Name:        "get_student_history",
+			Description: "Devuelve un resumen de las conversaciones previas sobre un alumno (de qué se venía hablando). Útil para retomar el hilo sin recontextualizar todo.",
+			Parameters: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"student_id": map[string]any{
+						"type":        "integer",
+						"description": "ID del alumno cuyo historial de conversaciones se quiere recuperar.",
+					},
+				},
+				"required": []string{"student_id"},
+			},
+		},
+		{
+			Name:        "get_past_adaptations",
+			Description: "Lista las adaptaciones previas de un alumno con su estado y resultado en aula. Útil para no repetir lo que ya se probó y construir sobre lo que funcionó.",
+			Parameters: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"student_id": map[string]any{
+						"type":        "integer",
+						"description": "ID del alumno cuyas adaptaciones previas se quieren listar.",
+					},
+				},
+				"required": []string{"student_id"},
+			},
+		},
+		{
+			Name:        "search_content",
+			Description: "Busca material pedagógico real (libros / papers / guías) sobre un tema de inclusión. Reescribí la pregunta del docente a palabras clave (temas y discapacidades, ej. 'TEA autismo autorregulación') antes de llamar. Devuelve los fragmentos más relevantes con un preview. Si vuelve vacío, no inventes: respondé con los lineamientos base aclarando que no hay material cargado.",
+			Parameters: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"query": map[string]any{
+						"type":        "string",
+						"description": "Palabras clave del tema a buscar (temas + nombres de discapacidades).",
+					},
+				},
+				"required": []string{"query"},
+			},
+		},
+		{
+			Name:        "get_content",
+			Description: "Trae el contenido pedagógico completo de un documento por su id (obtenido de search_content), con todos sus fragmentos.",
+			Parameters: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"content_id": map[string]any{
+						"type":        "integer",
+						"description": "ID del documento pedagógico a recuperar.",
+					},
+				},
+				"required": []string{"content_id"},
+			},
+		},
 	}
 }
 
 // inclusionDispatcher executes inclusionTools against the domain providers.
+// summaries y adaptations son opcionales: si faltan, sus tools devuelven un
+// error manejable en vez de panicar.
 type inclusionDispatcher struct {
-	students providers.StudentProvider
-	devices  providers.DeviceProvider
+	students    providers.StudentProvider
+	devices     providers.DeviceProvider
+	summaries   providers.ConversationSummaryProvider
+	adaptations providers.AdaptationProvider
+	content     providers.PedagogicalContentProvider
 }
+
+// defaultContentSearchLimit acota cuántos chunks devuelve el RAG por búsqueda.
+const defaultContentSearchLimit = 5
 
 func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call providers.ToolCall) (string, error) {
 	switch call.Name {
@@ -205,6 +269,99 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 			out[i] = lite
 		}
 		return marshalToolResult(map[string]any{"devices": out})
+
+	case "get_student_history":
+		if d.summaries == nil {
+			return "", fmt.Errorf("get_student_history no disponible")
+		}
+		var args struct {
+			StudentID int64 `json:"student_id"`
+		}
+		if err := json.Unmarshal([]byte(call.Arguments), &args); err != nil {
+			return "", fmt.Errorf("invalid arguments for get_student_history: %w", err)
+		}
+		summaries, err := d.summaries.RecentByStudent(ctx, orgID, args.StudentID, maxPriorSummaries)
+		if err != nil {
+			return "", err
+		}
+		type summaryLite struct {
+			ConversationID int64    `json:"conversation_id"`
+			Summary        string   `json:"summary"`
+			TopicKeywords  []string `json:"topic_keywords,omitempty"`
+		}
+		out := make([]summaryLite, len(summaries))
+		for i := range summaries {
+			out[i] = summaryLite{
+				ConversationID: summaries[i].ConversationID,
+				Summary:        summaries[i].Summary,
+				TopicKeywords:  summaries[i].TopicKeywords,
+			}
+		}
+		return marshalToolResult(map[string]any{"history": out})
+
+	case "get_past_adaptations":
+		if d.adaptations == nil {
+			return "", fmt.Errorf("get_past_adaptations no disponible")
+		}
+		var args struct {
+			StudentID int64 `json:"student_id"`
+		}
+		if err := json.Unmarshal([]byte(call.Arguments), &args); err != nil {
+			return "", fmt.Errorf("invalid arguments for get_past_adaptations: %w", err)
+		}
+		adaptations, err := d.adaptations.List(ctx, orgID, &args.StudentID)
+		if err != nil {
+			return "", err
+		}
+		type adaptationLite struct {
+			ID      int64  `json:"id"`
+			Subject string `json:"subject"`
+			Status  string `json:"status"`
+			Outcome string `json:"outcome,omitempty"`
+		}
+		out := make([]adaptationLite, len(adaptations))
+		for i := range adaptations {
+			lite := adaptationLite{ID: adaptations[i].ID, Subject: adaptations[i].Subject, Status: adaptations[i].Status}
+			if adaptations[i].Outcome != nil {
+				lite.Outcome = *adaptations[i].Outcome
+			}
+			out[i] = lite
+		}
+		return marshalToolResult(map[string]any{"adaptations": out})
+
+	case "search_content":
+		if d.content == nil {
+			return "", fmt.Errorf("search_content no disponible")
+		}
+		var args struct {
+			Query string `json:"query"`
+		}
+		if err := json.Unmarshal([]byte(call.Arguments), &args); err != nil {
+			return "", fmt.Errorf("invalid arguments for search_content: %w", err)
+		}
+		results, err := d.content.SearchChunks(ctx, orgID, args.Query, defaultContentSearchLimit)
+		if err != nil {
+			return "", err
+		}
+		// Sin coincidencias: devolvemos lista vacía explícita para que la LLM
+		// caiga a los lineamientos base sin inventar.
+		return marshalToolResult(map[string]any{"results": results})
+
+	case "get_content":
+		if d.content == nil {
+			return "", fmt.Errorf("get_content no disponible")
+		}
+		var args struct {
+			ContentID int64 `json:"content_id"`
+		}
+		if err := json.Unmarshal([]byte(call.Arguments), &args); err != nil {
+			return "", fmt.Errorf("invalid arguments for get_content: %w", err)
+		}
+		content, err := d.content.GetContent(ctx, orgID, args.ContentID)
+		if err != nil {
+			return "", err
+		}
+		return marshalToolResult(content)
 
 	default:
 		return "", fmt.Errorf("unknown tool: %s", call.Name)
