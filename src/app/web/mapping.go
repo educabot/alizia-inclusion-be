@@ -70,6 +70,15 @@ func ConfigureMappings(engine *gin.Engine, h *entrypoints.WebHandlerContainer, c
 	api.GET("/dashboard/metrics", webgin.Adapt(h.Dashboard.HandleGetMetrics))
 	api.GET("/dashboard/ai-usage", webgin.Adapt(h.Dashboard.HandleGetAIUsage))
 
+	// Apertura de sesión (router / Prompt 0) — sin LLM, no requiere rate limit de IA
+	api.POST("/inclusion/open", webgin.Adapt(h.Inclusion.HandleOpenSession))
+
+	// Context Assembler (HU-2) — arma el contexto del alumno/valija/tema; sin LLM
+	api.POST("/inclusion/context", webgin.Adapt(h.Inclusion.HandleBuildContext))
+
+	// RAG de contenido pedagógico (HU-3) — búsqueda keyword/full-text; sin LLM
+	api.POST("/inclusion/search-content", webgin.Adapt(h.Inclusion.HandleSearchContent))
+
 	// AI endpoints (rate-limited per organization)
 	api.POST("/inclusion/recommend", aiRateLimit, webgin.Adapt(h.Inclusion.HandleRecommendDevice))
 	api.POST("/inclusion/assist", aiRateLimit, webgin.Adapt(h.Inclusion.HandleAssistClassroom))

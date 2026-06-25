@@ -15,11 +15,14 @@ type UseCases struct {
 	ListDevices cataloguc.ListDevices
 	GetDevice   cataloguc.GetDevice
 
-	GetStudentProfile     inclusionuc.GetStudentProfile
-	UpsertStudentProfile  inclusionuc.UpsertStudentProfile
-	ListClassroomStudents inclusionuc.ListClassroomStudents
-	RecommendDevice       inclusionuc.RecommendDevice
-	AssistClassroom       inclusionuc.AssistClassroom
+	GetStudentProfile        inclusionuc.GetStudentProfile
+	UpsertStudentProfile     inclusionuc.UpsertStudentProfile
+	ListClassroomStudents    inclusionuc.ListClassroomStudents
+	RecommendDevice          inclusionuc.RecommendDevice
+	AssistClassroom          inclusionuc.AssistClassroom
+	OpenSession              inclusionuc.OpenSession
+	BuildPromptContext       inclusionuc.BuildPromptContext
+	SearchPedagogicalContent inclusionuc.SearchPedagogicalContent
 
 	GetMe authuc.GetMe
 
@@ -58,7 +61,13 @@ func NewUseCases(repos *Repositories, cfg *config.Config) *UseCases {
 		UpsertStudentProfile:  inclusionuc.NewUpsertStudentProfile(repos.Students, repos.StudentProfiles),
 		ListClassroomStudents: inclusionuc.NewListClassroomStudents(repos.Students),
 		RecommendDevice:       inclusionuc.NewRecommendDevice(repos.AI, repos.Students, repos.Devices, repos.Ramps, repos.Conversations, repos.AIUsage),
-		AssistClassroom:       inclusionuc.NewAssistClassroom(repos.AI, repos.Students, repos.Devices, repos.Conversations, repos.AIUsage, cfg.AIAgenticEnabled),
+		AssistClassroom:       inclusionuc.NewAssistClassroom(repos.AI, repos.Students, repos.Devices, repos.Conversations, repos.ConversationSummaries, repos.Adaptations, repos.PedagogicalContent, repos.AIUsage, cfg.AIAgenticEnabled),
+		OpenSession:           inclusionuc.NewOpenSession(repos.Students, repos.ConversationSummaries),
+		BuildPromptContext: inclusionuc.NewBuildPromptContext(
+			repos.Students, repos.TeacherProfiles, repos.Situations, repos.Diagnoses, repos.PPIs,
+			repos.Adaptations, repos.Classrooms, repos.Devices, repos.ConversationSummaries,
+		),
+		SearchPedagogicalContent: inclusionuc.NewSearchPedagogicalContent(repos.PedagogicalContent),
 
 		GetMe: authuc.NewGetMe(repos.Users),
 

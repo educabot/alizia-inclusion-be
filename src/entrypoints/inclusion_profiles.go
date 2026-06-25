@@ -53,8 +53,8 @@ func mapStudentWithProfile(s entities.Student) studentWithProfileResponse {
 
 func mapStudentsWithProfiles(ss []entities.Student) []studentWithProfileResponse {
 	out := make([]studentWithProfileResponse, len(ss))
-	for i, s := range ss {
-		out[i] = mapStudentWithProfile(s)
+	for i := range ss {
+		out[i] = mapStudentWithProfile(ss[i])
 	}
 	return out
 }
