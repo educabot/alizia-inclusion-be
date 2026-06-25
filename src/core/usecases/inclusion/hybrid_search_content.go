@@ -28,7 +28,7 @@ func (r HybridSearchRequest) Validate() error {
 }
 
 type HybridSearchResponse struct {
-	Question string                `json:"question"`
+	Question string               `json:"question"`
 	Results  []providers.ChunkHit `json:"results"`
 }
 
