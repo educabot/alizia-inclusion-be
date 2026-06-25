@@ -34,12 +34,21 @@ func (r AssistClassroomRequest) Validate() error {
 	return nil
 }
 
+// ContentRef es una referencia liviana a un contenido pedagógico citado por el
+// asistente (marker [CONTENT_ID:X] en el texto). El FE la usa para resolver el
+// título del chip y deep-linkear.
+type ContentRef struct {
+	ID    int64  `json:"id"`
+	Title string `json:"title"`
+}
+
 type AssistClassroomResponse struct {
 	Response          string               `json:"response"`
 	ConversationID    int64                `json:"conversation_id"`
 	IdentifiedStudent *int64               `json:"identified_student,omitempty"`
 	RecommendedDevice *int64               `json:"recommended_device,omitempty"`
 	Adaptation        *GeneratedAdaptation `json:"adaptation,omitempty"`
+	ReferencedContent []ContentRef         `json:"referenced_content,omitempty"`
 }
 
 type AssistClassroom interface {
@@ -129,19 +138,35 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	}
 	dispatcher := inclusionDispatcher{students: uc.students, devices: uc.devices, summaries: uc.summaries, adaptations: uc.adaptations, content: uc.content, embedder: uc.embedder, rag: uc.rag}
 
-	resp, err := runAgenticChat(ctx, uc.ai, messages, tools, dispatcher, req.OrgID, maxAgenticIterations)
+	resp, trace, err := runAgenticChat(ctx, uc.ai, messages, tools, dispatcher, req.OrgID, maxAgenticIterations)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", providers.ErrServiceUnavailable, err)
 	}
 
 	recordAIUsage(ctx, uc.usage, req.OrgID, req.UserID, "assist", resp.Usage)
 
+	// Trazabilidad: de qué fuentes (valija / alumno / RAG) se sacó info este turno.
+	sources := summarizeSources(trace)
+	slog.InfoContext(ctx, "chat.sources_used",
+		"used_valija", sources.UsedValija,
+		"used_student", sources.UsedStudent,
+		"student_ids", sources.StudentIDs,
+		"used_rag", sources.UsedRAG,
+		"rag_hits", sources.RAGHits,
+		"tools", sources.Tools,
+		observability.Text("rag_queries", strings.Join(sources.RAGQueries, " | ")),
+	)
+
 	studentID := extractStudentID(resp.Content)
 	deviceID := extractDeviceID(resp.Content)
 	adaptation := extractAdaptationJSON(resp.Content)
-	// Los ids/JSON ya están extraídos: limpiamos los marcadores internos para que no
-	// se filtren al texto que ve el docente ni al historial persistido.
-	cleaned := stripInternalMarkers(resp.Content)
+	// Contenido pedagógico citado este turno: el FE lo usa para resolver los chips
+	// [CONTENT_ID:X]. Sale del back (lo que trajo el RAG), no de ids del modelo.
+	referenced := contentRefsFromTrace(trace)
+	// Quitamos solo el bloque ADAPTATION_JSON (ya extraído). Los markers
+	// [STUDENT_ID:X]/[DEVICE_ID:X]/[CONTENT_ID:X] SÍ pasan: el FE los renderiza como
+	// chips (nombre/título), nunca como id crudo.
+	cleaned := stripAdaptationBlock(resp.Content)
 
 	convID, persistErr := uc.persistTurn(ctx, req, cleaned, studentID, deviceID, adaptation)
 	if persistErr != nil {
@@ -164,6 +189,7 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 		"identified_student", idStudent,
 		"recommended_device", idDevice,
 		"has_adaptation", adaptation != nil,
+		"referenced_count", len(referenced),
 		"total_tokens", totalTokens,
 		observability.Text("response", cleaned),
 	)
@@ -174,6 +200,7 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 		IdentifiedStudent: studentID,
 		RecommendedDevice: deviceID,
 		Adaptation:        adaptation,
+		ReferencedContent: referenced,
 	}, nil
 }
 

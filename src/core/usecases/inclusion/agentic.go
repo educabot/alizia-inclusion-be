@@ -23,13 +23,26 @@ type toolDispatcher interface {
 	Dispatch(ctx context.Context, orgID uuid.UUID, call providers.ToolCall) (string, error)
 }
 
+// toolInvocation registra una tool ejecutada en el turno: para trazabilidad
+// (chat.sources_used) y para poblar referenced_content con el material citado.
+type toolInvocation struct {
+	Name        string
+	StudentID   *int64
+	Query       string
+	Hits        int
+	ContentRefs []ContentRef
+	Failed      bool
+}
+
 // runAgenticChat drives a tool-calling loop. It calls ChatWithTools; if the model
 // requests tools, it executes them via dispatcher, appends the results, and loops
 // again until the model answers with no tool calls or maxIters is reached.
 //
 // Token usage is accumulated across every round so callers can record the full
 // cost of the turn. When tools is empty the loop collapses to a single call,
-// behaving identically to a plain Chat.
+// behaving identically to a plain Chat. Devuelve además el trace de tools
+// ejecutadas (vacío en el camino sin tools) para que el caller derive las fuentes
+// usadas y los contenidos citados.
 func runAgenticChat(
 	ctx context.Context,
 	ai providers.AIClient,
@@ -38,19 +51,21 @@ func runAgenticChat(
 	dispatcher toolDispatcher,
 	orgID uuid.UUID,
 	maxIters int,
-) (*providers.ChatResponse, error) {
+) (*providers.ChatResponse, []toolInvocation, error) {
 	// No tools: collapse to a single plain Chat, identical to non-agentic behavior.
 	if len(tools) == 0 {
-		return ai.Chat(ctx, messages)
+		resp, err := ai.Chat(ctx, messages)
+		return resp, nil, err
 	}
 
 	var totalUsage providers.TokenUsage
 	var sawUsage bool
+	var trace []toolInvocation
 
 	for range maxIters {
 		resp, err := ai.ChatWithTools(ctx, messages, tools)
 		if err != nil {
-			return nil, err
+			return nil, trace, err
 		}
 		if resp.Usage != nil {
 			sawUsage = true
@@ -63,7 +78,7 @@ func runAgenticChat(
 			if sawUsage {
 				resp.Usage = &totalUsage
 			}
-			return resp, nil
+			return resp, trace, nil
 		}
 
 		slog.InfoContext(ctx, "chat.agentic_iteration", "tool_calls", len(resp.ToolCalls))
@@ -79,12 +94,21 @@ func runAgenticChat(
 		for _, call := range resp.ToolCalls {
 			slog.InfoContext(ctx, "chat.tool_call", "tool", call.Name, observability.Text("args", call.Arguments))
 			result, derr := dispatcher.Dispatch(ctx, orgID, call)
+			inv := toolInvocation{
+				Name:      call.Name,
+				StudentID: extractToolStudentID(call.Arguments),
+				Query:     extractToolQuery(call.Arguments),
+			}
 			if derr != nil {
+				inv.Failed = true
 				result = fmt.Sprintf(`{"error":%q}`, derr.Error())
 				slog.WarnContext(ctx, "chat.tool_error", "tool", call.Name, "error", derr.Error())
 			} else {
+				inv.Hits = countResults(result)
+				inv.ContentRefs = extractContentRefs(call.Name, result)
 				slog.InfoContext(ctx, "chat.tool_result", "tool", call.Name, "result_len", len(result), observability.Text("result", result))
 			}
+			trace = append(trace, inv)
 			messages = append(messages, providers.ChatMessage{
 				Role:       "tool",
 				Content:    result,
@@ -96,7 +120,7 @@ func runAgenticChat(
 	// Iteration budget exhausted: ask once more without tools to force an answer.
 	final, err := ai.Chat(ctx, messages)
 	if err != nil {
-		return nil, err
+		return nil, trace, err
 	}
 	if final.Usage != nil {
 		sawUsage = true
@@ -107,7 +131,7 @@ func runAgenticChat(
 	if sawUsage {
 		final.Usage = &totalUsage
 	}
-	return final, nil
+	return final, trace, nil
 }
 
 // inclusionTools are the domain tools Alizia can call to ground its answers in

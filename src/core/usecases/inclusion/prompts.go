@@ -112,7 +112,8 @@ func buildAssistSystemPrompt(devices []entities.Device, students []entities.Stud
 	b.WriteString("- Partís de lo observable del aula, no de diagnósticos.\n")
 	b.WriteString("- Priorizá la adaptación de la enseñanza sobre intervenciones individuales.\n")
 	b.WriteString("- Si detectás el nombre de un alumno del aula, usá [STUDENT_ID:X].\n")
-	b.WriteString("- Si recomendás un dispositivo, usá [DEVICE_ID:X].\n\n")
+	b.WriteString("- Si recomendás un dispositivo, usá [DEVICE_ID:X].\n")
+	b.WriteString("- Si te apoyás en material del corpus pedagógico (buscado con tus herramientas), citá la fuente con [CONTENT_ID:X], usando el id del recurso (resource_id) que devolvió la búsqueda. El sistema lo convierte en un chip; no menciones el id de otra forma.\n\n")
 
 	if len(students) > 0 {
 		b.WriteString("ALUMNOS DEL AULA:\n")
@@ -245,9 +246,21 @@ var (
 // [ADAPTATION_JSON:{...}]) del texto del modelo ANTES de mostrarlo al docente o
 // persistirlo. Los ids/JSON ya se extrajeron aparte: estos tags son internos del
 // backend y nunca deben aparecer en el chat. Limpia los espacios que deja el borrado.
+// Lo usa el flujo recommend, cuyo render en el FE no convierte markers en chips.
 func stripInternalMarkers(content string) string {
 	content = studentIDRegex.ReplaceAllString(content, "")
 	content = deviceIDRegex.ReplaceAllString(content, "")
+	content = adaptationJSONRegex.ReplaceAllString(content, "")
+	content = multiSpaceRegex.ReplaceAllString(content, " ")
+	content = spaceBeforePunctRegex.ReplaceAllString(content, "$1")
+	return strings.TrimSpace(content)
+}
+
+// stripAdaptationBlock quita SOLO el bloque [ADAPTATION_JSON:{...}] (ya extraído a un
+// campo estructurado). Lo usa el assist: a diferencia de stripInternalMarkers, deja
+// pasar [STUDENT_ID:X]/[DEVICE_ID:X]/[CONTENT_ID:X] porque el FE los renderiza como
+// chips (nombre del alumno, material o título del contenido), nunca como id crudo.
+func stripAdaptationBlock(content string) string {
 	content = adaptationJSONRegex.ReplaceAllString(content, "")
 	content = multiSpaceRegex.ReplaceAllString(content, " ")
 	content = spaceBeforePunctRegex.ReplaceAllString(content, "$1")

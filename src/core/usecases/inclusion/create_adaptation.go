@@ -21,6 +21,9 @@ type CreateAdaptationRequest struct {
 	AdaptationStrategy  *string
 	AdaptationType      string
 	Notes               *string
+	// Origen opcional cuando la adaptación se guarda desde el chat (GAP B).
+	SourceConversationID *int64
+	SourceMessageID      *int64
 }
 
 const defaultAdaptationType = "actividad_adaptada"
@@ -78,17 +81,19 @@ func (uc *createAdaptationImpl) Execute(ctx context.Context, req CreateAdaptatio
 	}
 
 	adaptation := &entities.Adaptation{
-		OrganizationID:      req.OrgID,
-		StudentID:           req.StudentID,
-		TeacherID:           req.TeacherID,
-		DeviceID:            req.DeviceID,
-		Title:               req.Title,
-		Subject:             req.Subject,
-		ActivityDescription: req.ActivityDescription,
-		AdaptationStrategy:  req.AdaptationStrategy,
-		AdaptationType:      adaptationType,
-		Notes:               req.Notes,
-		Status:              "en_curso",
+		OrganizationID:       req.OrgID,
+		StudentID:            req.StudentID,
+		TeacherID:            req.TeacherID,
+		DeviceID:             req.DeviceID,
+		Title:                req.Title,
+		Subject:              req.Subject,
+		ActivityDescription:  req.ActivityDescription,
+		AdaptationStrategy:   req.AdaptationStrategy,
+		AdaptationType:       adaptationType,
+		Notes:                req.Notes,
+		Status:               "en_curso",
+		SourceConversationID: req.SourceConversationID,
+		SourceMessageID:      req.SourceMessageID,
 	}
 
 	if err := uc.adaptations.Create(ctx, adaptation); err != nil {

@@ -162,6 +162,8 @@ Table adaptations {
   outcome text [null]
   notes text [null]
   status varchar [not null, default: "en_curso"] // en_curso / funcionó / para_ajustar
+  source_conversation_id bigint [null] // origen en el chat (mig 000026, GAP B)
+  source_message_id bigint [null] // mig 000026
   created_at timestamp
   updated_at timestamp
 
