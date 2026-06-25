@@ -22,4 +22,7 @@ type AppendTurnParams struct {
 type ConversationProvider interface {
 	ListByUser(ctx context.Context, orgID uuid.UUID, userID int64, mode string) ([]entities.Conversation, error)
 	AppendTurn(ctx context.Context, params AppendTurnParams) (int64, error)
+	// GetWithMessages returns a conversation with its messages in order, used to
+	// compact it on close.
+	GetWithMessages(ctx context.Context, orgID uuid.UUID, conversationID int64) (*entities.Conversation, error)
 }

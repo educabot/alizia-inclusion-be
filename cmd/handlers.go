@@ -26,6 +26,7 @@ func NewHandlers(uc *UseCases, cfg *config.Config) *entrypoints.WebHandlerContai
 			RecommendDevice:          uc.RecommendDevice,
 			AssistClassroom:          uc.AssistClassroom,
 			OpenSession:              uc.OpenSession,
+			CloseSession:             uc.CloseSession,
 			BuildPromptContext:       uc.BuildPromptContext,
 			SearchPedagogicalContent: uc.SearchPedagogicalContent,
 			ListStudents:             uc.ListStudents,
@@ -40,6 +41,7 @@ func NewHandlers(uc *UseCases, cfg *config.Config) *entrypoints.WebHandlerContai
 			ListAdaptationResources:  uc.ListAdaptationResources,
 			ExportAdaptation:         uc.ExportAdaptation,
 			GetChatHistory:           uc.GetChatHistory,
+			GetConversation:          uc.GetConversation,
 		},
 		Management: &entrypoints.ManagementContainer{
 			ListClassrooms:  uc.ListClassrooms,
@@ -53,7 +55,7 @@ func NewHandlers(uc *UseCases, cfg *config.Config) *entrypoints.WebHandlerContai
 			GetMetrics: uc.GetMetrics,
 			GetAIUsage: uc.GetAIUsage,
 		},
-		AuthMiddleware:   middleware.RS256AuthMiddleware(cfg.JWTPublicKey, bcfg.Environment(cfg.Env)),
+		AuthMiddleware:   middleware.RS256AuthMiddleware(cfg.AuthPublicKey, bcfg.Environment(cfg.Env)),
 		TenantMiddleware: middleware.TenantMiddleware(),
 	}
 }

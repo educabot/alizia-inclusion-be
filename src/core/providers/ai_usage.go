@@ -14,6 +14,12 @@ type AIUsageRecord struct {
 	PromptTokens     int
 	CompletionTokens int
 	TotalTokens      int
+	// Traza por turno. ContextSnapshot debe contener solo IDs (sin PII).
+	Model           string
+	LatencyMs       int
+	ToolCalls       int
+	ConversationID  *int64
+	ContextSnapshot map[string]any
 }
 
 // AIUsageModeSummary aggregates token consumption for a single mode (assist,

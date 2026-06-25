@@ -13,9 +13,9 @@ type searchContentBody struct {
 	Limit int    `json:"limit"`
 }
 
-// HandleSearchContent expone el RAG de contenido pedagógico (HU-3): busca por
-// keyword/full-text en el corpus y devuelve los fragmentos más relevantes. Sin
-// LLM, para validar el corpus directamente. Sin match → results vacío.
+// HandleSearchContent exposes the pedagogical-content RAG: keyword/full-text
+// search over the corpus returning the most relevant fragments. No LLM involved,
+// allowing direct corpus validation. No match returns an empty results list.
 func (c *InclusionContainer) HandleSearchContent(req web.Request) web.Response {
 	var body searchContentBody
 	if err := req.BindJSON(&body); err != nil {

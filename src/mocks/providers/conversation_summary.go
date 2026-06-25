@@ -36,3 +36,8 @@ func (m *MockConversationSummaryProvider) RecentByTopic(ctx context.Context, org
 	}
 	return args.Get(0).([]entities.ConversationSummary), args.Error(1)
 }
+
+func (m *MockConversationSummaryProvider) Upsert(ctx context.Context, summary *entities.ConversationSummary, studentIDs, deviceIDs []int64) error {
+	args := m.Called(ctx, summary, studentIDs, deviceIDs)
+	return args.Error(0)
+}

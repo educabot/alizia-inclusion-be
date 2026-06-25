@@ -61,8 +61,9 @@ func TestAzureClient_Generate_ReturnsErrorForNon200Status(t *testing.T) {
 		UserPrompt:   "hello",
 	})
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "500")
+	var statusErr *ai.UpstreamStatusError
+	require.ErrorAs(t, err, &statusErr)
+	assert.Equal(t, http.StatusInternalServerError, statusErr.StatusCode)
 }
 
 func TestAzureClient_Generate_ReturnsErrorForEmptyChoices(t *testing.T) {
@@ -77,8 +78,7 @@ func TestAzureClient_Generate_ReturnsErrorForEmptyChoices(t *testing.T) {
 		UserPrompt:   "hello",
 	})
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "empty response")
+	assert.ErrorIs(t, err, ai.ErrEmptyResponse)
 }
 
 func TestAzureClient_Chat_ReturnsChatResponse(t *testing.T) {

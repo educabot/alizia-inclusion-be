@@ -7,9 +7,9 @@ import (
 	"github.com/lib/pq"
 )
 
-// TeacherProfile es el contexto del docente (1:1 con users). Todos los campos
-// más allá de las FKs son opcionales: doble granularidad de edad (age_range y
-// birthdate) y datos pedagógicos que enriquecen el prompt sin ser obligatorios.
+// TeacherProfile holds teacher context (1:1 with users). All fields beyond the
+// FKs are optional: dual age granularity (age_range and birthdate) plus
+// pedagogical data that enriches the LLM prompt but is not required.
 type TeacherProfile struct {
 	ID              int64          `json:"id" gorm:"primaryKey"`
 	UserID          int64          `json:"user_id"`

@@ -6,6 +6,17 @@ import "github.com/educabot/alizia-inclusion-be/src/core/providers"
 // It leaves headroom under typical context windows for the model's completion.
 const defaultMaxHistoryTokens = 3000
 
+// buildChatMessages assembles the standard request layout — system prompt, prior
+// history, then the current user turn — and trims it to the token budget. Shared
+// by assist and recommend so the layout lives in one place.
+func buildChatMessages(systemPrompt string, history []providers.ChatMessage, userContent string) []providers.ChatMessage {
+	messages := make([]providers.ChatMessage, 0, len(history)+2)
+	messages = append(messages, providers.ChatMessage{Role: "system", Content: systemPrompt})
+	messages = append(messages, history...)
+	messages = append(messages, providers.ChatMessage{Role: "user", Content: userContent})
+	return capMessages(messages, defaultMaxHistoryTokens)
+}
+
 // estimateTokens approximates the token count of a string using the common
 // heuristic of ~4 characters per token. It is intentionally cheap and rough —
 // good enough to decide what to drop before sending to the model.

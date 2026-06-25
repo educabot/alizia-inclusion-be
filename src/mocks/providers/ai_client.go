@@ -12,6 +12,10 @@ type MockAIClient struct {
 	mock.Mock
 }
 
+// Model returns a fixed identifier. It bypasses m.Called so every test that
+// exercises an AI-backed usecase need not register an expectation for it.
+func (m *MockAIClient) Model() string { return "mock-model" }
+
 func (m *MockAIClient) Generate(ctx context.Context, params providers.GenerateParams) (string, error) {
 	args := m.Called(ctx, params)
 	return args.String(0), args.Error(1)

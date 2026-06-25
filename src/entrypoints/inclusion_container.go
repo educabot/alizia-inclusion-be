@@ -11,6 +11,7 @@ type InclusionContainer struct {
 	RecommendDevice          inclusionuc.RecommendDevice
 	AssistClassroom          inclusionuc.AssistClassroom
 	OpenSession              inclusionuc.OpenSession
+	CloseSession             inclusionuc.CloseSession
 	BuildPromptContext       inclusionuc.BuildPromptContext
 	SearchPedagogicalContent inclusionuc.SearchPedagogicalContent
 
@@ -26,4 +27,5 @@ type InclusionContainer struct {
 	ListAdaptationResources inclusionuc.ListAdaptationResources
 	ExportAdaptation        inclusionuc.ExportAdaptation
 	GetChatHistory          inclusionuc.GetChatHistory
+	GetConversation         inclusionuc.GetConversation
 }

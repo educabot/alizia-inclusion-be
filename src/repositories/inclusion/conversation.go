@@ -3,6 +3,7 @@ package inclusion
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -37,6 +38,26 @@ func (r *conversationRepo) ListByUser(ctx context.Context, orgID uuid.UUID, user
 		return nil, err
 	}
 	return conversations, nil
+}
+
+// GetWithMessages loads a conversation with its messages ordered chronologically,
+// scoped to the given org. Returns ErrNotFound if the record does not exist or belongs
+// to a different org. Used at session close to compact history into a summary.
+func (r *conversationRepo) GetWithMessages(ctx context.Context, orgID uuid.UUID, conversationID int64) (*entities.Conversation, error) {
+	var conv entities.Conversation
+	err := r.db.WithContext(ctx).
+		Preload("Messages", func(db *gorm.DB) *gorm.DB {
+			return db.Order("created_at ASC")
+		}).
+		Where("id = ? AND organization_id = ?", conversationID, orgID).
+		First(&conv).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, providers.ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &conv, nil
 }
 
 func (r *conversationRepo) AppendTurn(ctx context.Context, params providers.AppendTurnParams) (int64, error) {

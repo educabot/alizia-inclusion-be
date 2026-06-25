@@ -8,8 +8,12 @@ import (
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
 )
 
-// defaultSearchContentLimit acota el top-N por defecto del RAG.
+// defaultSearchContentLimit is the default top-N for RAG queries.
 const defaultSearchContentLimit = 5
+
+// maxSearchContentLimit caps the top-N a caller may request. Without a ceiling,
+// an oversized LIMIT from the API would hit the DB unnecessarily for a RAG top-N.
+const maxSearchContentLimit = 20
 
 type SearchContentRequest struct {
 	OrgID uuid.UUID
@@ -29,9 +33,9 @@ type SearchContentResponse struct {
 	Results []providers.ContentSearchResult `json:"results"`
 }
 
-// SearchPedagogicalContent expone el buscador del RAG (keyword/full-text) sin
-// pasar por la LLM. Sirve para validar el corpus por Postman y como base de la
-// tool search_content del loop agéntico.
+// SearchPedagogicalContent exposes the RAG keyword/full-text search without
+// invoking the LLM. Used for corpus validation and as the backing implementation
+// of the search_content tool in the agentic loop.
 type SearchPedagogicalContent interface {
 	Execute(ctx context.Context, req SearchContentRequest) (*SearchContentResponse, error)
 }
@@ -53,12 +57,15 @@ func (uc *searchPedagogicalContentImpl) Execute(ctx context.Context, req SearchC
 	if limit <= 0 {
 		limit = defaultSearchContentLimit
 	}
+	if limit > maxSearchContentLimit {
+		limit = maxSearchContentLimit
+	}
 
 	results, err := uc.content.SearchChunks(ctx, req.OrgID, req.Query, limit)
 	if err != nil {
 		return nil, err
 	}
-	// Garantizamos slice no-nil para que el JSON sea [] y no null cuando no hay match.
+	// Ensure non-nil slice so JSON serializes as [] rather than null on empty results.
 	if results == nil {
 		results = []providers.ContentSearchResult{}
 	}

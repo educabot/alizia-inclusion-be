@@ -10,10 +10,10 @@ import (
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
 )
 
-// maxPastAdaptations acota cuántas adaptaciones previas viajan al contexto.
+// maxPastAdaptations caps how many past adaptations are included in the prompt context.
 const maxPastAdaptations = 10
 
-// Etiquetas de datos faltantes (lo que Alizia puede sugerir completar, nunca exigir).
+// Missing-data labels — what Alizia may suggest completing, never require.
 const (
 	missingTeacherProfile = "perfil_docente"
 	missingStudentProfile = "perfil_alumno"
@@ -21,16 +21,16 @@ const (
 	missingDiagnoses      = "diagnosticos"
 )
 
-// PromptContext es el contexto tipado que alimenta el prompt. Está ordenado para
-// caching (§8): primero lo estático (eager, cacheable por org), después lo
-// dinámico (lazy, dirigido por la dimensión del router del Prompt 0). Todos los
-// bloques dinámicos son opcionales: si faltan, Alizia trabaja con lo que hay.
+// PromptContext is the typed context fed into the prompt. Ordered for caching:
+// static fields first (eager, org-level cacheable), dynamic fields second (lazy,
+// driven by the Prompt 0 router dimension). All dynamic blocks are optional —
+// Alizia operates with whatever is available.
 type PromptContext struct {
-	// ---- ESTÁTICO (eager, cacheable) ----
+	// ---- STATIC (eager, cacheable) ----
 	DeviceCatalog []entities.Device    `json:"device_catalog"`
 	Situations    []entities.Situation `json:"situations"`
 
-	// ---- DINÁMICO (lazy, dirigido por la dimensión) ----
+	// ---- DYNAMIC (lazy, driven by dimension) ----
 	Dimension         string                         `json:"dimension"`
 	Teacher           *entities.TeacherProfile       `json:"teacher,omitempty"`
 	Classroom         *entities.Classroom            `json:"classroom,omitempty"`
@@ -41,13 +41,13 @@ type PromptContext struct {
 	PastAdaptations   []entities.Adaptation          `json:"past_adaptations,omitempty"`
 	PriorSummaries    []entities.ConversationSummary `json:"prior_summaries,omitempty"`
 
-	// MissingData lista, por código, qué datos opcionales faltan, para que Alizia
-	// pueda sugerir completarlos. Nunca bloquea ni aparece como "N/A" en la salida.
+	// MissingData lists by code which optional data is absent, so Alizia can suggest
+	// completing it. Never blocks execution or surfaces as "N/A" in output.
 	MissingData []string `json:"missing_data,omitempty"`
 }
 
-// ContextSnapshot devuelve una huella del contexto SOLO con IDs (sin PII) para
-// trazar en ai_usage / logs sin filtrar nombres ni diagnósticos.
+// ContextSnapshot holds a PII-free snapshot of the context (IDs only) for
+// tracing in ai_usage / logs without exposing names or diagnoses.
 type ContextSnapshot struct {
 	Dimension          string   `json:"dimension"`
 	TeacherUserID      *int64   `json:"teacher_user_id,omitempty"`
@@ -61,7 +61,7 @@ type ContextSnapshot struct {
 	MissingData        []string `json:"missing_data,omitempty"`
 }
 
-// Snapshot construye una huella PII-free del contexto para trazabilidad.
+// Snapshot builds a PII-free fingerprint of the context for traceability.
 func (c *PromptContext) Snapshot() ContextSnapshot {
 	snap := ContextSnapshot{
 		Dimension:          c.Dimension,
@@ -153,7 +153,7 @@ func (uc *buildPromptContextImpl) Execute(ctx context.Context, req BuildContextR
 
 	pc := &PromptContext{Dimension: req.Dimension}
 
-	// ---- ESTÁTICO (eager): catálogo de devices + vocabulario de situaciones. ----
+	// ---- STATIC (eager): device catalog + situation vocabulary. ----
 	devices, err := uc.devices.ListDevices(ctx, req.OrgID, nil)
 	if err != nil {
 		return nil, err
@@ -166,7 +166,7 @@ func (uc *buildPromptContextImpl) Execute(ctx context.Context, req BuildContextR
 	}
 	pc.Situations = situations
 
-	// ---- Docente (con quién hablamos): opcional, se sugiere completar si falta. ----
+	// ---- Teacher (who we are talking to): optional, suggested if missing. ----
 	teacher, err := uc.teachers.GetByUserID(ctx, req.OrgID, req.UserID)
 	switch {
 	case err == nil:
@@ -177,7 +177,7 @@ func (uc *buildPromptContextImpl) Execute(ctx context.Context, req BuildContextR
 		return nil, err
 	}
 
-	// ---- DINÁMICO lazy: solo la dimensión pedida. ----
+	// ---- DYNAMIC lazy: only the requested dimension. ----
 	if req.Dimension == DimensionStudent && req.StudentID != nil && *req.StudentID > 0 {
 		if err := uc.loadStudentDimension(ctx, req, pc); err != nil {
 			return nil, err
@@ -187,9 +187,9 @@ func (uc *buildPromptContextImpl) Execute(ctx context.Context, req BuildContextR
 	return pc, nil
 }
 
-// loadStudentDimension trae el contexto del alumno foco: perfil + situaciones +
-// diagnósticos + PPI + aula + adaptaciones previas + resúmenes. Todo opcional;
-// lo que falta se anota en MissingData en vez de romper.
+// loadStudentDimension fetches the focus-student context: profile + diagnoses +
+// PPI + classroom + past adaptations + prior summaries. All optional — missing
+// pieces are recorded in MissingData rather than causing an error.
 func (uc *buildPromptContextImpl) loadStudentDimension(ctx context.Context, req BuildContextRequest, pc *PromptContext) error {
 	student, err := uc.students.GetStudent(ctx, req.OrgID, *req.StudentID)
 	if err != nil {
@@ -240,7 +240,7 @@ func (uc *buildPromptContextImpl) loadStudentDimension(ctx context.Context, req 
 			}
 			pc.ClassroomStudents = peers
 		case errors.Is(err, providers.ErrNotFound):
-			// aula borrada o inconsistente: seguimos sin ella
+			// classroom deleted or inconsistent — continue without it
 		default:
 			return err
 		}

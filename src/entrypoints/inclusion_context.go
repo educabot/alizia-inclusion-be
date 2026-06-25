@@ -14,10 +14,10 @@ type buildContextBody struct {
 	Topic     string `json:"topic"`
 }
 
-// HandleBuildContext expone el Context Assembler (HU-2): arma el contexto tipado
-// para una dimensión (alumno / valija / tema) y lo devuelve. Sirve para validar
-// qué contexto llega al prompt (perfil + situaciones + PPI + diagnósticos +
-// adaptaciones previas), degradando con elegancia cuando faltan datos.
+// HandleBuildContext exposes the Context Assembler: builds the typed context
+// for a dimension (student / toolkit / topic) and returns it. Useful for validating
+// what context reaches the prompt (profile + situations + IEP + diagnoses +
+// prior adaptations), degrading gracefully when data is missing.
 func (c *InclusionContainer) HandleBuildContext(req web.Request) web.Response {
 	var body buildContextBody
 	if err := req.BindJSON(&body); err != nil {

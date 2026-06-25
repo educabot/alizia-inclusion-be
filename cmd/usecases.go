@@ -21,6 +21,7 @@ type UseCases struct {
 	RecommendDevice          inclusionuc.RecommendDevice
 	AssistClassroom          inclusionuc.AssistClassroom
 	OpenSession              inclusionuc.OpenSession
+	CloseSession             inclusionuc.CloseSession
 	BuildPromptContext       inclusionuc.BuildPromptContext
 	SearchPedagogicalContent inclusionuc.SearchPedagogicalContent
 
@@ -45,6 +46,7 @@ type UseCases struct {
 	ListAdaptationResources inclusionuc.ListAdaptationResources
 	ExportAdaptation        inclusionuc.ExportAdaptation
 	GetChatHistory          inclusionuc.GetChatHistory
+	GetConversation         inclusionuc.GetConversation
 
 	GetMetrics dashuc.GetMetrics
 	GetAIUsage dashuc.GetAIUsage
@@ -63,6 +65,7 @@ func NewUseCases(repos *Repositories, cfg *config.Config) *UseCases {
 		RecommendDevice:       inclusionuc.NewRecommendDevice(repos.AI, repos.Students, repos.Devices, repos.Ramps, repos.Conversations, repos.AIUsage),
 		AssistClassroom:       inclusionuc.NewAssistClassroom(repos.AI, repos.Students, repos.Devices, repos.Conversations, repos.ConversationSummaries, repos.Adaptations, repos.PedagogicalContent, repos.AIUsage, cfg.AIAgenticEnabled),
 		OpenSession:           inclusionuc.NewOpenSession(repos.Students, repos.ConversationSummaries),
+		CloseSession:          inclusionuc.NewCloseSession(repos.AI, repos.Conversations, repos.ConversationSummaries, repos.AIUsage),
 		BuildPromptContext: inclusionuc.NewBuildPromptContext(
 			repos.Students, repos.TeacherProfiles, repos.Situations, repos.Diagnoses, repos.PPIs,
 			repos.Adaptations, repos.Classrooms, repos.Devices, repos.ConversationSummaries,
@@ -90,6 +93,7 @@ func NewUseCases(repos *Repositories, cfg *config.Config) *UseCases {
 		ListAdaptationResources: inclusionuc.NewListAdaptationResources(repos.AdaptationResources),
 		ExportAdaptation:        inclusionuc.NewExportAdaptation(repos.Adaptations),
 		GetChatHistory:          inclusionuc.NewGetChatHistory(repos.Conversations),
+		GetConversation:         inclusionuc.NewGetConversation(repos.Conversations),
 
 		GetMetrics: dashuc.NewGetMetrics(repos.Students, repos.Adaptations, repos.Classrooms),
 		GetAIUsage: dashuc.NewGetAIUsage(repos.AIUsage),

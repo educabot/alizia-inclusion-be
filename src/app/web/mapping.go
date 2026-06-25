@@ -66,17 +66,23 @@ func ConfigureMappings(engine *gin.Engine, h *entrypoints.WebHandlerContainer, c
 	// Chat history
 	api.GET("/chat/history/:contextId", webgin.Adapt(h.Inclusion.HandleGetChatHistory))
 
+	// Single conversation by id — used to resume a resource's originating conversation
+	api.GET("/conversation/:id", webgin.Adapt(h.Inclusion.HandleGetConversation))
+
 	// Dashboard
 	api.GET("/dashboard/metrics", webgin.Adapt(h.Dashboard.HandleGetMetrics))
 	api.GET("/dashboard/ai-usage", webgin.Adapt(h.Dashboard.HandleGetAIUsage))
 
-	// Apertura de sesión (router / Prompt 0) — sin LLM, no requiere rate limit de IA
+	// Session open (router / Prompt 0) — no LLM call, so AI rate limit is not applied
 	api.POST("/inclusion/open", webgin.Adapt(h.Inclusion.HandleOpenSession))
 
-	// Context Assembler (HU-2) — arma el contexto del alumno/valija/tema; sin LLM
+	// Session close — compacts the conversation into a summary via LLM
+	api.POST("/inclusion/close", aiRateLimit, webgin.Adapt(h.Inclusion.HandleCloseSession))
+
+	// Context Assembler — builds student/toolkit/topic context; no LLM
 	api.POST("/inclusion/context", webgin.Adapt(h.Inclusion.HandleBuildContext))
 
-	// RAG de contenido pedagógico (HU-3) — búsqueda keyword/full-text; sin LLM
+	// Pedagogical content RAG — keyword/full-text search; no LLM
 	api.POST("/inclusion/search-content", webgin.Adapt(h.Inclusion.HandleSearchContent))
 
 	// AI endpoints (rate-limited per organization)
