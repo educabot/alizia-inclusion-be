@@ -16,6 +16,10 @@ type GeneratedAdaptation struct {
 	Strategy    string   `json:"strategy"`
 	DeviceIDs   []int64  `json:"device_ids"`
 	DeviceNames []string `json:"device_names"`
+	// StudentID is the student the adaptation is for, taken from the [STUDENT_ID:X]
+	// tag of the same turn. Surfaced here so the frontend can build the save request
+	// from a single object instead of parsing the response text.
+	StudentID *int64 `json:"student_id,omitempty"`
 }
 
 func buildRecommendUserPrompt(student *entities.Student, req RecommendDeviceRequest) string {
@@ -56,6 +60,7 @@ func buildRecommendUserPrompt(student *entities.Student, req RecommendDeviceRequ
 
 var deviceIDRegex = regexp.MustCompile(`\[DEVICE_ID:(\d+)\]`)
 var studentIDRegex = regexp.MustCompile(`\[STUDENT_ID:(\d+)\]`)
+var contentIDRegex = regexp.MustCompile(`\[CONTENT_ID:(\d+)\]`)
 var adaptationJSONRegex = regexp.MustCompile(`\[ADAPTATION_JSON:(\{.+\})\]`)
 
 func extractDeviceID(content string) *int64 {
@@ -80,6 +85,30 @@ func extractStudentID(content string) *int64 {
 		return nil
 	}
 	return &id
+}
+
+// extractContentIDs returns the pedagogical content ids the model cited via
+// [CONTENT_ID:X] tags, in order and without duplicates. Lets the frontend deep-link
+// a material chip to the specific document instead of the materials list.
+func extractContentIDs(content string) []int64 {
+	matches := contentIDRegex.FindAllStringSubmatch(content, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+	seen := make(map[int64]struct{}, len(matches))
+	ids := make([]int64, 0, len(matches))
+	for _, m := range matches {
+		id, err := strconv.ParseInt(m[1], 10, 64)
+		if err != nil {
+			continue
+		}
+		if _, dup := seen[id]; dup {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	return ids
 }
 
 func extractAdaptationJSON(content string) *GeneratedAdaptation {

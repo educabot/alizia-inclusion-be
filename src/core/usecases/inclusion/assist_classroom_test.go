@@ -11,7 +11,7 @@ import (
 
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
-	mockproviders "github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
+	mockproviders "github.com/educabot/alizia-inclusion-be/src/mocks/providers"
 	"github.com/educabot/alizia-inclusion-be/src/core/usecases/inclusion"
 	"github.com/educabot/alizia-inclusion-be/src/testutil"
 )
@@ -43,7 +43,7 @@ func assistClassroomMocks(t *testing.T, aiContent string, aiErr error) (
 		Return([]entities.Device{testutil.NewDevice(1, 1, "Pictogramas")}, nil)
 	students.On("ListByClassroom", mock.Anything, testutil.TestOrgID, int64(1)).
 		Return([]entities.Student{testutil.NewStudent(1, 1, "Lucas")}, nil)
-	// La traza por turno (HU-6, T-6.5) se graba best-effort; opcional para los tests.
+	// Per-turn usage trace is recorded best-effort; tests may omit it.
 	usage.On("Record", mock.Anything, mock.AnythingOfType("providers.AIUsageRecord")).Return(nil).Maybe()
 	if aiErr != nil {
 		ai.On("Chat", mock.Anything, mock.AnythingOfType("[]providers.ChatMessage")).
@@ -77,6 +77,92 @@ func TestAssistClassroom_WorksInGuidedMode(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, got.Response)
 	ai.AssertExpectations(t)
+}
+
+// adaptationContent is an assistant reply that emits a valid ADAPTATION_JSON block,
+// which (outside the opening turn) surfaces the "save resource" card.
+const adaptationContent = `Listo, te la dejo guardada. [ADAPTATION_JSON:{"title":"Pasos cortos","type":"estrategia_aula","strategy":"Anticipar la consigna","device_ids":[1],"device_names":["Pictogramas"]}]`
+
+func TestAssistClassroom_SuppressesAdaptationOnOpeningTurn(t *testing.T) {
+	ai, students, devices, conversations, usage := assistClassroomMocks(t, adaptationContent, nil)
+	req := assistClassroomBaseRequest // no History: this is the opening turn
+
+	got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, nil, nil, nil, usage, false).
+		Execute(context.Background(), req)
+
+	require.NoError(t, err)
+	assert.Nil(t, got.Adaptation, "no resource is offered on the first message, even if the model emits the block")
+}
+
+func TestAssistClassroom_SurfacesAdaptationAfterConversation(t *testing.T) {
+	ai, students, devices, conversations, usage := assistClassroomMocks(t, adaptationContent, nil)
+	req := assistClassroomBaseRequest
+	req.History = []providers.ChatMessage{
+		{Role: "user", Content: "Mati no arranca la tarea"},
+		{Role: "assistant", Content: "¿Querés que la guarde como recurso para Mati?"},
+	}
+
+	got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, nil, nil, nil, usage, false).
+		Execute(context.Background(), req)
+
+	require.NoError(t, err)
+	require.NotNil(t, got.Adaptation, "once the conversation is underway, a confirmed adaptation surfaces")
+	assert.Equal(t, "Pasos cortos", got.Adaptation.Title)
+}
+
+func TestAssistClassroom_SurfacesReferencedContent(t *testing.T) {
+	// Arrange: the assistant cites two materials; one exists, one is missing/cross-org.
+	ai, students, devices, conversations, usage := assistClassroomMocks(t,
+		"Te dejo este material [CONTENT_ID:2] y este otro [CONTENT_ID:9]", nil)
+	content := new(mockproviders.MockPedagogicalContentProvider)
+	content.On("GetContent", mock.Anything, testutil.TestOrgID, int64(2)).
+		Return(&entities.PedagogicalContent{ID: 2, Title: testutil.Ptr("Guía de lectura")}, nil)
+	content.On("GetContent", mock.Anything, testutil.TestOrgID, int64(9)).
+		Return(nil, providers.ErrNotFound)
+
+	// Act
+	got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, nil, nil, content, usage, false).
+		Execute(context.Background(), assistClassroomBaseRequest)
+
+	// Assert: only the resolvable material is surfaced; the missing one is skipped.
+	require.NoError(t, err)
+	require.Len(t, got.ReferencedContent, 1)
+	assert.Equal(t, int64(2), got.ReferencedContent[0].ID)
+	assert.Equal(t, "Guía de lectura", got.ReferencedContent[0].Title)
+	content.AssertExpectations(t)
+}
+
+func TestAssistClassroom_OmitsReferencedContentWhenNoneCited(t *testing.T) {
+	ai, students, devices, conversations, usage := assistClassroomMocks(t, "Una respuesta sin materiales", nil)
+	content := new(mockproviders.MockPedagogicalContentProvider)
+
+	got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, nil, nil, content, usage, false).
+		Execute(context.Background(), assistClassroomBaseRequest)
+
+	require.NoError(t, err)
+	assert.Empty(t, got.ReferencedContent)
+	content.AssertNotCalled(t, "GetContent", mock.Anything, mock.Anything, mock.Anything)
+}
+
+// adaptationWithStudentContent emits both a STUDENT_ID tag and the adaptation block,
+// so the surfaced adaptation should carry that student id for the save request.
+const adaptationWithStudentContent = `Listo. [STUDENT_ID:1] [ADAPTATION_JSON:{"title":"Pasos cortos","type":"estrategia_aula","strategy":"Anticipar la consigna","device_ids":[1],"device_names":["Pictogramas"]}]`
+
+func TestAssistClassroom_AdaptationCarriesStudentID(t *testing.T) {
+	ai, students, devices, conversations, usage := assistClassroomMocks(t, adaptationWithStudentContent, nil)
+	req := assistClassroomBaseRequest
+	req.History = []providers.ChatMessage{
+		{Role: "user", Content: "Mati no arranca la tarea"},
+		{Role: "assistant", Content: "¿Querés que la guarde como recurso para Mati?"},
+	}
+
+	got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, nil, nil, nil, usage, false).
+		Execute(context.Background(), req)
+
+	require.NoError(t, err)
+	require.NotNil(t, got.Adaptation)
+	require.NotNil(t, got.Adaptation.StudentID, "student_id is carried into the adaptation for the save request")
+	assert.Equal(t, int64(1), *got.Adaptation.StudentID)
 }
 
 func TestAssistClassroom_WrapsAIError(t *testing.T) {

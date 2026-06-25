@@ -46,6 +46,7 @@ type UseCases struct {
 	ListAdaptationResources inclusionuc.ListAdaptationResources
 	ExportAdaptation        inclusionuc.ExportAdaptation
 	GetChatHistory          inclusionuc.GetChatHistory
+	GetConversation         inclusionuc.GetConversation
 
 	GetMetrics dashuc.GetMetrics
 	GetAIUsage dashuc.GetAIUsage
@@ -92,6 +93,7 @@ func NewUseCases(repos *Repositories, cfg *config.Config) *UseCases {
 		ListAdaptationResources: inclusionuc.NewListAdaptationResources(repos.AdaptationResources),
 		ExportAdaptation:        inclusionuc.NewExportAdaptation(repos.Adaptations),
 		GetChatHistory:          inclusionuc.NewGetChatHistory(repos.Conversations),
+		GetConversation:         inclusionuc.NewGetConversation(repos.Conversations),
 
 		GetMetrics: dashuc.NewGetMetrics(repos.Students, repos.Adaptations, repos.Classrooms),
 		GetAIUsage: dashuc.NewGetAIUsage(repos.AIUsage),

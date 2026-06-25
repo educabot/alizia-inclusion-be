@@ -13,8 +13,8 @@ import (
 
 // maxAgenticIterations caps how many tool-calling rounds a single chat turn may
 // run before we force the model to answer, preventing an infinite tool loop.
-// MVP (HU-6, T-6.4): una pasada de tools, dos como máximo — mantiene la latencia
-// baja en clase y acota el costo. Se sube si el flywheel lo justifica (Futuro).
+// One pass of tools, two at most — keeps latency low in the classroom and bounds
+// cost. Raise if usage patterns justify it.
 const maxAgenticIterations = 2
 
 // toolDispatcher executes a tool the model asked for and returns its result as a
@@ -47,7 +47,7 @@ func runAgenticChat(
 
 	var totalUsage providers.TokenUsage
 	var sawUsage bool
-	toolCalls := 0 // total de tool calls ejecutados en el turno (traza, HU-6 T-6.5)
+	toolCalls := 0 // cumulative tool calls in this turn, used for tracing
 
 	for range maxIters {
 		resp, err := ai.ChatWithTools(ctx, messages, tools)
@@ -252,21 +252,21 @@ func inclusionTools() []providers.ToolDefinition {
 }
 
 // inclusionDispatcher executes inclusionTools against the domain providers.
-// summaries y adaptations son opcionales: si faltan, sus tools devuelven un
-// error manejable en vez de panicar.
+// summaries and adaptations are optional: missing providers return a handled
+// error instead of panicking.
 type inclusionDispatcher struct {
 	students    providers.StudentProvider
 	devices     providers.DeviceProvider
 	summaries   providers.ConversationSummaryProvider
 	adaptations providers.AdaptationProvider
 	content     providers.PedagogicalContentProvider
-	// Identidad del turno, para las tools de acción (HU-4): quién guarda y de qué
-	// conversación salió el recurso.
+	// Turn identity for action tools: who is saving and which conversation
+	// originated the resource.
 	userID         int64
 	conversationID int64
 }
 
-// defaultContentSearchLimit acota cuántos chunks devuelve el RAG por búsqueda.
+// defaultContentSearchLimit caps how many chunks the RAG layer returns per search.
 const defaultContentSearchLimit = 5
 
 func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call providers.ToolCall) (string, error) {
@@ -327,7 +327,7 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 
 	case "get_student_history":
 		if d.summaries == nil {
-			return "", fmt.Errorf("get_student_history no disponible")
+			return "", fmt.Errorf("get_student_history %w", errToolUnavailable)
 		}
 		var args struct {
 			StudentID int64 `json:"student_id"`
@@ -356,7 +356,7 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 
 	case "get_past_adaptations":
 		if d.adaptations == nil {
-			return "", fmt.Errorf("get_past_adaptations no disponible")
+			return "", fmt.Errorf("get_past_adaptations %w", errToolUnavailable)
 		}
 		var args struct {
 			StudentID int64 `json:"student_id"`
@@ -386,7 +386,7 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 
 	case "search_content":
 		if d.content == nil {
-			return "", fmt.Errorf("search_content no disponible")
+			return "", fmt.Errorf("search_content %w", errToolUnavailable)
 		}
 		var args struct {
 			Query string `json:"query"`
@@ -398,13 +398,13 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 		if err != nil {
 			return "", err
 		}
-		// Sin coincidencias: devolvemos lista vacía explícita para que la LLM
-		// caiga a los lineamientos base sin inventar.
+		// Empty results are returned explicitly so the LLM falls back to base
+		// guidelines instead of hallucinating content.
 		return marshalToolResult(map[string]any{"results": results})
 
 	case "get_content":
 		if d.content == nil {
-			return "", fmt.Errorf("get_content no disponible")
+			return "", fmt.Errorf("get_content %w", errToolUnavailable)
 		}
 		var args struct {
 			ContentID int64 `json:"content_id"`
@@ -420,7 +420,7 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 
 	case "create_student":
 		if d.students == nil {
-			return "", fmt.Errorf("create_student no disponible")
+			return "", fmt.Errorf("create_student %w", errToolUnavailable)
 		}
 		var args struct {
 			Name        string `json:"name"`
@@ -432,7 +432,7 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 		}
 		student := &entities.Student{OrganizationID: orgID, ClassroomID: args.ClassroomID, Name: args.Name}
 		if !args.Confirmed {
-			// Propone la ficha sin persistir; la LLM la muestra y pide confirmación.
+			// Dry-run: return the draft record so the LLM can display it and request confirmation.
 			return marshalToolResult(map[string]any{"pending_confirmation": true, "student": student})
 		}
 		if err := d.students.Create(ctx, student); err != nil {
@@ -442,7 +442,7 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 
 	case "create_recurso":
 		if d.adaptations == nil {
-			return "", fmt.Errorf("create_recurso no disponible")
+			return "", fmt.Errorf("create_recurso %w", errToolUnavailable)
 		}
 		var args struct {
 			StudentID           int64   `json:"student_id"`
@@ -478,7 +478,7 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 			recurso.SourceConversationID = &d.conversationID
 		}
 		if !args.Confirmed {
-			// Muestra la ficha de frente; no persiste hasta el OK del docente.
+			// Dry-run: return the draft record; nothing is persisted until the teacher confirms.
 			return marshalToolResult(map[string]any{"pending_confirmation": true, "recurso": recurso, "device_ids": args.DeviceIDs})
 		}
 		if err := d.adaptations.Create(ctx, recurso); err != nil {
@@ -493,7 +493,7 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 
 	case "relate_student_recurso":
 		if d.adaptations == nil {
-			return "", fmt.Errorf("relate_student_recurso no disponible")
+			return "", fmt.Errorf("relate_student_recurso %w", errToolUnavailable)
 		}
 		var args struct {
 			StudentID int64 `json:"student_id"`
@@ -517,7 +517,7 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 		return marshalToolResult(map[string]any{"saved": true, "recurso": recurso})
 
 	default:
-		return "", fmt.Errorf("unknown tool: %s", call.Name)
+		return "", fmt.Errorf("%w: %s", errUnknownTool, call.Name)
 	}
 }
 

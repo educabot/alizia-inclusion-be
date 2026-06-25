@@ -21,7 +21,7 @@ type CreateAdaptationRequest struct {
 	AdaptationStrategy  *string
 	AdaptationType      string
 	Notes               *string
-	// Origen IA (HU-4): de qué conversación/mensaje salió y si el docente la editó.
+	// AI-generated origin: tracks the source conversation/message and whether the teacher edited the suggestion.
 	SourceConversationID *int64
 	SourceMessageID      *int64
 	WasEdited            bool

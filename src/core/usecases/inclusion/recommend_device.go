@@ -2,7 +2,6 @@ package inclusion
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -79,19 +78,18 @@ func (uc *recommendDeviceImpl) Execute(ctx context.Context, req RecommendDeviceR
 
 	systemPrompt := prompts.RecommendSystem(devices)
 	userPrompt := buildRecommendUserPrompt(student, req)
-
-	messages := make([]providers.ChatMessage, 0, len(req.History)+2)
-	messages = append(messages, providers.ChatMessage{Role: "system", Content: systemPrompt})
-	messages = append(messages, req.History...)
-	messages = append(messages, providers.ChatMessage{Role: "user", Content: userPrompt})
-	messages = capMessages(messages, defaultMaxHistoryTokens)
+	messages := buildChatMessages(systemPrompt, req.History, userPrompt)
 
 	start := time.Now()
 	resp, err := uc.ai.Chat(ctx, messages)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", providers.ErrServiceUnavailable, err)
+		return nil, wrapServiceUnavailable(err)
 	}
 	latencyMs := int(time.Since(start).Milliseconds())
+
+	// Guardrail: recommend is the heaviest path for DEVICE_ID/ADAPTATION_JSON;
+	// a hallucinated device ID must never reach the teacher. Fall back to off-ramp, same as assist.
+	guardAnswer(ctx, resp, devices, "usecase", "recommend_device", "user_id", req.UserID, "student_id", req.StudentID)
 
 	deviceID := extractDeviceID(resp.Content)
 	adaptation := extractAdaptationJSON(resp.Content)
@@ -102,13 +100,13 @@ func (uc *recommendDeviceImpl) Execute(ctx context.Context, req RecommendDeviceR
 		convID = req.ConversationID
 	}
 
-	// Traza por turno (HU-6, T-6.5): solo IDs, sin PII. Best-effort.
+	// Per-turn trace: IDs only, no PII. Best-effort.
 	snapshot := map[string]any{"student_id": req.StudentID}
 	if deviceID != nil {
 		snapshot["recommended_device_id"] = *deviceID
 	}
 	recordAIUsage(ctx, uc.usage, aiTrace{
-		orgID: req.OrgID, userID: req.UserID, mode: "recommend",
+		orgID: req.OrgID, userID: req.UserID, mode: modeRecommend,
 		model: uc.ai.Model(), latencyMs: latencyMs,
 		conversationID: convID, usage: resp.Usage, context: snapshot,
 	})
@@ -126,20 +124,20 @@ func (uc *recommendDeviceImpl) persistTurn(ctx context.Context, req RecommendDev
 		return req.ConversationID, nil
 	}
 	metadata := map[string]any{
-		"subject": req.Subject,
+		metaKeySubject: req.Subject,
 	}
 	if deviceID != nil {
-		metadata["recommended_device"] = *deviceID
+		metadata[metaKeyRecommendedDevice] = *deviceID
 	}
 	if adaptation != nil {
-		metadata["adaptation"] = adaptation
+		metadata[metaKeyAdaptation] = adaptation
 	}
 	studentIDCopy := req.StudentID
 	return uc.conversations.AppendTurn(ctx, providers.AppendTurnParams{
 		ConversationID:   req.ConversationID,
 		OrgID:            req.OrgID,
 		UserID:           req.UserID,
-		Mode:             "recommend",
+		Mode:             modeRecommend,
 		StudentID:        &studentIDCopy,
 		UserContent:      userContent,
 		AssistantContent: assistantContent,

@@ -1,47 +1,62 @@
 package inclusion
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"strconv"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
+	"github.com/educabot/alizia-inclusion-be/src/core/providers"
+	"github.com/educabot/alizia-inclusion-be/src/core/usecases/inclusion/prompts"
 )
 
-// Guardrail por código (HU-6, §6.7). Antes de mostrar una respuesta al docente,
-// validamos por código —no sólo confiando en el prompt— que no cruce límites
-// duros: que los DEVICE_ID que menciona existan en el catálogo de la valija y que
-// un ADAPTATION_JSON embebido sólo referencie dispositivos reales. Una respuesta
-// que falla la validación NUNCA debe llegar al docente: el caller reintenta o cae
-// al off-ramp.
+// guardAnswer enforces the hard guardrail on a generated answer just before it is
+// surfaced: if it references a device outside the catalog, it logs the violations
+// and swaps the content for the off-ramp. Shared by assist and recommend so the
+// post-generation check lives in one place. Extra key/value pairs are appended to
+// the warning log for caller context (user_id, mode, student_id, ...).
+func guardAnswer(ctx context.Context, resp *providers.ChatResponse, devices []entities.Device, logKV ...any) {
+	gr := validateAnswer(resp.Content, deviceCatalogSet(devices))
+	if gr.Valid {
+		return
+	}
+	slog.WarnContext(ctx, "guardrail rejected answer", append([]any{"violations", gr.Violations}, logKV...)...)
+	resp.Content = prompts.OffRampInvalidOutput
+}
 
-// GuardrailResult reporta el veredicto de la validación por código de una
-// respuesta generada. Violations describe, en lenguaje accionable para el log,
-// qué límite se cruzó (vacío cuando Valid es true).
+// Code-level guardrail. Before surfacing a response to the teacher,
+// we enforce hard limits in code — not solely via prompt — ensuring that any
+// DEVICE_ID mentioned exists in the org's device catalog and that an embedded
+// ADAPTATION_JSON only references real devices. A response that fails validation
+// must never reach the teacher: the caller retries or falls through to the off-ramp.
+
+// GuardrailResult reports the code-validation verdict for a generated response.
+// Violations lists each hard-limit breach in actionable log language; empty when Valid is true.
 type GuardrailResult struct {
 	Valid      bool
 	Violations []string
 }
 
-// validateAnswer chequea una respuesta del modelo contra los límites verificables
-// por código. validDeviceIDs es el set de ids de dispositivos del catálogo de la
-// org (lo que el caller ya cargó para armar el prompt). No re-valida la forma del
-// ADAPTATION_JSON: extractAdaptationJSON ya descarta bloques malformados; acá sólo
-// nos importa que los device_ids referenciados sean reales.
+// validateAnswer checks a model response against code-verifiable hard limits.
+// validDeviceIDs is the org's device-catalog set (already loaded by the caller for
+// prompt assembly). It does not re-validate ADAPTATION_JSON shape — extractAdaptationJSON
+// already discards malformed blocks; here we only verify that referenced device_ids are real.
 func validateAnswer(content string, validDeviceIDs map[int64]bool) GuardrailResult {
 	var violations []string
 
-	// 1) DEVICE_ID sueltos en el texto ([DEVICE_ID:X]) deben existir en catálogo.
+	// 1) Inline DEVICE_ID tokens ([DEVICE_ID:X]) must exist in the catalog.
 	for _, id := range extractDeviceIDs(content) {
 		if !validDeviceIDs[id] {
-			violations = append(violations, fmt.Sprintf("DEVICE_ID %d no existe en el catálogo", id))
+			violations = append(violations, fmt.Sprintf("DEVICE_ID %d is not in the catalog", id))
 		}
 	}
 
-	// 2) device_ids dentro del ADAPTATION_JSON deben existir en catálogo.
+	// 2) device_ids inside ADAPTATION_JSON must exist in the catalog.
 	if adaptation := extractAdaptationJSON(content); adaptation != nil {
 		for _, id := range adaptation.DeviceIDs {
 			if !validDeviceIDs[id] {
-				violations = append(violations, fmt.Sprintf("ADAPTATION_JSON referencia DEVICE_ID %d inexistente", id))
+				violations = append(violations, fmt.Sprintf("ADAPTATION_JSON references non-existent DEVICE_ID %d", id))
 			}
 		}
 	}
@@ -49,8 +64,8 @@ func validateAnswer(content string, validDeviceIDs map[int64]bool) GuardrailResu
 	return GuardrailResult{Valid: len(violations) == 0, Violations: violations}
 }
 
-// deviceCatalogSet arma el set de ids de dispositivos válidos a partir del
-// catálogo cargado, para alimentar validateAnswer sin re-consultar la DB.
+// deviceCatalogSet builds the valid device-ID set from the loaded catalog,
+// so validateAnswer can check membership without an extra DB query.
 func deviceCatalogSet(devices []entities.Device) map[int64]bool {
 	set := make(map[int64]bool, len(devices))
 	for i := range devices {
@@ -59,8 +74,8 @@ func deviceCatalogSet(devices []entities.Device) map[int64]bool {
 	return set
 }
 
-// extractDeviceIDs devuelve TODOS los DEVICE_ID referenciados en el texto (a
-// diferencia de extractDeviceID, que devuelve sólo el primero), deduplicados.
+// extractDeviceIDs returns all DEVICE_ID values referenced in the text,
+// deduplicated. Unlike extractDeviceID, which returns only the first match.
 func extractDeviceIDs(content string) []int64 {
 	matches := deviceIDRegex.FindAllStringSubmatch(content, -1)
 	if len(matches) == 0 {

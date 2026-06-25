@@ -14,7 +14,7 @@ import (
 
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
-	mockproviders "github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
+	mockproviders "github.com/educabot/alizia-inclusion-be/src/mocks/providers"
 )
 
 func TestRunAgenticChat_ReturnsPlainChatResponseWhenNoToolsProvided(t *testing.T) {
@@ -164,8 +164,7 @@ func TestInclusionDispatcher_RejectsUnknownTool(t *testing.T) {
 
 	_, err := d.Dispatch(context.Background(), uuid.New(), providers.ToolCall{Name: "delete_everything"})
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unknown tool")
+	require.ErrorIs(t, err, errUnknownTool)
 }
 
 func TestInclusionDispatcher_RejectsMalformedArguments(t *testing.T) {

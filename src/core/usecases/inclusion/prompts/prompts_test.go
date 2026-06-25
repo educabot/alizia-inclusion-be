@@ -27,14 +27,25 @@ func TestRecommendSystem_ContainsDeviceInfo(t *testing.T) {
 	assert.Contains(t, prompt, "Estructura el tiempo", "el catálogo detallado incluye el fundamento")
 }
 
-func TestAssistSystem_HasOutputFormatRules(t *testing.T) {
-	// El formato de salida exigido por T-6.6 vive en el marco estático.
+func TestAssistSystem_HasConversationalRules(t *testing.T) {
+	// The assist frame is conversation-first: short by default, asks when intent is
+	// unclear, and gates the save offer behind explicit confirmation.
 	prompt := prompts.AssistSystem(nil, nil)
 
-	assert.Contains(t, prompt, "1 a 3 acciones")
-	assert.Contains(t, prompt, "3 niveles de diferenciación")
+	assert.Contains(t, prompt, "breve y al grano")
+	assert.Contains(t, prompt, "una sola pregunta")
 	assert.Contains(t, prompt, "rioplatense")
-	assert.Contains(t, prompt, "EJEMPLO DE BUENA RESPUESTA", "incluye el few-shot estático")
+	assert.Contains(t, prompt, "guarde como recurso", "ofrece guardar solo tras confirmación")
+	assert.Contains(t, prompt, "EJEMPLOS DE CONVERSACIÓN", "incluye el few-shot conversacional")
+}
+
+func TestAssistSystem_DoesNotMandateDifferentiationMatrix(t *testing.T) {
+	// The old prompt forced a 3-level matrix on every turn; the new one offers it
+	// only when an adaptation is actually being built.
+	prompt := prompts.AssistSystem(nil, nil)
+
+	assert.NotContains(t, prompt, "obligatorio")
+	assert.NotContains(t, prompt, "al menos 3 niveles")
 }
 
 func TestAssistSystem_ListsStudentsAndDevices(t *testing.T) {
@@ -57,14 +68,46 @@ func TestAssistSystem_OmitsRosterWhenNoStudents(t *testing.T) {
 }
 
 func TestAssistSystem_EmbedsOutOfScopeOffRamp(t *testing.T) {
-	// El marco le indica al modelo el wording exacto del paso al costado (T-6.3).
+	// The frame supplies the model with the exact off-ramp wording.
 	prompt := prompts.AssistSystem(nil, nil)
 
 	assert.Contains(t, prompt, prompts.OffRampOutOfScope)
 }
 
+func TestFrameworks_ShareSinglePersona(t *testing.T) {
+	// Identity is declared once (RolAlizia) and composed into every surface — assist and
+	// recommend must carry the exact same persona, not divergent role headers.
+	assistPrompt := prompts.AssistSystem(nil, nil)
+	recommendPrompt := prompts.RecommendSystem(nil)
+
+	assert.Contains(t, assistPrompt, prompts.RolAlizia)
+	assert.Contains(t, recommendPrompt, prompts.RolAlizia)
+	// A distinctive voice line from the unified persona is present in both.
+	assert.Contains(t, assistPrompt, "Cálida pero medida")
+	assert.Contains(t, recommendPrompt, "Cálida pero medida")
+}
+
+func TestFrameworks_NoDivergentIdentityHeader(t *testing.T) {
+	// The old per-builder identity line must be gone — there is no second "Sos Alizia".
+	assistPrompt := prompts.AssistSystem(nil, nil)
+	recommendPrompt := prompts.RecommendSystem(nil)
+
+	assert.NotContains(t, assistPrompt, "asistente de inclusión educativa en tiempo real")
+	assert.NotContains(t, recommendPrompt, "asistente de inclusión educativa en tiempo real")
+}
+
+func TestPedagogicalGuidelines_ReferencePresent(t *testing.T) {
+	// The provisional DUA 3.0 frame (CAST) seeds the pedagogical layer until the official
+	// MVP source arrives. Its three principles must reach both surfaces.
+	for _, prompt := range []string{prompts.AssistSystem(nil, nil), prompts.RecommendSystem(nil)} {
+		assert.Contains(t, prompt, "Compromiso")
+		assert.Contains(t, prompt, "Representación")
+		assert.Contains(t, prompt, "Acción y expresión")
+	}
+}
+
 func TestOffRamp_WordingDoesNotDiagnose(t *testing.T) {
-	// El paso al costado deriva, nunca diagnostica (HU-6).
+	// Off-ramp must redirect, never diagnose.
 	assert.NotEmpty(t, prompts.OffRampInvalidOutput)
 	assert.Contains(t, prompts.OffRampOutOfScope, "derivar")
 	assert.Contains(t, prompts.OffRampOutOfScope, "No puedo")

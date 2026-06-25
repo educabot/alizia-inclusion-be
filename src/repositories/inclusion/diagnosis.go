@@ -17,9 +17,9 @@ func NewDiagnosisRepo(db *gorm.DB) providers.DiagnosisProvider {
 	return &diagnosisRepo{db: db}
 }
 
-// ListByStudentProfile devuelve los diagnósticos de un perfil, con la etiqueta
-// del catálogo precargada. El filtrado multi-tenant ya está garantizado por la
-// cadena student → student_profile que resolvió el caller.
+// ListByStudentProfile returns the diagnoses for a profile, with the catalogue
+// label preloaded. Multi-tenant scoping is guaranteed upstream via the
+// student → student_profile chain resolved by the caller.
 func (r *diagnosisRepo) ListByStudentProfile(ctx context.Context, studentProfileID int64) ([]entities.StudentDiagnosis, error) {
 	var diagnoses []entities.StudentDiagnosis
 	err := r.db.WithContext(ctx).

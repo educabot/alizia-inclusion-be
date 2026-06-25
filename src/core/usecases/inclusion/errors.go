@@ -1,10 +1,18 @@
 package inclusion
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
 )
+
+// errToolUnavailable indicates a tool was invoked but its backing provider
+// dependency was not wired into the dispatcher.
+var errToolUnavailable = errors.New("no disponible")
+
+// errUnknownTool indicates the model requested a tool the dispatcher does not implement.
+var errUnknownTool = errors.New("unknown tool")
 
 var (
 	errOrgIDRequired          = fmt.Errorf("%w: organization_id is required", providers.ErrValidation)
@@ -21,3 +29,9 @@ var (
 	errInvalidStatus          = fmt.Errorf("%w: status must be one of: en_curso, probado, funciono, para_ajustar", providers.ErrValidation)
 	errInvalidExportFormat    = fmt.Errorf("%w: format must be one of: md, pdf", providers.ErrValidation)
 )
+
+// wrapServiceUnavailable wraps a downstream AI/service failure as
+// ErrServiceUnavailable while preserving the original error text for logs.
+func wrapServiceUnavailable(err error) error {
+	return fmt.Errorf("%w: %v", providers.ErrServiceUnavailable, err)
+}

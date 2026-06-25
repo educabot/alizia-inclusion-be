@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
-	mockproviders "github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
+	mockproviders "github.com/educabot/alizia-inclusion-be/src/mocks/providers"
 	"github.com/educabot/alizia-inclusion-be/src/core/usecases/dashboard"
 	"github.com/educabot/alizia-inclusion-be/src/testutil"
 )

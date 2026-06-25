@@ -1,6 +1,7 @@
 package entrypoints
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/educabot/team-ai-toolkit/web"
@@ -61,4 +62,23 @@ func (c *InclusionContainer) HandleGetChatHistory(req web.Request) web.Response 
 		return rest.HandleError(err)
 	}
 	return web.OK(mapConversations(result))
+}
+
+// HandleGetConversation returns a single conversation with its messages, scoped to
+// the org. Used to resume the conversation that originated a saved resource
+// (adaptation.source_conversation_id).
+func (c *InclusionContainer) HandleGetConversation(req web.Request) web.Response {
+	id, err := strconv.ParseInt(req.Param("id"), 10, 64)
+	if err != nil {
+		return rest.HandleError(err)
+	}
+
+	result, err := c.GetConversation.Execute(req.Context(), inclusion.GetConversationRequest{
+		OrgID:          middleware.OrgID(req),
+		ConversationID: id,
+	})
+	if err != nil {
+		return rest.HandleError(err)
+	}
+	return web.OK(mapConversation(*result))
 }

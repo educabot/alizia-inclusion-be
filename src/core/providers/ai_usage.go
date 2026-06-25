@@ -14,7 +14,7 @@ type AIUsageRecord struct {
 	PromptTokens     int
 	CompletionTokens int
 	TotalTokens      int
-	// Traza por turno (HU-6, T-6.5). ContextSnapshot debe contener solo IDs (sin PII).
+	// Traza por turno. ContextSnapshot debe contener solo IDs (sin PII).
 	Model           string
 	LatencyMs       int
 	ToolCalls       int

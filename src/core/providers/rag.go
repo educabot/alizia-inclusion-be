@@ -8,9 +8,9 @@ import (
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 )
 
-// ContentSearchResult es un chunk encontrado por el RAG, con su preview y un
-// score de relevancia (mayor = más pertinente). Lleva metadata del documento
-// padre para que la LLM decida si profundizar con get_content.
+// ContentSearchResult is a RAG-retrieved chunk with its preview and a
+// relevance score (higher = more relevant). Carries parent-document metadata
+// so the LLM can decide whether to fetch the full content via get_content.
 type ContentSearchResult struct {
 	ContentID int64    `json:"content_id"`
 	ChunkID   int64    `json:"chunk_id"`
@@ -21,13 +21,13 @@ type ContentSearchResult struct {
 	Score     float64  `json:"score"`
 }
 
-// PedagogicalContentProvider — RAG de contenido pedagógico (Capa E). Búsqueda
-// keyword/full-text en el MVP; embeddings quedan inertes (Futuro).
+// PedagogicalContentProvider is the RAG interface for pedagogical content (Layer E).
+// Keyword/full-text search in MVP; embedding-based search is deferred.
 type PedagogicalContentProvider interface {
-	// SearchChunks busca por keywords/full-text y devuelve los chunks más
-	// relevantes primero. Sin coincidencias devuelve slice vacío (no error):
-	// la LLM debe caer a los lineamientos base sin inventar.
+	// SearchChunks returns the most relevant chunks for a keyword/full-text query,
+	// ordered by descending score. Returns an empty slice (not an error) when
+	// nothing matches — the LLM must fall back to base guidelines, not hallucinate.
 	SearchChunks(ctx context.Context, orgID uuid.UUID, query string, limit int) ([]ContentSearchResult, error)
-	// GetContent trae un documento con sus chunks (chunk/documento completo).
+	// GetContent retrieves a document together with all its chunks.
 	GetContent(ctx context.Context, orgID uuid.UUID, contentID int64) (*entities.PedagogicalContent, error)
 }

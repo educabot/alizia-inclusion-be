@@ -11,8 +11,9 @@ import (
 
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
-	mockproviders "github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
+	mockproviders "github.com/educabot/alizia-inclusion-be/src/mocks/providers"
 	"github.com/educabot/alizia-inclusion-be/src/core/usecases/inclusion"
+	"github.com/educabot/alizia-inclusion-be/src/core/usecases/inclusion/prompts"
 	"github.com/educabot/alizia-inclusion-be/src/testutil"
 )
 
@@ -41,7 +42,7 @@ func newRecommendMocks() recommendMocks {
 		conversations: new(mockproviders.MockConversationProvider),
 		usage:         new(mockproviders.MockAIUsageProvider),
 	}
-	// La traza por turno (HU-6, T-6.5) se graba best-effort; opcional para los tests.
+	// Per-turn usage trace is best-effort; tests treat it as optional.
 	m.usage.On("Record", mock.Anything, mock.AnythingOfType("providers.AIUsageRecord")).Return(nil).Maybe()
 	return m
 }
@@ -85,6 +86,20 @@ func TestRecommendDevice_ReturnsRecommendationWithDevice(t *testing.T) {
 	assert.Equal(t, "Timer para fracciones", got.Adaptation.Title)
 	m.ai.AssertExpectations(t)
 	m.students.AssertExpectations(t)
+}
+
+func TestRecommendDevice_GuardrailRejectsHallucinatedDeviceID(t *testing.T) {
+	// The model cites a DEVICE_ID not in the catalog (only ID 1 exists):
+	// the guardrail discards it and falls back to the off-ramp.
+	aiResp := `Te recomiendo el Dispositivo Mágico [DEVICE_ID:999] para esto.`
+	m := recommendDeviceMocks(t, aiResp, nil)
+
+	got, err := m.usecase().Execute(context.Background(), baseRecommendRequest)
+
+	require.NoError(t, err)
+	assert.Equal(t, prompts.OffRampInvalidOutput, got.Response)
+	assert.Nil(t, got.DeviceID, "no se expone el device alucinado")
+	assert.Nil(t, got.Adaptation)
 }
 
 func TestRecommendDevice_HandlesResponseWithoutMarkers(t *testing.T) {

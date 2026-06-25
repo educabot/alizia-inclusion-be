@@ -11,8 +11,8 @@ type Student struct {
 	OrganizationID uuid.UUID `json:"organization_id"`
 	ClassroomID    int64     `json:"classroom_id"`
 	Name           string    `json:"name"`
-	// Campos enriquecidos (HU-2, todos opcionales): doble granularidad de edad
-	// y nombre preferido para personalizar la respuesta sin exigir datos.
+	// Enriched fields (all optional): dual age granularity and preferred name
+	// to personalise AI responses without requiring complete data.
 	Birthdate     *time.Time      `json:"birthdate,omitempty"`
 	AgeRange      *string         `json:"age_range,omitempty"`
 	GradeLevel    *string         `json:"grade_level,omitempty"`

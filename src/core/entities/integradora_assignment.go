@@ -6,9 +6,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// IntegradoraAssignment liga una maestra integradora (user) con un alumno
-// asignado. Habilita que el motor de contexto sepa qué alumnos puede trabajar
-// la integradora. El RBAC queda fuera de scope (otro equipo).
+// IntegradoraAssignment links an integration teacher (user) to an assigned
+// student, allowing the context engine to know which students the teacher
+// may work with. RBAC enforcement is out of scope for this entity.
 type IntegradoraAssignment struct {
 	ID             int64     `json:"id" gorm:"primaryKey"`
 	OrganizationID uuid.UUID `json:"organization_id"`

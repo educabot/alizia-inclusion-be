@@ -11,7 +11,7 @@ import (
 
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
-	mockproviders "github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
+	mockproviders "github.com/educabot/alizia-inclusion-be/src/mocks/providers"
 )
 
 func TestInclusionDispatcher_SearchContentReturnsRankedResults(t *testing.T) {
@@ -105,9 +105,8 @@ func TestInclusionDispatcher_ContentToolsUnavailableWhenProviderNil(t *testing.T
 	})
 
 	// Assert
-	require.Error(t, errSearch)
-	require.Error(t, errGet)
-	assert.Contains(t, errSearch.Error(), "no disponible")
+	require.ErrorIs(t, errSearch, errToolUnavailable)
+	require.ErrorIs(t, errGet, errToolUnavailable)
 }
 
 func TestInclusionTools_ExposeSearchAndGetContent(t *testing.T) {
