@@ -6,6 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+
+	"github.com/educabot/alizia-inclusion-be/src/observability"
 )
 
 const RequestIDKey = "request_id"
@@ -18,6 +20,9 @@ func RequestLogger() gin.HandlerFunc {
 		}
 		c.Set(RequestIDKey, requestID)
 		c.Header("X-Request-ID", requestID)
+		// Propagamos el request_id al context.Context para que los logs de los usecases
+		// (vía slog.*Context) queden correlacionados por el ContextHandler.
+		c.Request = c.Request.WithContext(observability.WithRequestID(c.Request.Context(), requestID))
 
 		start := time.Now()
 		path := c.Request.URL.Path

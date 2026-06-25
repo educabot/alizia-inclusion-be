@@ -6,10 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
+	"github.com/educabot/alizia-inclusion-be/src/observability"
 )
 
 type AzureClient struct {
@@ -104,6 +107,14 @@ func (a *AzureClient) doRequest(ctx context.Context, req azureRequest) (*azureRe
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("api-key", a.apiKey)
 
+	slog.InfoContext(ctx, "ai.request",
+		"deployment", a.deployment,
+		"messages", len(req.Messages),
+		"tools", len(req.Tools),
+		observability.Text("payload", messagesDigest(req.Messages)),
+	)
+
+	start := time.Now()
 	resp, err := a.httpClient.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("do request: %w", err)
@@ -128,7 +139,35 @@ func (a *AzureClient) doRequest(ctx context.Context, req azureRequest) (*azureRe
 		return nil, fmt.Errorf("azure openai: %s (code: %s)", azResp.Error.Message, azResp.Error.Code)
 	}
 
+	content, toolCalls := "", 0
+	if len(azResp.Choices) > 0 {
+		content = azResp.Choices[0].Message.Content
+		toolCalls = len(azResp.Choices[0].Message.ToolCalls)
+	}
+	tokens := 0
+	if azResp.Usage != nil {
+		tokens = azResp.Usage.TotalTokens
+	}
+	slog.InfoContext(ctx, "ai.response",
+		"deployment", a.deployment,
+		"status", resp.StatusCode,
+		"duration_ms", time.Since(start).Milliseconds(),
+		"total_tokens", tokens,
+		"tool_calls", toolCalls,
+		observability.Text("content", content),
+	)
+
 	return &azResp, nil
+}
+
+// messagesDigest serializa los mensajes enviados al modelo (rol + contenido) para el
+// log verbose de trazabilidad del prompt.
+func messagesDigest(msgs []azureMessage) string {
+	var b strings.Builder
+	for i := range msgs {
+		fmt.Fprintf(&b, "[%s] %s\n", msgs[i].Role, msgs[i].Content)
+	}
+	return b.String()
 }
 
 func (a *AzureClient) Generate(ctx context.Context, params providers.GenerateParams) (string, error) {

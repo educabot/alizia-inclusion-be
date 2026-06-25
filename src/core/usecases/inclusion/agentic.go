@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/google/uuid"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
+	"github.com/educabot/alizia-inclusion-be/src/observability"
 )
 
 // maxAgenticIterations caps how many tool-calling rounds a single chat turn may
@@ -64,6 +66,8 @@ func runAgenticChat(
 			return resp, nil
 		}
 
+		slog.InfoContext(ctx, "chat.agentic_iteration", "tool_calls", len(resp.ToolCalls))
+
 		// Echo the assistant turn (with its tool calls) so the model keeps context.
 		messages = append(messages, providers.ChatMessage{
 			Role:      "assistant",
@@ -73,9 +77,13 @@ func runAgenticChat(
 
 		// Execute each requested tool and append its result as a tool message.
 		for _, call := range resp.ToolCalls {
+			slog.InfoContext(ctx, "chat.tool_call", "tool", call.Name, observability.Text("args", call.Arguments))
 			result, derr := dispatcher.Dispatch(ctx, orgID, call)
 			if derr != nil {
 				result = fmt.Sprintf(`{"error":%q}`, derr.Error())
+				slog.WarnContext(ctx, "chat.tool_error", "tool", call.Name, "error", derr.Error())
+			} else {
+				slog.InfoContext(ctx, "chat.tool_result", "tool", call.Name, "result_len", len(result), observability.Text("result", result))
 			}
 			messages = append(messages, providers.ChatMessage{
 				Role:       "tool",

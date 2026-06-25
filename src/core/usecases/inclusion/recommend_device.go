@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
+	"github.com/educabot/alizia-inclusion-be/src/observability"
 )
 
 type RecommendDeviceRequest struct {
@@ -64,6 +65,10 @@ func (uc *recommendDeviceImpl) Execute(ctx context.Context, req RecommendDeviceR
 	if err := req.Validate(); err != nil {
 		return nil, err
 	}
+
+	// Correlación de logs del turno (el prompt/respuesta se trazan en el cliente AI).
+	ctx = observability.WithOrg(ctx, req.OrgID)
+	ctx = observability.WithUser(ctx, req.UserID)
 
 	student, err := uc.students.GetStudent(ctx, req.OrgID, req.StudentID)
 	if err != nil {
