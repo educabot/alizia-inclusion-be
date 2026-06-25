@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/lib/pq"
@@ -68,6 +69,20 @@ func (r *ragSearchRepo) HybridSearch(ctx context.Context, spec providers.HybridS
 	if err != nil {
 		return nil, err
 	}
+
+	var topScore float64
+	if len(rows) > 0 {
+		topScore = rows[0].Score
+	}
+	slog.InfoContext(ctx, "rag.search",
+		"terms", spec.Terms,
+		"resource_id", resourceID,
+		"limit", limit,
+		"offset", offset,
+		"candidate_limit", candidateLimit,
+		"hits", len(rows),
+		"top_score", topScore,
+	)
 
 	hits := make([]providers.ChunkHit, len(rows))
 	for i := range rows {

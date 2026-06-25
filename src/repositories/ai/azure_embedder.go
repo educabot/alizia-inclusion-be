@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
 )
@@ -54,8 +56,10 @@ func (e *AzureEmbedder) EmbedQuery(ctx context.Context, text string) ([]float32,
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("api-key", e.apiKey)
 
+	start := time.Now()
 	resp, err := e.httpClient.Do(req)
 	if err != nil {
+		slog.ErrorContext(ctx, "embed.request", "deployment", e.deployment, "chars", len([]rune(text)), "error", err.Error())
 		return nil, fmt.Errorf("do embedding request: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
@@ -83,5 +87,11 @@ func (e *AzureEmbedder) EmbedQuery(ctx context.Context, text string) ([]float32,
 	if len(parsed.Data) == 0 || len(parsed.Data[0].Embedding) == 0 {
 		return nil, fmt.Errorf("azure embeddings: empty embedding in response")
 	}
+	slog.InfoContext(ctx, "embed.request",
+		"deployment", e.deployment,
+		"chars", len([]rune(text)),
+		"dims", len(parsed.Data[0].Embedding),
+		"duration_ms", time.Since(start).Milliseconds(),
+	)
 	return parsed.Data[0].Embedding, nil
 }

@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/google/uuid"
 
+	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
+	"github.com/educabot/alizia-inclusion-be/src/observability"
 )
 
 type AssistClassroomRequest struct {
@@ -61,10 +64,28 @@ func NewAssistClassroom(ai providers.AIClient, students providers.StudentProvide
 	return &assistClassroomImpl{ai: ai, students: students, devices: devices, conversations: conversations, summaries: summaries, adaptations: adaptations, content: content, embedder: embedder, rag: rag, usage: usage, agentic: agentic}
 }
 
+// studentsDigest arma un resumen legible de los alumnos del aula para el log verbose.
+func studentsDigest(students []entities.Student) string {
+	parts := make([]string, len(students))
+	for i := range students {
+		s := &students[i]
+		diff := ""
+		if s.Profile != nil && len(s.Profile.Difficulties) > 0 {
+			diff = " (" + strings.Join(s.Profile.Difficulties, ", ") + ")"
+		}
+		parts[i] = fmt.Sprintf("[%d]%s%s", s.ID, s.Name, diff)
+	}
+	return strings.Join(parts, "; ")
+}
+
 func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomRequest) (*AssistClassroomResponse, error) {
 	if err := req.Validate(); err != nil {
 		return nil, err
 	}
+
+	// Correlación: todos los logs de este turno llevan org/user (y el request_id del ctx).
+	ctx = observability.WithOrg(ctx, req.OrgID)
+	ctx = observability.WithUser(ctx, req.UserID)
 
 	devices, err := uc.devices.ListDevices(ctx, req.OrgID, nil)
 	if err != nil {
@@ -72,6 +93,14 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	}
 
 	allStudents, _ := uc.students.ListByClassroom(ctx, req.OrgID, req.ClassroomID)
+
+	slog.InfoContext(ctx, "chat.context_loaded",
+		"mode", req.Mode,
+		"classroom_id", req.ClassroomID,
+		"students_count", len(allStudents),
+		"devices_count", len(devices),
+		observability.Text("students", studentsDigest(allStudents)),
+	)
 
 	var systemPrompt string
 	if req.Mode == "guided" {
@@ -86,11 +115,19 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	messages = append(messages, providers.ChatMessage{Role: "user", Content: req.Message})
 	messages = capMessages(messages, defaultMaxHistoryTokens)
 
+	slog.InfoContext(ctx, "chat.prompt_built",
+		"mode", req.Mode,
+		"agentic", uc.agentic,
+		"history_len", len(req.History),
+		observability.Text("system_prompt", systemPrompt),
+		observability.Text("user_message", req.Message),
+	)
+
 	var tools []providers.ToolDefinition
 	if uc.agentic {
 		tools = inclusionTools()
 	}
-	dispatcher := inclusionDispatcher{students: uc.students, devices: uc.devices, summaries: uc.summaries, adaptations: uc.adaptations, content: uc.content}
+	dispatcher := inclusionDispatcher{students: uc.students, devices: uc.devices, summaries: uc.summaries, adaptations: uc.adaptations, content: uc.content, embedder: uc.embedder, rag: uc.rag}
 
 	resp, err := runAgenticChat(ctx, uc.ai, messages, tools, dispatcher, req.OrgID, maxAgenticIterations)
 	if err != nil {
@@ -111,6 +148,25 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 		slog.WarnContext(ctx, "assist_classroom: persist turn failed", "error", persistErr, "user_id", req.UserID, "mode", req.Mode)
 		convID = req.ConversationID
 	}
+
+	var idStudent, idDevice, totalTokens int64
+	if studentID != nil {
+		idStudent = *studentID
+	}
+	if deviceID != nil {
+		idDevice = *deviceID
+	}
+	if resp.Usage != nil {
+		totalTokens = int64(resp.Usage.TotalTokens)
+	}
+	slog.InfoContext(ctx, "chat.turn_done",
+		"conversation_id", convID,
+		"identified_student", idStudent,
+		"recommended_device", idDevice,
+		"has_adaptation", adaptation != nil,
+		"total_tokens", totalTokens,
+		observability.Text("response", cleaned),
+	)
 
 	return &AssistClassroomResponse{
 		Response:          cleaned,

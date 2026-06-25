@@ -3,9 +3,11 @@ package inclusion
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
+	"github.com/educabot/alizia-inclusion-be/src/observability"
 )
 
 const defaultHybridSearchLimit = 5
@@ -56,6 +58,13 @@ func (uc *hybridSearchContentImpl) Execute(ctx context.Context, req HybridSearch
 	if limit <= 0 {
 		limit = defaultHybridSearchLimit
 	}
+
+	slog.InfoContext(ctx, "rag.request",
+		observability.Text("question", req.SemanticQuestion),
+		"terms", req.Terms,
+		"limit", limit,
+		"offset", req.Offset,
+	)
 
 	embedding, err := uc.embedder.EmbedQuery(ctx, req.SemanticQuestion)
 	if err != nil {
