@@ -24,6 +24,6 @@ type Device struct {
 	Stage              *int16           `json:"stage,omitempty"`
 	IsActive           bool             `json:"is_active" gorm:"default:true"`
 	Ramp               *Ramp            `json:"ramp,omitempty" gorm:"foreignKey:RampID"`
-	Resources          []DeviceResource `json:"-" gorm:"foreignKey:DeviceID"`
+	Resources          []DeviceResource `json:"downloads,omitempty" gorm:"foreignKey:DeviceID"`
 	TimeTrackedEntity
 }

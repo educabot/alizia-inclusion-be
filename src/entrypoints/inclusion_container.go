@@ -13,6 +13,7 @@ type InclusionContainer struct {
 	OpenSession              inclusionuc.OpenSession
 	BuildPromptContext       inclusionuc.BuildPromptContext
 	SearchPedagogicalContent inclusionuc.SearchPedagogicalContent
+	HybridSearchContent      inclusionuc.HybridSearchContent
 
 	ListStudents            inclusionuc.ListStudents
 	CreateStudent           inclusionuc.CreateStudent

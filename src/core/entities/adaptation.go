@@ -5,7 +5,7 @@ import "github.com/google/uuid"
 type Adaptation struct {
 	ID                  int64     `json:"id" gorm:"primaryKey"`
 	OrganizationID      uuid.UUID `json:"organization_id"`
-	StudentID           int64     `json:"student_id"`
+	StudentID           *int64    `json:"student_id,omitempty"`
 	TeacherID           int64     `json:"teacher_id"`
 	DeviceID            *int64    `json:"device_id,omitempty"`
 	Title               string    `json:"title" gorm:"default:''"`

@@ -36,7 +36,10 @@ func studentName(a *entities.Adaptation) string {
 	if a.Student != nil && a.Student.Name != "" {
 		return a.Student.Name
 	}
-	return fmt.Sprintf("Alumno #%d", a.StudentID)
+	if a.StudentID == nil {
+		return "Situación general"
+	}
+	return fmt.Sprintf("Alumno #%d", *a.StudentID)
 }
 
 func teacherName(a *entities.Adaptation) string {

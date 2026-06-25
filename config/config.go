@@ -13,6 +13,13 @@ type Config struct {
 	AzureOpenAIEndpoint string
 	AzureOpenAIModel    string
 
+	// Azure embeddings (búsqueda híbrida RAG). Recurso Azure potencialmente distinto
+	// del de chat, por eso endpoint/key/deployment propios. EmbeddingDim ya existe.
+	AzureEmbeddingEndpoint   string
+	AzureEmbeddingAPIKey     string
+	AzureEmbeddingDeployment string
+	AzureEmbeddingAPIVersion string
+
 	JWTPublicKey string
 
 	DBMaxOpenConns    int
@@ -49,6 +56,11 @@ func Load() *Config {
 		AzureOpenAIKey:      bcfg.EnvOr("AZURE_OPENAI_API_KEY", ""),
 		AzureOpenAIEndpoint: bcfg.EnvOr("AZURE_OPENAI_ENDPOINT", ""),
 		AzureOpenAIModel:    bcfg.EnvOr("AZURE_OPENAI_MODEL", "gpt-4o-mini"),
+
+		AzureEmbeddingEndpoint:   bcfg.EnvOr("AZURE_OPENAI_EMBEDDING_ENDPOINT", ""),
+		AzureEmbeddingAPIKey:     bcfg.EnvOr("AZURE_OPENAI_EMBEDDING_API_KEY", ""),
+		AzureEmbeddingDeployment: bcfg.EnvOr("AZURE_OPENAI_EMBEDDING_DEPLOYMENT", "text-embedding-3-small"),
+		AzureEmbeddingAPIVersion: bcfg.EnvOr("AZURE_OPENAI_EMBEDDING_API_VERSION", "2024-02-01"),
 
 		// AUTH_PUBLIC_KEY es el nombre nuevo (auth-service actualizado); JWT_PUBLIC_KEY queda como fallback.
 		JWTPublicKey: bcfg.EnvOr("AUTH_PUBLIC_KEY", bcfg.EnvOr("JWT_PUBLIC_KEY", "")),

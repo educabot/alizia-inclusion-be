@@ -15,7 +15,7 @@ import (
 
 type adaptationResponse struct {
 	ID                  int64    `json:"id"`
-	StudentID           int64    `json:"student_id"`
+	StudentID           *int64   `json:"student_id,omitempty"`
 	StudentName         string   `json:"student_name"`
 	TeacherID           int64    `json:"teacher_id"`
 	TeacherName         string   `json:"teacher_name"`
@@ -80,7 +80,7 @@ func mapAdaptations(as []entities.Adaptation) []adaptationResponse {
 }
 
 type createAdaptationBody struct {
-	StudentID           int64   `json:"student_id"`
+	StudentID           *int64  `json:"student_id"`
 	DeviceID            *int64  `json:"device_id"`
 	DeviceIDs           []int64 `json:"device_ids"`
 	Title               *string `json:"title"`

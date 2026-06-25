@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -184,6 +185,33 @@ func inclusionTools() []providers.ToolDefinition {
 			},
 		},
 		{
+			Name:        "search_content_hibrido",
+			Description: "Búsqueda semántica híbrida (vector + texto + conceptos) en el corpus de material pedagógico. Pasá la pregunta del docente COMPLETA en semantic_question (se usa para el embedding) y, opcionalmente, palabras clave en terms para reforzar. Devuelve los fragmentos más relevantes con score, fuente y un extracto. Si vuelve vacío, no inventes.",
+			Parameters: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"semantic_question": map[string]any{
+						"type":        "string",
+						"description": "La pregunta del docente completa, en lenguaje natural.",
+					},
+					"terms": map[string]any{
+						"type":        "array",
+						"items":       map[string]any{"type": "string"},
+						"description": "Palabras o locuciones clave para reforzar (temas, discapacidades, nombres de guías).",
+					},
+					"resource_id": map[string]any{
+						"type":        "integer",
+						"description": "Opcional: acota la búsqueda a un documento puntual por su id.",
+					},
+					"limit": map[string]any{
+						"type":        "integer",
+						"description": "Máximo de fragmentos a devolver (default 5).",
+					},
+				},
+				"required": []string{"semantic_question"},
+			},
+		},
+		{
 			Name:        "get_content",
 			Description: "Trae el contenido pedagógico completo de un documento por su id (obtenido de search_content), con todos sus fragmentos.",
 			Parameters: map[string]any{
@@ -209,6 +237,8 @@ type inclusionDispatcher struct {
 	summaries   providers.ConversationSummaryProvider
 	adaptations providers.AdaptationProvider
 	content     providers.PedagogicalContentProvider
+	embedder    providers.Embedder
+	rag         providers.RAGSearchProvider
 }
 
 // defaultContentSearchLimit acota cuántos chunks devuelve el RAG por búsqueda.
@@ -363,9 +393,73 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 		}
 		return marshalToolResult(content)
 
+	case "search_content_hibrido":
+		if d.rag == nil || d.embedder == nil {
+			return "", fmt.Errorf("search_content_hibrido no disponible")
+		}
+		var args struct {
+			SemanticQuestion string   `json:"semantic_question"`
+			Terms            []string `json:"terms"`
+			ResourceID       *int64   `json:"resource_id"`
+			Limit            int      `json:"limit"`
+		}
+		if err := json.Unmarshal([]byte(call.Arguments), &args); err != nil {
+			return "", fmt.Errorf("invalid arguments for search_content_hibrido: %w", err)
+		}
+		limit := args.Limit
+		if limit <= 0 {
+			limit = defaultContentSearchLimit
+		}
+		embedding, err := d.embedder.EmbedQuery(ctx, args.SemanticQuestion)
+		if err != nil {
+			return "", err
+		}
+		hits, err := d.rag.HybridSearch(ctx, providers.HybridSearchSpec{
+			ResourceID:       args.ResourceID,
+			SemanticQuestion: args.SemanticQuestion,
+			Terms:            args.Terms,
+			Limit:            limit,
+		}, embedding)
+		if err != nil {
+			return "", err
+		}
+		// Vista recortada para la LLM: sin el content completo, solo un extracto.
+		type chunkLite struct {
+			ResourceID int64    `json:"resource_id"`
+			Title      string   `json:"title"`
+			Score      float64  `json:"score"`
+			Pages      string   `json:"pages,omitempty"`
+			Summary    string   `json:"summary,omitempty"`
+			Concepts   []string `json:"concepts,omitempty"`
+			Snippet    string   `json:"snippet"`
+		}
+		out := make([]chunkLite, len(hits))
+		for i := range hits {
+			out[i] = chunkLite{
+				ResourceID: hits[i].ResourceID,
+				Title:      hits[i].Title,
+				Score:      hits[i].Score,
+				Pages:      fmt.Sprintf("%d-%d", hits[i].PageStart, hits[i].PageEnd),
+				Summary:    hits[i].Summary,
+				Concepts:   hits[i].Concepts,
+				Snippet:    snippet(hits[i].Content, 650),
+			}
+		}
+		return marshalToolResult(map[string]any{"results": out})
+
 	default:
 		return "", fmt.Errorf("unknown tool: %s", call.Name)
 	}
+}
+
+// snippet normaliza espacios y recorta a maxRunes para no inflar el contexto de la LLM.
+func snippet(text string, maxRunes int) string {
+	clean := strings.Join(strings.Fields(text), " ")
+	runes := []rune(clean)
+	if len(runes) <= maxRunes {
+		return clean
+	}
+	return string(runes[:maxRunes]) + "..."
 }
 
 func marshalToolResult(v any) (string, error) {

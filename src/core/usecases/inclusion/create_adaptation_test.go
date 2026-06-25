@@ -31,7 +31,7 @@ func TestCreateAdaptation_CreatesAdaptationWithoutDevices(t *testing.T) {
 
 	result, err := inclusion.NewCreateAdaptation(adaptations).Execute(ctx, inclusion.CreateAdaptationRequest{
 		OrgID:          testutil.TestOrgID,
-		StudentID:      1,
+		StudentID:      testutil.Ptr(int64(1)),
 		TeacherID:      1,
 		Subject:        "Matematicas",
 		AdaptationType: "actividad_adaptada",
@@ -60,7 +60,7 @@ func TestCreateAdaptation_CreatesAdaptationWithDevices(t *testing.T) {
 
 	result, err := inclusion.NewCreateAdaptation(adaptations).Execute(ctx, inclusion.CreateAdaptationRequest{
 		OrgID:          testutil.TestOrgID,
-		StudentID:      1,
+		StudentID:      testutil.Ptr(int64(1)),
 		TeacherID:      1,
 		Subject:        "Matematicas",
 		AdaptationType: "actividad_adaptada",
@@ -89,7 +89,7 @@ func TestCreateAdaptation_DefaultsAdaptationTypeAndPersistsTitleWhenTypeOmitted(
 
 	_, err := inclusion.NewCreateAdaptation(adaptations).Execute(ctx, inclusion.CreateAdaptationRequest{
 		OrgID:          testutil.TestOrgID,
-		StudentID:      1,
+		StudentID:      testutil.Ptr(int64(1)),
 		TeacherID:      1,
 		Title:          "Secuencia con apoyos visuales",
 		Subject:        "Matematicas",
@@ -108,7 +108,7 @@ func TestCreateAdaptation_RejectsNilOrgID(t *testing.T) {
 
 	_, err := inclusion.NewCreateAdaptation(adaptations).Execute(context.Background(), inclusion.CreateAdaptationRequest{
 		OrgID:     uuid.Nil,
-		StudentID: 1,
+		StudentID: testutil.Ptr(int64(1)),
 		TeacherID: 1,
 		Subject:   "Matematicas",
 	})
@@ -117,12 +117,40 @@ func TestCreateAdaptation_RejectsNilOrgID(t *testing.T) {
 	adaptations.AssertNotCalled(t, "Create", mock.Anything, mock.Anything)
 }
 
-func TestCreateAdaptation_RejectsZeroStudentID(t *testing.T) {
+func TestCreateAdaptation_AllowsAdaptationWithoutStudent(t *testing.T) {
+	// Recurso asociado a una situación, sin alumno registrado (student_id nil).
+	adaptations := new(mockproviders.MockAdaptationProvider)
+	ctx := context.Background()
+	adaptations.On("Create", ctx, mock.AnythingOfType("*entities.Adaptation")).
+		Run(func(args mock.Arguments) {
+			a, ok := args.Get(1).(*entities.Adaptation)
+			require.True(t, ok)
+			a.ID = 7
+		}).
+		Return(nil)
+	got := testutil.NewAdaptation(7, 1, 1)
+	got.StudentID = nil
+	adaptations.On("Get", ctx, testutil.TestOrgID, int64(7)).Return(&got, nil)
+
+	result, err := inclusion.NewCreateAdaptation(adaptations).Execute(ctx, inclusion.CreateAdaptationRequest{
+		OrgID:     testutil.TestOrgID,
+		StudentID: nil,
+		TeacherID: 1,
+		Subject:   "Situación de aula",
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Nil(t, result.StudentID)
+	adaptations.AssertExpectations(t)
+}
+
+func TestCreateAdaptation_RejectsExplicitZeroStudentID(t *testing.T) {
 	adaptations := new(mockproviders.MockAdaptationProvider)
 
 	_, err := inclusion.NewCreateAdaptation(adaptations).Execute(context.Background(), inclusion.CreateAdaptationRequest{
 		OrgID:     testutil.TestOrgID,
-		StudentID: 0,
+		StudentID: testutil.Ptr(int64(0)),
 		TeacherID: 1,
 		Subject:   "Matematicas",
 	})
@@ -136,9 +164,25 @@ func TestCreateAdaptation_RejectsZeroTeacherID(t *testing.T) {
 
 	_, err := inclusion.NewCreateAdaptation(adaptations).Execute(context.Background(), inclusion.CreateAdaptationRequest{
 		OrgID:     testutil.TestOrgID,
-		StudentID: 1,
+		StudentID: testutil.Ptr(int64(1)),
 		TeacherID: 0,
 		Subject:   "Matematicas",
+	})
+
+	assert.ErrorIs(t, err, providers.ErrValidation)
+	adaptations.AssertNotCalled(t, "Create", mock.Anything, mock.Anything)
+}
+
+func TestCreateAdaptation_RejectsInvalidType(t *testing.T) {
+	// GAP 2: un adaptation_type no vacío debe pertenecer al enum; si no, error de validación.
+	adaptations := new(mockproviders.MockAdaptationProvider)
+
+	_, err := inclusion.NewCreateAdaptation(adaptations).Execute(context.Background(), inclusion.CreateAdaptationRequest{
+		OrgID:          testutil.TestOrgID,
+		StudentID:      testutil.Ptr(int64(1)),
+		TeacherID:      1,
+		Subject:        "Matematicas",
+		AdaptationType: "tipo_invalido",
 	})
 
 	assert.ErrorIs(t, err, providers.ErrValidation)
@@ -150,7 +194,7 @@ func TestCreateAdaptation_RejectsEmptySubject(t *testing.T) {
 
 	_, err := inclusion.NewCreateAdaptation(adaptations).Execute(context.Background(), inclusion.CreateAdaptationRequest{
 		OrgID:     testutil.TestOrgID,
-		StudentID: 1,
+		StudentID: testutil.Ptr(int64(1)),
 		TeacherID: 1,
 		Subject:   "",
 	})

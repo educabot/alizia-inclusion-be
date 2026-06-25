@@ -51,12 +51,14 @@ type assistClassroomImpl struct {
 	summaries     providers.ConversationSummaryProvider
 	adaptations   providers.AdaptationProvider
 	content       providers.PedagogicalContentProvider
+	embedder      providers.Embedder
+	rag           providers.RAGSearchProvider
 	usage         providers.AIUsageProvider
 	agentic       bool
 }
 
-func NewAssistClassroom(ai providers.AIClient, students providers.StudentProvider, devices providers.DeviceProvider, conversations providers.ConversationProvider, summaries providers.ConversationSummaryProvider, adaptations providers.AdaptationProvider, content providers.PedagogicalContentProvider, usage providers.AIUsageProvider, agentic bool) AssistClassroom {
-	return &assistClassroomImpl{ai: ai, students: students, devices: devices, conversations: conversations, summaries: summaries, adaptations: adaptations, content: content, usage: usage, agentic: agentic}
+func NewAssistClassroom(ai providers.AIClient, students providers.StudentProvider, devices providers.DeviceProvider, conversations providers.ConversationProvider, summaries providers.ConversationSummaryProvider, adaptations providers.AdaptationProvider, content providers.PedagogicalContentProvider, embedder providers.Embedder, rag providers.RAGSearchProvider, usage providers.AIUsageProvider, agentic bool) AssistClassroom {
+	return &assistClassroomImpl{ai: ai, students: students, devices: devices, conversations: conversations, summaries: summaries, adaptations: adaptations, content: content, embedder: embedder, rag: rag, usage: usage, agentic: agentic}
 }
 
 func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomRequest) (*AssistClassroomResponse, error) {

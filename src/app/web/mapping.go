@@ -79,6 +79,9 @@ func ConfigureMappings(engine *gin.Engine, h *entrypoints.WebHandlerContainer, c
 	// RAG de contenido pedagógico (HU-3) — búsqueda keyword/full-text; sin LLM
 	api.POST("/inclusion/search-content", webgin.Adapt(h.Inclusion.HandleSearchContent))
 
+	// RAG híbrido (vector + texto + conceptos) sobre el corpus rag_*; sin LLM
+	api.POST("/inclusion/search-content/hybrid", webgin.Adapt(h.Inclusion.HandleHybridSearch))
+
 	// AI endpoints (rate-limited per organization)
 	api.POST("/inclusion/recommend", aiRateLimit, webgin.Adapt(h.Inclusion.HandleRecommendDevice))
 	api.POST("/inclusion/assist", aiRateLimit, webgin.Adapt(h.Inclusion.HandleAssistClassroom))

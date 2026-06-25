@@ -151,7 +151,7 @@ Table device_resources {
 Table adaptations {
   id bigserial [pk, increment]
   organization_id uuid [ref: > organizations.id, not null]
-  student_id bigint [ref: > students.id, not null] // ON DELETE CASCADE
+  student_id bigint [ref: > students.id, null] // ON DELETE CASCADE; nullable desde mig 000025 (recurso a una situación, sin alumno)
   teacher_id bigint [ref: > users.id, not null]
   device_id bigint [ref: > devices.id, null] // device principal (opcional)
   title varchar [default: ""] // agregado en mig 000012

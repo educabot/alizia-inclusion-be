@@ -100,7 +100,7 @@ func NewAdaptation(id, studentID, teacherID int64) entities.Adaptation {
 	return entities.Adaptation{
 		ID:             id,
 		OrganizationID: TestOrgID,
-		StudentID:      studentID,
+		StudentID:      &studentID,
 		TeacherID:      teacherID,
 		Subject:        "Matematicas",
 		Status:         "en_curso",

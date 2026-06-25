@@ -28,6 +28,7 @@ func NewHandlers(uc *UseCases, cfg *config.Config) *entrypoints.WebHandlerContai
 			OpenSession:              uc.OpenSession,
 			BuildPromptContext:       uc.BuildPromptContext,
 			SearchPedagogicalContent: uc.SearchPedagogicalContent,
+			HybridSearchContent:      uc.HybridSearchContent,
 			ListStudents:             uc.ListStudents,
 			CreateStudent:            uc.CreateStudent,
 			UpdateStudent:            uc.UpdateStudent,

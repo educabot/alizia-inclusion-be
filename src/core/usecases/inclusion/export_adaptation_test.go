@@ -25,7 +25,7 @@ func newExportAdaptation() *entities.Adaptation {
 	return &entities.Adaptation{
 		ID:                 7,
 		OrganizationID:     testutil.TestOrgID,
-		StudentID:          1,
+		StudentID:          testutil.Ptr(int64(1)),
 		Subject:            "Matemáticas",
 		AdaptationType:     "actividad_adaptada",
 		AdaptationStrategy: &strategy,
