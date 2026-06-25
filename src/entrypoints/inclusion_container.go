@@ -5,13 +5,14 @@ import (
 )
 
 type InclusionContainer struct {
-	GetStudentProfile     inclusionuc.GetStudentProfile
-	UpsertStudentProfile  inclusionuc.UpsertStudentProfile
-	ListClassroomStudents inclusionuc.ListClassroomStudents
-	RecommendDevice       inclusionuc.RecommendDevice
-	AssistClassroom       inclusionuc.AssistClassroom
-	OpenSession           inclusionuc.OpenSession
-	BuildPromptContext    inclusionuc.BuildPromptContext
+	GetStudentProfile        inclusionuc.GetStudentProfile
+	UpsertStudentProfile     inclusionuc.UpsertStudentProfile
+	ListClassroomStudents    inclusionuc.ListClassroomStudents
+	RecommendDevice          inclusionuc.RecommendDevice
+	AssistClassroom          inclusionuc.AssistClassroom
+	OpenSession              inclusionuc.OpenSession
+	BuildPromptContext       inclusionuc.BuildPromptContext
+	SearchPedagogicalContent inclusionuc.SearchPedagogicalContent
 
 	ListStudents            inclusionuc.ListStudents
 	CreateStudent           inclusionuc.CreateStudent

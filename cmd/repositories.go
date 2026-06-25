@@ -32,6 +32,7 @@ type Repositories struct {
 	Diagnoses              providers.DiagnosisProvider
 	PPIs                   providers.PPIProvider
 	IntegradoraAssignments providers.IntegradoraAssignmentProvider
+	PedagogicalContent     providers.PedagogicalContentProvider
 }
 
 func NewRepositories(db *gorm.DB, cfg *config.Config) *Repositories {
@@ -72,5 +73,6 @@ func NewRepositories(db *gorm.DB, cfg *config.Config) *Repositories {
 		Diagnoses:              inclusionr.NewDiagnosisRepo(db),
 		PPIs:                   inclusionr.NewPPIRepo(db),
 		IntegradoraAssignments: inclusionr.NewIntegradoraAssignmentRepo(db),
+		PedagogicalContent:     inclusionr.NewPedagogicalContentRepo(db),
 	}
 }

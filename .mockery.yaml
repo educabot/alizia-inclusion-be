@@ -20,3 +20,4 @@ packages:
       DiagnosisProvider:
       PPIProvider:
       IntegradoraAssignmentProvider:
+      PedagogicalContentProvider:
