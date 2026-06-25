@@ -9,23 +9,47 @@ import (
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
 )
 
-// recordAIUsage persists token usage for an AI call. It is best-effort: a nil
-// provider, missing usage data, or an anonymous request are skipped, and a
-// recording failure is logged rather than propagated so it never blocks the
-// user-facing response.
-func recordAIUsage(ctx context.Context, usage providers.AIUsageProvider, orgID uuid.UUID, userID int64, mode string, tokens *providers.TokenUsage) {
-	if usage == nil || tokens == nil || userID == 0 {
+// aiTrace captures one AI turn for usage recording and trace.
+// ContextSnapshot must contain only IDs (no PII): student_id, classroom_id, etc.
+type aiTrace struct {
+	orgID          uuid.UUID
+	userID         int64
+	mode           string
+	model          string
+	latencyMs      int
+	toolCalls      int
+	conversationID int64
+	context        map[string]any
+	usage          *providers.TokenUsage
+}
+
+// recordAIUsage persists the usage record and trace for one AI turn.
+// Every turn is traced even when the provider reports no token counts — model, latency,
+// tool_calls, and context are still valuable. Best-effort: a nil provider or anonymous
+// request is skipped, and a record failure is logged rather than propagated so it never
+// blocks the teacher's response.
+func recordAIUsage(ctx context.Context, usage providers.AIUsageProvider, t aiTrace) {
+	if usage == nil || t.userID == 0 {
 		return
 	}
-	err := usage.Record(ctx, providers.AIUsageRecord{
-		OrgID:            orgID,
-		UserID:           userID,
-		Mode:             mode,
-		PromptTokens:     tokens.PromptTokens,
-		CompletionTokens: tokens.CompletionTokens,
-		TotalTokens:      tokens.TotalTokens,
-	})
-	if err != nil {
-		slog.WarnContext(ctx, "record ai usage failed", "error", err, "user_id", userID, "mode", mode)
+	record := providers.AIUsageRecord{
+		OrgID:           t.orgID,
+		UserID:          t.userID,
+		Mode:            t.mode,
+		Model:           t.model,
+		LatencyMs:       t.latencyMs,
+		ToolCalls:       t.toolCalls,
+		ContextSnapshot: t.context,
+	}
+	if t.usage != nil {
+		record.PromptTokens = t.usage.PromptTokens
+		record.CompletionTokens = t.usage.CompletionTokens
+		record.TotalTokens = t.usage.TotalTokens
+	}
+	if t.conversationID > 0 {
+		record.ConversationID = &t.conversationID
+	}
+	if err := usage.Record(ctx, record); err != nil {
+		slog.WarnContext(ctx, "record ai usage failed", "error", err, "user_id", t.userID, "mode", t.mode)
 	}
 }

@@ -18,8 +18,8 @@ func NewSituationRepo(db *gorm.DB) providers.SituationCatalogProvider {
 	return &situationRepo{db: db}
 }
 
-// List devuelve las situaciones globales (organization_id IS NULL) más las
-// propias de la organización, ordenadas por sort_order.
+// List returns global situations (organization_id IS NULL) plus those owned by
+// the given organization, ordered by sort_order.
 func (r *situationRepo) List(ctx context.Context, orgID uuid.UUID) ([]entities.Situation, error) {
 	var situations []entities.Situation
 	err := r.db.WithContext(ctx).

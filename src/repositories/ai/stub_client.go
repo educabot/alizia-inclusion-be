@@ -13,6 +13,8 @@ func NewStubClient() providers.AIClient {
 	return &StubClient{}
 }
 
+func (s *StubClient) Model() string { return "stub" }
+
 func (s *StubClient) Generate(_ context.Context, params providers.GenerateParams) (string, error) {
 	return fmt.Sprintf("[stub] generated content for: %s", params.UserPrompt), nil
 }

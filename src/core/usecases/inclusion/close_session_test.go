@@ -11,7 +11,7 @@ import (
 
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
-	mockproviders "github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
+	mockproviders "github.com/educabot/alizia-inclusion-be/src/mocks/providers"
 	"github.com/educabot/alizia-inclusion-be/src/core/usecases/inclusion"
 	"github.com/educabot/alizia-inclusion-be/src/testutil"
 )
@@ -24,12 +24,15 @@ type closeMocks struct {
 }
 
 func newCloseMocks() closeMocks {
-	return closeMocks{
+	m := closeMocks{
 		ai:            new(mockproviders.MockAIClient),
 		conversations: new(mockproviders.MockConversationProvider),
 		summaries:     new(mockproviders.MockConversationSummaryProvider),
 		usage:         new(mockproviders.MockAIUsageProvider),
 	}
+	// Per-turn usage trace is best-effort; optional in tests.
+	m.usage.On("Record", mock.Anything, mock.AnythingOfType("providers.AIUsageRecord")).Return(nil).Maybe()
+	return m
 }
 
 func (m closeMocks) usecase() inclusion.CloseSession {
@@ -118,7 +121,7 @@ func TestCloseSession_CompactsAndUpsertsWithTags(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(7), got.ConversationID)
 	assert.Contains(t, got.Summary, "pausas sensoriales")
-	// keywords normalizadas a minúscula y deduplicadas ("TEA" y "tea" colapsan).
+	// Keywords are lowercased and deduplicated ("TEA" and "tea" collapse into one).
 	assert.Equal(t, []string{"tea", "autorregulación"}, got.TopicKeywords)
 	assert.Equal(t, []int64{3}, got.StudentIDs)
 	assert.Equal(t, []int64{12}, got.DeviceIDs)

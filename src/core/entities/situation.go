@@ -2,10 +2,11 @@ package entities
 
 import "github.com/google/uuid"
 
-// Situation es una situación observable de aula (las ~15 del MVP: "no inicia la
-// tarea", "se distrae constantemente", etc.). Es la entrada pedagógica primaria
-// (se parte de lo observable, no del diagnóstico). organization_id NULL = global
-// (catálogo de Educabot); con valor = definición propia de la organización.
+// Situation is an observable classroom behaviour (the ~15 MVP entries: "does not
+// start the task", "gets distracted constantly", etc.). It is the primary
+// pedagogical input — grounded in observation, not diagnosis.
+// organization_id NULL means global (Educabot catalogue); non-NULL means the
+// organisation has its own definition.
 type Situation struct {
 	ID             int64      `json:"id" gorm:"primaryKey"`
 	OrganizationID *uuid.UUID `json:"organization_id,omitempty"`

@@ -5,23 +5,25 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
+	"github.com/educabot/alizia-inclusion-be/src/core/usecases/inclusion/prompts"
 )
 
-// maxSummaryInputTokens acota cuánto historial mandamos al modelo para compactar.
-// Si la conversación lo excede, preservamos los turnos más recientes (lo que el
-// docente necesita para retomar el hilo al volver).
+// maxSummaryInputTokens caps how much history is sent to the model for compaction.
+// When the conversation exceeds this limit, the most recent turns are preserved
+// so the teacher can resume the thread without re-establishing full context.
 const maxSummaryInputTokens = 6000
 
-// maxTopicKeywords acota las keywords que guardamos como tags de tema (HU-5).
+// maxTopicKeywords caps the number of topic-tag keywords stored per summary.
 const maxTopicKeywords = 8
 
-// CloseSessionRequest dispara la compactación de una conversación al cerrarla.
+// CloseSessionRequest triggers compaction of a conversation when it is closed.
 type CloseSessionRequest struct {
 	OrgID          uuid.UUID
 	UserID         int64
@@ -38,8 +40,8 @@ func (r CloseSessionRequest) Validate() error {
 	return nil
 }
 
-// CloseSessionResponse devuelve el resumen compactado y sus tags a 3 dimensiones
-// (alumno / tema / valija) para que el front pueda mostrarlo.
+// CloseSessionResponse returns the compacted summary and its tags across three
+// dimensions (student / topic / device) for display on the frontend.
 type CloseSessionResponse struct {
 	ConversationID int64    `json:"conversation_id"`
 	Summary        string   `json:"summary"`
@@ -63,9 +65,9 @@ func NewCloseSession(ai providers.AIClient, conversations providers.Conversation
 	return &closeSessionImpl{ai: ai, conversations: conversations, summaries: summaries, usage: usage}
 }
 
-// Execute compacta una conversación al cerrarla (HU-5, §6.4): trae sus mensajes,
-// genera un resumen comprimido vía LLM con tags a 3 dimensiones (alumno / tema /
-// valija) y lo persiste de forma idempotente por conversation_id.
+// Execute compacts a conversation on close: fetches its messages,
+// generates a compressed summary via LLM with three-dimension tags (student / topic /
+// device), and persists it idempotently by conversation_id.
 func (uc *closeSessionImpl) Execute(ctx context.Context, req CloseSessionRequest) (*CloseSessionResponse, error) {
 	if err := req.Validate(); err != nil {
 		return nil, err
@@ -76,25 +78,32 @@ func (uc *closeSessionImpl) Execute(ctx context.Context, req CloseSessionRequest
 		return nil, err
 	}
 
-	// Sin mensajes no hay nada que compactar: evitamos un llamado al modelo y un
-	// resumen vacío en DB.
+	// No messages means nothing to compact: avoids a model call and an empty summary in DB.
 	if len(conv.Messages) == 0 {
 		return &CloseSessionResponse{ConversationID: conv.ID}, nil
 	}
 
 	transcript := buildTranscript(conv.Messages, maxSummaryInputTokens)
 
+	start := time.Now()
 	resp, err := uc.ai.Chat(ctx, []providers.ChatMessage{
 		{Role: "system", Content: summarizerSystemPrompt},
 		{Role: "user", Content: transcript},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", providers.ErrServiceUnavailable, err)
+		return nil, wrapServiceUnavailable(err)
 	}
-	recordAIUsage(ctx, uc.usage, req.OrgID, req.UserID, "close", resp.Usage)
 
 	summaryText, keywords := parseSummary(resp.Content)
 	studentIDs, deviceIDs := collectEntities(conv)
+
+	// Per-turn trace: IDs only, no PII. Best-effort.
+	recordAIUsage(ctx, uc.usage, aiTrace{
+		orgID: req.OrgID, userID: req.UserID, mode: modeClose,
+		model: uc.ai.Model(), latencyMs: int(time.Since(start).Milliseconds()),
+		conversationID: conv.ID, usage: resp.Usage,
+		context: map[string]any{"student_ids": studentIDs, "device_ids": deviceIDs},
+	})
 
 	summary := &entities.ConversationSummary{
 		ConversationID: conv.ID,
@@ -115,16 +124,20 @@ func (uc *closeSessionImpl) Execute(ctx context.Context, req CloseSessionRequest
 	}, nil
 }
 
-const summarizerSystemPrompt = "Sos Alizia, asistente de inclusión. Resumí la siguiente conversación entre un docente y vos " +
+// summarizerSystemPrompt reuses the shared identity (prompts.RolAlizia) so the role is
+// declared in one place, then layers its own JSON-only contract — the summarizer is an
+// internal prompt, so it deliberately omits the conversational voice/format rules.
+const summarizerSystemPrompt = prompts.RolAlizia + "\n\n" +
+	"Resumí la siguiente conversación entre un docente y vos " +
 	"para poder retomar el hilo más adelante sin recontextualizar todo. Devolvé EXCLUSIVAMENTE un JSON con esta forma:\n" +
 	"{\"summary\": \"un par de párrafos en español con lo trabajado, decisiones y próximos pasos\", " +
 	"\"topic_keywords\": [\"palabras clave en minúscula: temas y discapacidades tratadas\"]}\n" +
 	"No incluyas nombres propios de alumnos ni diagnósticos en las keywords; usá temas (ej. \"autismo\", \"lectura\", \"autorregulación\"). " +
 	"No agregues texto fuera del JSON."
 
-// buildTranscript arma el texto de la conversación para resumir, preservando los
-// turnos más recientes hasta agotar maxTokens (la recencia es lo que importa para
-// retomar el hilo). Recorre de atrás hacia adelante y arma el texto en orden.
+// buildTranscript assembles the conversation text for summarization, preserving
+// the most recent turns up to maxTokens (recency matters most for resuming context).
+// Iterates backwards then reconstructs in forward order.
 func buildTranscript(messages []entities.ConversationMessage, maxTokens int) string {
 	kept := make([]string, 0, len(messages))
 	used := 0
@@ -140,9 +153,9 @@ func buildTranscript(messages []entities.ConversationMessage, maxTokens int) str
 	return strings.Join(kept, "\n")
 }
 
-// parseSummary extrae el resumen y las keywords del JSON que devuelve el modelo.
-// Es tolerante: si el modelo envuelve el JSON en texto o falla el parseo, cae al
-// contenido crudo como resumen sin keywords (nunca rompe el cierre de sesión).
+// parseSummary extracts the summary text and keywords from the JSON returned by the model.
+// Fault-tolerant: if the model wraps the JSON in prose or parsing fails, it falls back
+// to the raw content as the summary with no keywords, so session close never breaks.
 func parseSummary(content string) (summary string, keywords []string) {
 	raw := extractJSONObject(content)
 	if raw == "" {
@@ -158,8 +171,8 @@ func parseSummary(content string) (summary string, keywords []string) {
 	return strings.TrimSpace(parsed.Summary), normalizeKeywords(parsed.TopicKeywords)
 }
 
-// extractJSONObject devuelve el primer objeto JSON balanceado dentro de s (el modelo
-// a veces lo envuelve en fences o prosa). Vacío si no encuentra uno.
+// extractJSONObject returns the first balanced JSON object found in s (the model
+// sometimes wraps it in fences or prose). Returns empty string if none found.
 func extractJSONObject(s string) string {
 	start := strings.Index(s, "{")
 	end := strings.LastIndex(s, "}")
@@ -169,7 +182,7 @@ func extractJSONObject(s string) string {
 	return s[start : end+1]
 }
 
-// normalizeKeywords limpia, deduplica y acota las keywords a minúscula.
+// normalizeKeywords lowercases, deduplicates, and caps the keyword list.
 func normalizeKeywords(in []string) []string {
 	seen := make(map[string]struct{}, len(in))
 	out := make([]string, 0, len(in))
@@ -193,9 +206,9 @@ func normalizeKeywords(in []string) []string {
 	return out
 }
 
-// collectEntities reúne los ids de alumnos y devices vinculados a la conversación,
-// para taggear el resumen por dimensión (alumno / valija). El alumno de cabecera de
-// la conversación más los detectados turno a turno en la metadata.
+// collectEntities gathers student and device IDs linked to the conversation for
+// tagging the summary by dimension (student / device). Includes the conversation's
+// primary student plus any detected per-turn in message metadata.
 func collectEntities(conv *entities.Conversation) (studentIDs, deviceIDs []int64) {
 	students := newIDSet()
 	devices := newIDSet()
@@ -205,10 +218,10 @@ func collectEntities(conv *entities.Conversation) (studentIDs, deviceIDs []int64
 	}
 	for i := range conv.Messages {
 		meta := decodeMessageMeta(conv.Messages[i].Metadata)
-		if id, ok := metaInt64(meta, "identified_student"); ok {
+		if id, ok := metaInt64(meta, metaKeyIdentifiedStudent); ok {
 			students.add(id)
 		}
-		if id, ok := metaInt64(meta, "recommended_device"); ok {
+		if id, ok := metaInt64(meta, metaKeyRecommendedDevice); ok {
 			devices.add(id)
 		}
 	}
@@ -226,7 +239,7 @@ func decodeMessageMeta(raw []byte) map[string]any {
 	return meta
 }
 
-// metaInt64 lee un id numérico de la metadata. El JSON lo decodifica como float64.
+// metaInt64 reads a numeric ID from message metadata. JSON decodes numbers as float64.
 func metaInt64(meta map[string]any, key string) (int64, bool) {
 	v, ok := meta[key]
 	if !ok {
@@ -242,7 +255,7 @@ func metaInt64(meta map[string]any, key string) (int64, bool) {
 	}
 }
 
-// idSet preserva orden de inserción y deduplica ids positivos.
+// idSet preserves insertion order and deduplicates positive IDs.
 type idSet struct {
 	seen  map[int64]struct{}
 	order []int64

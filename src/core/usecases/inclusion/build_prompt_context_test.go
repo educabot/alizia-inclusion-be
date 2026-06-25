@@ -10,7 +10,7 @@ import (
 
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
-	mockproviders "github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
+	mockproviders "github.com/educabot/alizia-inclusion-be/src/mocks/providers"
 	"github.com/educabot/alizia-inclusion-be/src/core/usecases/inclusion"
 	"github.com/educabot/alizia-inclusion-be/src/testutil"
 )
@@ -48,7 +48,7 @@ func (m ctxMocks) usecase() inclusion.BuildPromptContext {
 	)
 }
 
-// expectStatic configura el bloque estático (devices + situaciones) que siempre se carga.
+// expectStatic sets up the static block (devices + situations) that is always loaded.
 func (m ctxMocks) expectStatic() {
 	m.devices.On("ListDevices", mock.Anything, testutil.TestOrgID, (*int64)(nil)).
 		Return([]entities.Device{testutil.NewDevice(1, 1, "Time Timer")}, nil)
@@ -78,7 +78,7 @@ func TestBuildContext_LoadsStaticAndTeacher(t *testing.T) {
 	assert.Len(t, got.DeviceCatalog, 1)
 	assert.Len(t, got.Situations, 1)
 	require.NotNil(t, got.Teacher)
-	assert.Nil(t, got.TargetStudent) // valija no carga alumno
+	assert.Nil(t, got.TargetStudent) // toolkit dimension does not load a student
 	assert.NotContains(t, got.MissingData, "perfil_docente")
 }
 
@@ -147,7 +147,7 @@ func TestBuildContext_StudentWithoutProfileAndPPIDegradesGracefully(t *testing.T
 	m.teachers.On("GetByUserID", mock.Anything, testutil.TestOrgID, int64(1)).
 		Return(&entities.TeacherProfile{ID: 5, UserID: 1, OrganizationID: testutil.TestOrgID}, nil)
 
-	student := testutil.NewStudent(8, 0, "Sin Perfil") // sin Profile, sin classroom
+	student := testutil.NewStudent(8, 0, "Sin Perfil") // no profile, no classroom
 	m.students.On("GetStudent", mock.Anything, testutil.TestOrgID, int64(8)).Return(&student, nil)
 	m.ppi.On("GetByStudentID", mock.Anything, testutil.TestOrgID, int64(8)).
 		Return(nil, providers.ErrNotFound)
@@ -168,7 +168,7 @@ func TestBuildContext_StudentWithoutProfileAndPPIDegradesGracefully(t *testing.T
 	assert.Nil(t, got.PPI)
 	assert.Contains(t, got.MissingData, "perfil_alumno")
 	assert.Contains(t, got.MissingData, "ppi")
-	assert.Nil(t, got.Classroom) // classroom_id 0 => no se consulta
+	assert.Nil(t, got.Classroom) // classroom_id 0 means no lookup is performed
 	m.diagnoses.AssertNotCalled(t, "ListByStudentProfile")
 }
 
@@ -191,6 +191,6 @@ func TestBuildContext_SnapshotHasNoPII(t *testing.T) {
 	assert.Equal(t, int64(7), *snap.StudentProfileID)
 	require.NotNil(t, snap.PPIID)
 	assert.Equal(t, 1, snap.DiagnosesCount)
-	// El snapshot solo lleva IDs/contadores: no debe haber forma de leer el nombre.
+	// Snapshot carries only IDs/counters: no PII (e.g. student name) must be readable from it.
 	assert.NotContains(t, snap.MissingData, "Pedro")
 }

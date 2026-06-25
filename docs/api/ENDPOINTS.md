@@ -111,7 +111,7 @@ _Response:_
 
 ```json
 {
-  "id": 1,
+  "id": 2,
   "name": "Aula Newman",
   "grade": "6",
   "section": "B",
@@ -125,7 +125,7 @@ _Response:_
 Detalle del aula recién creada.
 
 
-**`GET http://127.0.0.1:8080/api/v1/classrooms/1`** — expected `200`, got `200` ✅
+**`GET http://127.0.0.1:8080/api/v1/classrooms/2`** — expected `200`, got `200` ✅
 
 
 _Response:_
@@ -133,7 +133,7 @@ _Response:_
 ```json
 {
   "description": {
-    "id": 1,
+    "id": 2,
     "name": "Aula Newman",
     "grade": "6",
     "section": "B",
@@ -148,7 +148,7 @@ _Response:_
 Actualiza el aula creada.
 
 
-**`PUT http://127.0.0.1:8080/api/v1/classrooms/1`** — expected `200`, got `200` ✅
+**`PUT http://127.0.0.1:8080/api/v1/classrooms/2`** — expected `200`, got `200` ✅
 
 
 _Request body:_
@@ -164,7 +164,7 @@ _Response:_
 ```json
 {
   "description": {
-    "id": 1,
+    "id": 2,
     "name": "Aula Newman (editada)",
     "grade": "6",
     "section": "B",
@@ -201,7 +201,7 @@ _Response:_
         ],
         "free_description": "Dificultad transitoria de lectura tras cambio de escuela; en proceso de adaptación."
       },
-      "created_at": "2026-06-10T21:22:47Z"
+      "created_at": "2026-06-11T12:17:03Z"
     },
     {
       "id": 9003,
@@ -218,7 +218,7 @@ _Response:_
         ],
         "free_description": "Necesita anticipación de cambios y entornos con baja estimulación sensorial."
       },
-      "created_at": "2026-06-10T21:22:47Z"
+      "created_at": "2026-06-11T12:17:03Z"
     },
     {
       "id": 9001,
@@ -235,7 +235,7 @@ _Response:_
         ],
         "free_description": "Le cuesta sostener la atención en consignas largas; responde bien a pausas activas."
       },
-      "created_at": "2026-06-10T21:22:47Z"
+      "created_at": "2026-06-11T12:17:03Z"
     }
   ]
 }
@@ -303,7 +303,7 @@ _Response:_
         ],
         "free_description": "Dificultad transitoria de lectura tras cambio de escuela; en proceso de adaptación."
       },
-      "created_at": "2026-06-10T21:22:47Z"
+      "created_at": "2026-06-11T12:17:03Z"
     },
     {
       "id": 9003,
@@ -320,7 +320,7 @@ _Response:_
         ],
         "free_description": "Necesita anticipación de cambios y entornos con baja estimulación sensorial."
       },
-      "created_at": "2026-06-10T21:22:47Z"
+      "created_at": "2026-06-11T12:17:03Z"
     },
     {
       "id": 9001,
@@ -337,7 +337,7 @@ _Response:_
         ],
         "free_description": "Le cuesta sostener la atención en consignas largas; responde bien a pausas activas."
       },
-      "created_at": "2026-06-10T21:22:47Z"
+      "created_at": "2026-06-11T12:17:03Z"
     }
   ]
 }
@@ -371,7 +371,7 @@ _Response:_
         ],
         "free_description": "Dificultad transitoria de lectura tras cambio de escuela; en proceso de adaptación."
       },
-      "created_at": "2026-06-10T21:22:47Z"
+      "created_at": "2026-06-11T12:17:03Z"
     },
     {
       "id": 9003,
@@ -388,7 +388,7 @@ _Response:_
         ],
         "free_description": "Necesita anticipación de cambios y entornos con baja estimulación sensorial."
       },
-      "created_at": "2026-06-10T21:22:47Z"
+      "created_at": "2026-06-11T12:17:03Z"
     },
     {
       "id": 9001,
@@ -405,7 +405,7 @@ _Response:_
         ],
         "free_description": "Le cuesta sostener la atención en consignas largas; responde bien a pausas activas."
       },
-      "created_at": "2026-06-10T21:22:47Z"
+      "created_at": "2026-06-11T12:17:03Z"
     }
   ]
 }
@@ -439,7 +439,7 @@ _Response:_
       ],
       "free_description": "Le cuesta sostener la atención en consignas largas; responde bien a pausas activas."
     },
-    "created_at": "2026-06-10T21:22:47Z"
+    "created_at": "2026-06-11T12:17:03Z"
   }
 }
 ```
@@ -466,10 +466,10 @@ _Response:_
 
 ```json
 {
-  "id": 1,
+  "id": 2,
   "name": "Alumno Newman",
   "classroom_id": 9001,
-  "created_at": "2026-06-10T19:24:42-03:00"
+  "created_at": "2026-06-11T09:25:57-03:00"
 }
 ```
 
@@ -479,7 +479,7 @@ _Response:_
 Actualiza el alumno creado.
 
 
-**`PUT http://127.0.0.1:8080/api/v1/students/1`** — expected `200`, got `200` ✅
+**`PUT http://127.0.0.1:8080/api/v1/students/2`** — expected `200`, got `200` ✅
 
 
 _Request body:_
@@ -495,10 +495,10 @@ _Response:_
 ```json
 {
   "description": {
-    "id": 1,
+    "id": 2,
     "name": "Alumno Newman (editado)",
     "classroom_id": 9001,
-    "created_at": "2026-06-10T19:24:42Z"
+    "created_at": "2026-06-11T09:25:57Z"
   }
 }
 ```
@@ -536,7 +536,7 @@ _Response:_
       ],
       "free_description": "Le cuesta sostener la atención en consignas largas; responde bien a pausas activas."
     },
-    "created_at": "2026-06-10T21:22:47Z"
+    "created_at": "2026-06-11T12:17:03Z"
   }
 }
 ```
@@ -547,7 +547,7 @@ _Response:_
 Crea/actualiza el perfil del alumno.
 
 
-**`PUT http://127.0.0.1:8080/api/v1/students/1/profile`** — expected `200`, got `200` ✅
+**`PUT http://127.0.0.1:8080/api/v1/students/2/profile`** — expected `200`, got `200` ✅
 
 
 _Request body:_
@@ -568,12 +568,12 @@ _Response:_
 ```json
 {
   "description": {
-    "id": 1,
+    "id": 2,
     "name": "Alumno Newman (editado)",
     "classroom_id": 9001,
     "profile": {
-      "id": 4,
-      "student_id": 1,
+      "id": 5,
+      "student_id": 2,
       "student_name": "Alumno Newman (editado)",
       "is_transitory": false,
       "difficulties": [
@@ -582,7 +582,7 @@ _Response:_
       ],
       "free_description": "Prueba: dificultades de motricidad fina y atención."
     },
-    "created_at": "2026-06-10T19:24:42Z"
+    "created_at": "2026-06-11T09:25:57Z"
   }
 }
 ```
@@ -841,7 +841,7 @@ _Response:_
 
 ```json
 {
-  "id": 1,
+  "id": 2,
   "student_id": 9001,
   "student_name": "Tomás Prueba",
   "teacher_id": 1,
@@ -858,8 +858,8 @@ _Response:_
   "notes": "Responde bien a estímulos visuales",
   "status": "en_curso",
   "was_edited": false,
-  "created_at": "2026-06-10T19:24:42Z",
-  "updated_at": "2026-06-10T19:24:42Z"
+  "created_at": "2026-06-11T09:25:58Z",
+  "updated_at": "2026-06-11T09:25:58Z"
 }
 ```
 
@@ -878,7 +878,7 @@ _Response:_
 {
   "description": [
     {
-      "id": 1,
+      "id": 2,
       "student_id": 9001,
       "student_name": "Tomás Prueba",
       "teacher_id": 1,
@@ -895,8 +895,8 @@ _Response:_
       "notes": "Responde bien a estímulos visuales",
       "status": "en_curso",
       "was_edited": false,
-      "created_at": "2026-06-10T19:24:42Z",
-      "updated_at": "2026-06-10T19:24:42Z"
+      "created_at": "2026-06-11T09:25:58Z",
+      "updated_at": "2026-06-11T09:25:58Z"
     }
   ]
 }
@@ -908,7 +908,7 @@ _Response:_
 Detalle de la adaptación creada.
 
 
-**`GET http://127.0.0.1:8080/api/v1/adaptations/1`** — expected `200`, got `200` ✅
+**`GET http://127.0.0.1:8080/api/v1/adaptations/2`** — expected `200`, got `200` ✅
 
 
 _Response:_
@@ -916,7 +916,7 @@ _Response:_
 ```json
 {
   "description": {
-    "id": 1,
+    "id": 2,
     "student_id": 9001,
     "student_name": "Tomás Prueba",
     "teacher_id": 1,
@@ -933,8 +933,8 @@ _Response:_
     "notes": "Responde bien a estímulos visuales",
     "status": "en_curso",
     "was_edited": false,
-    "created_at": "2026-06-10T19:24:42Z",
-    "updated_at": "2026-06-10T19:24:42Z"
+    "created_at": "2026-06-11T09:25:58Z",
+    "updated_at": "2026-06-11T09:25:58Z"
   }
 }
 ```
@@ -945,7 +945,7 @@ _Response:_
 Actualiza estado/resultado de la adaptación.
 
 
-**`PUT http://127.0.0.1:8080/api/v1/adaptations/1`** — expected `200`, got `200` ✅
+**`PUT http://127.0.0.1:8080/api/v1/adaptations/2`** — expected `200`, got `200` ✅
 
 
 _Request body:_
@@ -963,7 +963,7 @@ _Response:_
 ```json
 {
   "description": {
-    "id": 1,
+    "id": 2,
     "student_id": 9001,
     "student_name": "Tomás Prueba",
     "teacher_id": 1,
@@ -981,8 +981,8 @@ _Response:_
     "notes": "Funcionó, repetir la próxima clase",
     "status": "probado",
     "was_edited": false,
-    "created_at": "2026-06-10T19:24:42Z",
-    "updated_at": "2026-06-10T19:24:42Z"
+    "created_at": "2026-06-11T09:25:58Z",
+    "updated_at": "2026-06-11T09:25:58Z"
   }
 }
 ```
@@ -993,7 +993,7 @@ _Response:_
 Recursos (materiales) ligados a la adaptación.
 
 
-**`GET http://127.0.0.1:8080/api/v1/adaptations/1/resources`** — expected `200`, got `200` ✅
+**`GET http://127.0.0.1:8080/api/v1/adaptations/2/resources`** — expected `200`, got `200` ✅
 
 
 _Response:_
@@ -1010,7 +1010,7 @@ _Response:_
 Exporta la adaptación a Markdown (descarga). Content-Type text/markdown.
 
 
-**`GET http://127.0.0.1:8080/api/v1/adaptations/1/export?format=md`** — expected `200`, got `200` ✅
+**`GET http://127.0.0.1:8080/api/v1/adaptations/2/export?format=md`** — expected `200`, got `200` ✅
 
 
 _Response:_
@@ -1047,7 +1047,7 @@ Completó la actividad con más autonomía
 
 ---
 
-_Generado por Alizia · Educabot · 10/06/2026 · Adaptación #1_
+_Generado por Alizia · Educabot · 11/06/2026 · Adaptación #2_
 
 ```
 
@@ -1071,21 +1071,21 @@ _Response:_
 {
   "description": [
     {
-      "id": 1,
+      "id": 2,
       "mode": "assist",
       "messages": [
         {
           "role": "user",
-          "content": "Hola",
-          "created_at": "2026-06-10T18:39:08Z"
+          "content": "Tomás no logra sostener la atención al escribir. ¿Qué hago?",
+          "created_at": "2026-06-11T09:20:17Z"
         },
         {
           "role": "assistant",
           "content": "[stub] chat response",
-          "created_at": "2026-06-10T18:39:08Z"
+          "created_at": "2026-06-11T09:20:17Z"
         }
       ],
-      "created_at": "2026-06-10T18:39:08Z"
+      "created_at": "2026-06-11T09:20:17Z"
     }
   ]
 }
@@ -1306,9 +1306,9 @@ _Response:_
         ],
         "has_therapeutic_companion": true,
         "environment_notes": "Acompañante terapéutico 3 veces por semana; familia muy presente.",
-        "created_at": "2026-06-10T21:22:47.30357Z",
-        "updated_at": "2026-06-10T21:22:47.30357Z"
-  
+        "created_at": "2026-06-11T12:17:03.043857Z",
+        "updated_at": "2026-06-11T12:17:03.043857Z"
+
 ... (truncado)
 ```
 
@@ -1472,11 +1472,11 @@ _Response:_
           "description": "Apoyos para atención y autorregulación",
           "short_description": "Atención",
           "sort_order": 1,
-          "created_at": "2026-06-10T21:40:42.968007Z",
-          "updated_at": "2026-06-10T21:40:42.968007Z"
+          "created_at": "2026-06-11T12:17:22.812047Z",
+          "updated_at": "2026-06-11T12:17:22.812047Z"
         },
-        "created_at": "2026-06-10T21:40:42.968007Z",
-        "updated_at": "2026-06-10T21:40:42.968007Z"
+        "created_at": "2026-06-11T12:17:22.812047Z",
+        "updated_at": "2026-06-11T12:17:22.812047Z"
       },
       {
         "id": 9002,
@@ -1536,11 +1536,11 @@ _Response:_
           "description": "Apoyos para atención y autorregulación",
           "short_description": "Atención",
           "sort_order": 1,
-          "created_at": "2026-06-10T21:40:42.968007Z",
-          "updated_at": "2026-06-10T21:40:42.968007Z"
+          "created_at": "2026-06-11T12:17:22.812047Z",
+          "updated_at": "2026-06-11T12:17:22.812047Z"
         },
-        "created_at": "2026-06-10T21:40:42.968007Z",
-        "updated_at": "2026-06-10T21:40:42.968007Z"
+        "created_at": "2026-06-11T12:17:22.812047Z",
+        "updated_at": "2026-06-11T12:17:22.812047Z"
       },
       {
         "id": 9002,
@@ -1599,11 +1599,11 @@ _Response:_
           "description": "Apoyos para atención y autorregulación",
           "short_description": "Atención",
           "sort_order": 1,
-          "created_at": "2026-06-10T21:40:42.968007Z",
-          "updated_at": "2026-06-10T21:40:42.968007Z"
+          "created_at": "2026-06-11T12:17:22.812047Z",
+          "updated_at": "2026-06-11T12:17:22.812047Z"
         },
-        "created_at": "2026-06-10T21:40:42.968007Z",
-        "updated_at": "2026-06-10T21:40:42.968007Z"
+        "created_at": "2026-06-11T12:17:22.812047Z",
+        "updated_at": "2026-06-11T12:17:22.812047Z"
       },
       {
         "id": 9002,
@@ -1831,7 +1831,7 @@ _Response:_
 {
   "description": {
     "response": "[stub] chat response",
-    "conversation_id": 2
+    "conversation_id": 3
   }
 }
 ```
@@ -1862,7 +1862,7 @@ _Response:_
 {
   "description": {
     "response": "[stub] chat response",
-    "conversation_id": 3
+    "conversation_id": 4
   }
 }
 ```
@@ -1885,7 +1885,7 @@ _Request body:_
 
 ```json
 {
-  "conversation_id": 3
+  "conversation_id": 4
 }
 ```
 
@@ -1894,7 +1894,7 @@ _Response:_
 ```json
 {
   "description": {
-    "conversation_id": 3,
+    "conversation_id": 4,
     "summary": "[stub] chat response",
     "topic_keywords": null,
     "student_ids": [
@@ -1965,7 +1965,7 @@ _Response:_
 Borra la adaptación creada.
 
 
-**`DELETE http://127.0.0.1:8080/api/v1/adaptations/1`** — expected `204`, got `204` ✅
+**`DELETE http://127.0.0.1:8080/api/v1/adaptations/2`** — expected `204`, got `204` ✅
 
 
 _Response:_
@@ -1978,7 +1978,7 @@ _(vacío)_
 Borra el alumno creado.
 
 
-**`DELETE http://127.0.0.1:8080/api/v1/students/1`** — expected `204`, got `204` ✅
+**`DELETE http://127.0.0.1:8080/api/v1/students/2`** — expected `204`, got `204` ✅
 
 
 _Response:_
@@ -1991,7 +1991,7 @@ _(vacío)_
 Borra el aula creada.
 
 
-**`DELETE http://127.0.0.1:8080/api/v1/classrooms/1`** — expected `204`, got `204` ✅
+**`DELETE http://127.0.0.1:8080/api/v1/classrooms/2`** — expected `204`, got `204` ✅
 
 
 _Response:_

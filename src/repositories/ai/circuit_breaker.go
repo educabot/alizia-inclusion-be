@@ -109,6 +109,8 @@ func (cb *CircuitBreaker) record(err error) {
 }
 
 // Generate passes through to the wrapped client unless the circuit is open.
+func (cb *CircuitBreaker) Model() string { return cb.client.Model() }
+
 func (cb *CircuitBreaker) Generate(ctx context.Context, params providers.GenerateParams) (string, error) {
 	if err := cb.gate(); err != nil {
 		return "", err

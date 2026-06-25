@@ -12,8 +12,8 @@ import (
 type ListAdaptationsRequest struct {
 	OrgID     uuid.UUID
 	StudentID *int64
-	// TeacherID hace privado el listado por docente (HU-4); DeviceID/Query filtran
-	// por material de valija / tema.
+	// TeacherID scopes the listing to a specific teacher (privacy); DeviceID/Query filter
+	// by suitcase material and topic respectively.
 	TeacherID *int64
 	DeviceID  *int64
 	Query     string

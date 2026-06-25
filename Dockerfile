@@ -1,4 +1,4 @@
-FROM golang:1.26.1-alpine AS builder
+FROM golang:1.26.4-alpine AS builder
 RUN apk --no-cache add git
 ARG GITHUB_TOKEN
 RUN echo "machine github.com login x-token password ${GITHUB_TOKEN}" > /root/.netrc

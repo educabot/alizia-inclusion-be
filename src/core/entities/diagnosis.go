@@ -6,9 +6,10 @@ import (
 	"github.com/google/uuid"
 )
 
-// Diagnosis es una etiqueta del catálogo de diagnósticos (capa secundaria y
-// opcional respecto de las situaciones observables). organization_id NULL =
-// global (Educabot); con valor = propio de la organización.
+// Diagnosis is a catalog entry for clinical/educational diagnoses. It is a
+// secondary, optional layer relative to observable situations.
+// organization_id NULL means the record is global (Educabot-managed);
+// a non-null value means it belongs to a specific organization.
 type Diagnosis struct {
 	ID             int64      `json:"id" gorm:"primaryKey"`
 	OrganizationID *uuid.UUID `json:"organization_id,omitempty"`
@@ -20,8 +21,8 @@ func (Diagnosis) TableName() string {
 	return "diagnoses_catalog"
 }
 
-// StudentDiagnosis liga un perfil de alumno con un diagnóstico del catálogo.
-// Capa estructurada, solo se llena si la escuela brinda diagnóstico.
+// StudentDiagnosis links a student profile to a diagnosis catalog entry.
+// This structured layer is only populated when the school provides a formal diagnosis.
 type StudentDiagnosis struct {
 	ID               int64      `json:"id" gorm:"primaryKey"`
 	StudentProfileID int64      `json:"student_profile_id"`

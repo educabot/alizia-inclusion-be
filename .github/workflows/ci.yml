@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: "1.26.1"
+          go-version: "1.26.4"
       - name: Configure private modules
         run: git config --global url."https://x-token:${{ secrets.GH_PAT }}@github.com/educabot/".insteadOf "https://github.com/educabot/"
       - uses: golangci/golangci-lint-action@9fae48acfc02a90574d7c304a1758ef9895495fa # v7.0.1
@@ -48,7 +48,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: "1.26.1"
+          go-version: "1.26.4"
       - name: Configure private modules
         run: git config --global url."https://x-token:${{ secrets.GH_PAT }}@github.com/educabot/".insteadOf "https://github.com/educabot/"
       - name: Run tests
@@ -61,6 +61,21 @@ jobs:
           name: coverage
           path: coverage.out
 
+  integration:
+    name: Integration (repositories)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: "1.26.4"
+      - name: Configure private modules
+        run: git config --global url."https://x-token:${{ secrets.GH_PAT }}@github.com/educabot/".insteadOf "https://github.com/educabot/"
+      # ubuntu-latest ships a running Docker daemon; testcontainers spins up
+      # pgvector/pgvector:pg16 and applies the real migrations.
+      - name: Run repository integration tests
+        run: make test-integration
+
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -69,7 +84,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: "1.26.1"
+          go-version: "1.26.4"
       - name: Configure private modules
         run: git config --global url."https://x-token:${{ secrets.GH_PAT }}@github.com/educabot/".insteadOf "https://github.com/educabot/"
       - run: make build

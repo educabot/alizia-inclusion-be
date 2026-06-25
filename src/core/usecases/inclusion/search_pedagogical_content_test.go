@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
-	mockproviders "github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
+	mockproviders "github.com/educabot/alizia-inclusion-be/src/mocks/providers"
 	"github.com/educabot/alizia-inclusion-be/src/core/usecases/inclusion"
 	"github.com/educabot/alizia-inclusion-be/src/testutil"
 )
@@ -47,6 +47,26 @@ func TestSearchContent_AppliesDefaultLimitAndReturnsResults(t *testing.T) {
 	assert.Equal(t, "TEA autismo", got.Query)
 	require.Len(t, got.Results, 1)
 	assert.Equal(t, int64(2), got.Results[0].ContentID)
+	content.AssertExpectations(t)
+}
+
+func TestSearchContent_ClampsExcessiveLimitToMax(t *testing.T) {
+	// Arrange: caller requests an excessively large top-N; the usecase clamps it to 20
+	// before hitting the DB (an unbounded LIMIT would hammer the RAG index pointlessly).
+	content := new(mockproviders.MockPedagogicalContentProvider)
+	content.On("SearchChunks", mock.Anything, testutil.TestOrgID, "TEA", 20).
+		Return([]providers.ContentSearchResult{}, nil)
+	uc := inclusion.NewSearchPedagogicalContent(content)
+
+	// Act
+	_, err := uc.Execute(context.Background(), inclusion.SearchContentRequest{
+		OrgID: testutil.TestOrgID,
+		Query: "TEA",
+		Limit: 100000,
+	})
+
+	// Assert
+	require.NoError(t, err)
 	content.AssertExpectations(t)
 }
 

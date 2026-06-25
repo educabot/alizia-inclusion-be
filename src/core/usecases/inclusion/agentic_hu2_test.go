@@ -11,7 +11,7 @@ import (
 
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
-	mockproviders "github.com/educabot/alizia-inclusion-be/src/core/providers/mocks"
+	mockproviders "github.com/educabot/alizia-inclusion-be/src/mocks/providers"
 )
 
 func TestInclusionDispatcher_GetStudentHistoryReturnsSummaries(t *testing.T) {
@@ -58,8 +58,7 @@ func TestInclusionDispatcher_GetStudentHistoryUnavailableWhenProviderNil(t *test
 	})
 
 	// Assert
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no disponible")
+	require.ErrorIs(t, err, errToolUnavailable)
 }
 
 func TestInclusionDispatcher_GetPastAdaptationsReturnsStatusAndOutcome(t *testing.T) {

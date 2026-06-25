@@ -21,7 +21,7 @@ func NewConversationSummaryRepo(db *gorm.DB) providers.ConversationSummaryProvid
 	return &conversationSummaryRepo{db: db}
 }
 
-// RecentByStudent trae los resúmenes más recientes ligados a un alumno, acotados por org.
+// RecentByStudent returns the most recent summaries linked to a student, scoped to the given org.
 func (r *conversationSummaryRepo) RecentByStudent(ctx context.Context, orgID uuid.UUID, studentID int64, limit int) ([]entities.ConversationSummary, error) {
 	var out []entities.ConversationSummary
 	err := r.db.WithContext(ctx).
@@ -39,7 +39,7 @@ func (r *conversationSummaryRepo) RecentByStudent(ctx context.Context, orgID uui
 	return out, nil
 }
 
-// RecentByDevice trae los resúmenes más recientes ligados a un dispositivo de la valija.
+// RecentByDevice returns the most recent summaries linked to a suitcase device.
 func (r *conversationSummaryRepo) RecentByDevice(ctx context.Context, orgID uuid.UUID, deviceID int64, limit int) ([]entities.ConversationSummary, error) {
 	var out []entities.ConversationSummary
 	err := r.db.WithContext(ctx).
@@ -57,7 +57,7 @@ func (r *conversationSummaryRepo) RecentByDevice(ctx context.Context, orgID uuid
 	return out, nil
 }
 
-// RecentByTopic trae los resúmenes más recientes cuyo topic_keywords contiene la keyword.
+// RecentByTopic returns the most recent summaries whose topic_keywords array contains the given keyword.
 func (r *conversationSummaryRepo) RecentByTopic(ctx context.Context, orgID uuid.UUID, keyword string, limit int) ([]entities.ConversationSummary, error) {
 	var out []entities.ConversationSummary
 	err := r.db.WithContext(ctx).
@@ -74,9 +74,9 @@ func (r *conversationSummaryRepo) RecentByTopic(ctx context.Context, orgID uuid.
 	return out, nil
 }
 
-// Upsert guarda/actualiza el resumen compactado de una conversación y revincula sus
-// cross-tables (alumnos / devices). Es idempotente por conversation_id: re-cerrar la
-// misma conversación reemplaza el resumen y sus vínculos en una sola transacción.
+// Upsert saves or updates the compacted summary for a conversation and re-links its
+// cross-tables (students / devices). Idempotent on conversation_id: closing the same
+// conversation again replaces the summary and all its links in a single transaction.
 func (r *conversationSummaryRepo) Upsert(ctx context.Context, summary *entities.ConversationSummary, studentIDs, deviceIDs []int64) error {
 	if summary == nil || summary.ConversationID == 0 {
 		return fmt.Errorf("%w: conversation_id is required to upsert a summary", providers.ErrValidation)
@@ -102,9 +102,9 @@ func (r *conversationSummaryRepo) Upsert(ctx context.Context, summary *entities.
 	})
 }
 
-// relinkSummary reemplaza los vínculos de un resumen con una dimensión (alumnos o
-// devices): borra los previos e inserta los actuales, dejando la tabla consistente
-// con el cierre más reciente. ON CONFLICT DO NOTHING tolera ids repetidos.
+// relinkSummary replaces all links for a summary along one dimension (students or devices):
+// deletes existing rows then inserts the current set, keeping the table consistent with
+// the latest close. ON CONFLICT DO NOTHING tolerates duplicate IDs in the input slice.
 func relinkSummary(tx *gorm.DB, table, fkColumn string, conversationID int64, ids []int64) error {
 	if err := tx.Exec("DELETE FROM "+table+" WHERE conversation_id = ?", conversationID).Error; err != nil {
 		return fmt.Errorf("clear %s: %w", table, err)

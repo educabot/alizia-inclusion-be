@@ -64,7 +64,9 @@ func TestRS256AuthMiddleware_TestEnv_InjectsMockClaims(t *testing.T) {
 	claims := tokens.GetClaims(req)
 	require.NotNil(t, claims)
 	assert.Equal(t, "1", claims.ID)
-	assert.Equal(t, "test@educabot.com", claims.Email)
+	// Identidad mock provista por el toolkit (tokens.authServiceMock), compartida por todos
+	// los consumidores. El bypass de test ahora vive en el toolkit, no en este repo.
+	assert.Equal(t, "test@user.com", claims.Email)
 }
 
 func TestRS256AuthMiddleware_Prod_AcceptsValidRS256Token(t *testing.T) {

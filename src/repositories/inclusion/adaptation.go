@@ -36,7 +36,7 @@ func (r *adaptationRepo) List(ctx context.Context, orgID uuid.UUID, filter provi
 		q = q.Where("student_id = ?", *filter.StudentID)
 	}
 	if filter.DeviceID != nil {
-		// material de valija usado: device principal o cualquiera del m2m.
+		// match suitcase material by primary device or any device in the m2m join table.
 		q = q.Where("device_id = ? OR id IN (SELECT adaptation_id FROM adaptation_devices WHERE device_id = ?)",
 			*filter.DeviceID, *filter.DeviceID)
 	}

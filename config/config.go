@@ -13,7 +13,10 @@ type Config struct {
 	AzureOpenAIEndpoint string
 	AzureOpenAIModel    string
 
-	JWTPublicKey string
+	// AuthPublicKey es la clave pública RS256 de auth-service (PEM). Env canónica
+	// AUTH_PUBLIC_KEY (unificada con alizia-be/seguridad); acepta el alias legacy
+	// JWT_PUBLIC_KEY como fallback durante la migración.
+	AuthPublicKey string
 
 	DBMaxOpenConns    int
 	DBMaxIdleConns    int
@@ -41,14 +44,24 @@ type Config struct {
 }
 
 func Load() *Config {
-	base := bcfg.LoadBase()
+	// BaseConfig armado a mano (en vez de bcfg.LoadBase) para NO exigir JWT_SECRET: este
+	// servicio no usa el token system HS256 del toolkit; la auth es 100% RS256 contra
+	// auth-service (AUTH_PUBLIC_KEY). El resto replica LoadBase exactamente (mismas envs y
+	// defaults), igual que alizia-be/seguridad.
+	base := bcfg.BaseConfig{
+		Port:           bcfg.EnvOr("PORT", "8080"),
+		Env:            bcfg.Environment(bcfg.EnvOr("ENV", "local")),
+		DatabaseURL:    bcfg.MustEnv("DATABASE_URL"),
+		AllowedOrigins: bcfg.EnvSplit("ALLOWED_ORIGINS", ",", []string{"*"}),
+		BugsnagAPIKey:  bcfg.EnvOr("API_KEY_BUGSNAG", ""),
+	}
 	return &Config{
 		BaseConfig:          base,
 		AzureOpenAIKey:      bcfg.EnvOr("AZURE_OPENAI_API_KEY", ""),
 		AzureOpenAIEndpoint: bcfg.EnvOr("AZURE_OPENAI_ENDPOINT", ""),
 		AzureOpenAIModel:    bcfg.EnvOr("AZURE_OPENAI_MODEL", "gpt-4o-mini"),
 
-		JWTPublicKey: bcfg.EnvOr("JWT_PUBLIC_KEY", ""),
+		AuthPublicKey: bcfg.EnvOr("AUTH_PUBLIC_KEY", bcfg.EnvOr("JWT_PUBLIC_KEY", "")),
 
 		DBMaxOpenConns:    boundedUintToInt(bcfg.GetEnvUint("DB_MAX_OPEN_CONNS", "25")),
 		DBMaxIdleConns:    boundedUintToInt(bcfg.GetEnvUint("DB_MAX_IDLE_CONNS", "10")),
