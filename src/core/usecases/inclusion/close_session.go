@@ -12,6 +12,7 @@ import (
 
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
+	"github.com/educabot/alizia-inclusion-be/src/core/usecases/inclusion/prompts"
 )
 
 // maxSummaryInputTokens caps how much history is sent to the model for compaction.
@@ -123,7 +124,11 @@ func (uc *closeSessionImpl) Execute(ctx context.Context, req CloseSessionRequest
 	}, nil
 }
 
-const summarizerSystemPrompt = "Sos Alizia, asistente de inclusión. Resumí la siguiente conversación entre un docente y vos " +
+// summarizerSystemPrompt reuses the shared identity (prompts.RolAlizia) so the role is
+// declared in one place, then layers its own JSON-only contract — the summarizer is an
+// internal prompt, so it deliberately omits the conversational voice/format rules.
+const summarizerSystemPrompt = prompts.RolAlizia + "\n\n" +
+	"Resumí la siguiente conversación entre un docente y vos " +
 	"para poder retomar el hilo más adelante sin recontextualizar todo. Devolvé EXCLUSIVAMENTE un JSON con esta forma:\n" +
 	"{\"summary\": \"un par de párrafos en español con lo trabajado, decisiones y próximos pasos\", " +
 	"\"topic_keywords\": [\"palabras clave en minúscula: temas y discapacidades tratadas\"]}\n" +

@@ -26,11 +26,10 @@ const outputRules = "CÓMO RESPONDER:\n" +
 	"  (más simple / intermedio / más desafiante) solo si ayudan, nunca como relleno.\n" +
 	"- Español rioplatense, tono cálido, sin jerga clínica.\n"
 
-// scopeRules establishes the hard boundaries of the framework: never diagnose,
-// never replace the teacher; the off-ramp is the last resort, not the first.
-const scopeRules = "LÍMITES (marco pedagógico):\n" +
-	"- Entrada pedagógica, no clínica: partís de situaciones de aula, no de diagnósticos.\n" +
-	"- Nunca diagnostiques, no reemplaces al docente, no produzcas informes clínicos.\n" +
+// offRampRule is the operational derivation instruction (behavior, not identity): the
+// prose limits now live in persona / TU LUGAR. This only governs WHEN and HOW to emit the
+// exact off-ramp wording the guardrail expects — the last resort, never the first.
+const offRampRule = "DERIVACIÓN:\n" +
 	"- Si el caso se va de tu alcance (clínico/crisis/diagnóstico), primero ayudá con lo que tengas;\n" +
 	"  dar un paso al costado es el último recurso, no el primero. Cuando debas hacerlo, respondé\n" +
 	"  exactamente con: \"" + OffRampOutOfScope + "\"\n"
@@ -58,16 +57,22 @@ const adaptationBlock = "BLOQUE ESTRUCTURADO (formato):\n" +
 	`[ADAPTATION_JSON:{"title":"título corto","type":"tipo","strategy":"resumen","device_ids":[1],"device_names":["nombre"]}]` + "\n" +
 	"Tipos válidos: actividad_adaptada, material_nuevo, estrategia_aula, situacion_emergente.\n"
 
-const assistFramework = "Sos Alizia, asistente de inclusión educativa en tiempo real.\n" +
-	"Acompañás a un docente DURANTE la clase: ayudás a adaptar la enseñanza, no a intervenir sobre el alumno.\n\n" +
-	scopeRules + "\n" +
+// assistFramework = persona (identity) + pedagogical frame + behavior specific to the
+// in-class chat: ask when intent is unclear, gate the structured block behind confirmation.
+const assistFramework = persona + "\n" +
+	pedagogicalGuidelines + "\n" +
+	"Acompañás al docente DURANTE la clase: ayudás a adaptar la enseñanza, no a intervenir sobre el alumno.\n\n" +
+	offRampRule + "\n" +
 	"Si detectás el nombre de un alumno, usá [STUDENT_ID:X]. Si recomendás un dispositivo, usá [DEVICE_ID:X].\n" +
 	"Si mencionás un material real que viene de search_content, marcalo con [CONTENT_ID:X] usando el id del documento.\n\n" +
 	assistConversation + "\n" + outputRules + "\n" + adaptationBlock
 
-const recommendFramework = "Sos Alizia, asistente de inclusión educativa de Educabot.\n" +
+// recommendFramework = persona (identity) + pedagogical frame + behavior specific to device
+// recommendation: always close with the structured block.
+const recommendFramework = persona + "\n" +
+	pedagogicalGuidelines + "\n" +
 	"Ayudás al docente a planificar actividades inclusivas recomendando dispositivos de la valija adaptativa.\n\n" +
-	scopeRules + "\n" + outputRules +
+	offRampRule + "\n" + outputRules +
 	"Incluí [DEVICE_ID:X] con el dispositivo principal recomendado.\n" +
 	"Cerrá siempre con el BLOQUE ESTRUCTURADO de la adaptación recomendada.\n\n" + adaptationBlock
 

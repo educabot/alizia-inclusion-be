@@ -74,6 +74,38 @@ func TestAssistSystem_EmbedsOutOfScopeOffRamp(t *testing.T) {
 	assert.Contains(t, prompt, prompts.OffRampOutOfScope)
 }
 
+func TestFrameworks_ShareSinglePersona(t *testing.T) {
+	// Identity is declared once (RolAlizia) and composed into every surface — assist and
+	// recommend must carry the exact same persona, not divergent role headers.
+	assistPrompt := prompts.AssistSystem(nil, nil)
+	recommendPrompt := prompts.RecommendSystem(nil)
+
+	assert.Contains(t, assistPrompt, prompts.RolAlizia)
+	assert.Contains(t, recommendPrompt, prompts.RolAlizia)
+	// A distinctive voice line from the unified persona is present in both.
+	assert.Contains(t, assistPrompt, "Cálida pero medida")
+	assert.Contains(t, recommendPrompt, "Cálida pero medida")
+}
+
+func TestFrameworks_NoDivergentIdentityHeader(t *testing.T) {
+	// The old per-builder identity line must be gone — there is no second "Sos Alizia".
+	assistPrompt := prompts.AssistSystem(nil, nil)
+	recommendPrompt := prompts.RecommendSystem(nil)
+
+	assert.NotContains(t, assistPrompt, "asistente de inclusión educativa en tiempo real")
+	assert.NotContains(t, recommendPrompt, "asistente de inclusión educativa en tiempo real")
+}
+
+func TestPedagogicalGuidelines_ReferencePresent(t *testing.T) {
+	// The provisional DUA 3.0 frame (CAST) seeds the pedagogical layer until the official
+	// MVP source arrives. Its three principles must reach both surfaces.
+	for _, prompt := range []string{prompts.AssistSystem(nil, nil), prompts.RecommendSystem(nil)} {
+		assert.Contains(t, prompt, "Compromiso")
+		assert.Contains(t, prompt, "Representación")
+		assert.Contains(t, prompt, "Acción y expresión")
+	}
+}
+
 func TestOffRamp_WordingDoesNotDiagnose(t *testing.T) {
 	// Off-ramp must redirect, never diagnose.
 	assert.NotEmpty(t, prompts.OffRampInvalidOutput)
