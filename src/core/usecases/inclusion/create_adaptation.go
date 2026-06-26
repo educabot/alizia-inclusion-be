@@ -21,6 +21,8 @@ type CreateAdaptationRequest struct {
 	AdaptationStrategy  *string
 	AdaptationType      string
 	Notes               *string
+	Steps               entities.AdaptationSteps
+	RampID              *int64
 	// Origen opcional cuando la adaptación se guarda desde el chat (GAP B).
 	SourceConversationID *int64
 	SourceMessageID      *int64
@@ -47,9 +49,8 @@ func (r CreateAdaptationRequest) Validate() error {
 	if r.TeacherID <= 0 {
 		return errTeacherIDRequired
 	}
-	if r.Subject == "" {
-		return errSubjectRequired
-	}
+	// Subject (materia) es opcional: el diseño del flujo del docente descarta "materia"
+	// (se usa el curso/grado del alumno). El guardado desde el chat tampoco lo envía.
 	if r.AdaptationType != "" {
 		if _, ok := validAdaptationTypes[r.AdaptationType]; !ok {
 			return errInvalidAdaptationType
@@ -91,6 +92,8 @@ func (uc *createAdaptationImpl) Execute(ctx context.Context, req CreateAdaptatio
 		AdaptationStrategy:   req.AdaptationStrategy,
 		AdaptationType:       adaptationType,
 		Notes:                req.Notes,
+		Steps:                req.Steps,
+		RampID:               req.RampID,
 		Status:               "en_curso",
 		SourceConversationID: req.SourceConversationID,
 		SourceMessageID:      req.SourceMessageID,

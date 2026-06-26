@@ -54,6 +54,8 @@ func ConfigureMappings(engine *gin.Engine, h *entrypoints.WebHandlerContainer, c
 	studentByID.DELETE("", webgin.Adapt(h.Inclusion.HandleDeleteStudent))
 	studentByID.GET("/profile", webgin.Adapt(h.Inclusion.HandleGetStudentProfile))
 	studentByID.PUT("/profile", webgin.Adapt(h.Inclusion.HandleUpsertStudentProfile))
+	studentByID.GET("/notes", webgin.Adapt(h.Inclusion.HandleListStudentNotes))
+	studentByID.POST("/notes", webgin.Adapt(h.Inclusion.HandleCreateStudentNote))
 
 	// Catalog: ramps & devices
 	api.GET("/ramps", webgin.Adapt(h.Catalog.HandleListRamps))
@@ -137,7 +139,13 @@ func exportAdaptationRoute(uc inclusionuc.ExportAdaptation) gin.HandlerFunc {
 			return
 		}
 
-		c.Header("Content-Disposition", `attachment; filename="`+doc.Filename+`"`)
+		// disposition=inline abre el archivo en el navegador (preview, tipo Drive)
+		// en vez de forzar la descarga. Default: attachment.
+		disposition := "attachment"
+		if c.Query("disposition") == "inline" {
+			disposition = "inline"
+		}
+		c.Header("Content-Disposition", disposition+`; filename="`+doc.Filename+`"`)
 		c.Data(http.StatusOK, doc.ContentType, doc.Data)
 	}
 }

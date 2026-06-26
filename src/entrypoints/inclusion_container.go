@@ -19,6 +19,8 @@ type InclusionContainer struct {
 	CreateStudent           inclusionuc.CreateStudent
 	UpdateStudent           inclusionuc.UpdateStudent
 	DeleteStudent           inclusionuc.DeleteStudent
+	ListStudentNotes        inclusionuc.ListStudentNotes
+	CreateStudentNote       inclusionuc.CreateStudentNote
 	ListAdaptations         inclusionuc.ListAdaptations
 	GetAdaptation           inclusionuc.GetAdaptation
 	CreateAdaptation        inclusionuc.CreateAdaptation

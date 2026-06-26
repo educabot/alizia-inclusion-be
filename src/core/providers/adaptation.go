@@ -16,7 +16,7 @@ type DeviceUsageStat struct {
 }
 
 type AdaptationProvider interface {
-	List(ctx context.Context, orgID uuid.UUID, studentID *int64) ([]entities.Adaptation, error)
+	List(ctx context.Context, orgID uuid.UUID, studentID *int64, createdAfter *time.Time) ([]entities.Adaptation, error)
 	Get(ctx context.Context, orgID uuid.UUID, id int64) (*entities.Adaptation, error)
 	Create(ctx context.Context, adaptation *entities.Adaptation) error
 	Update(ctx context.Context, adaptation *entities.Adaptation) error

@@ -19,6 +19,7 @@ type Repositories struct {
 	Devices                providers.DeviceProvider
 	Students               providers.StudentProvider
 	StudentProfiles        providers.StudentProfileProvider
+	StudentNotes           providers.StudentNoteProvider
 	AI                     providers.AIClient
 	Users                  providers.UserProvider
 	Classrooms             providers.ClassroomProvider
@@ -62,6 +63,7 @@ func NewRepositories(db *gorm.DB, cfg *config.Config) *Repositories {
 		Devices:                catalogr.NewDeviceRepo(db),
 		Students:               inclusionr.NewStudentRepo(db),
 		StudentProfiles:        inclusionr.NewStudentProfileRepo(db),
+		StudentNotes:           inclusionr.NewStudentNoteRepo(db),
 		AI:                     aiClient,
 		Users:                  authr.NewUserRepo(db),
 		Classrooms:             mgmtr.NewClassroomRepo(db),

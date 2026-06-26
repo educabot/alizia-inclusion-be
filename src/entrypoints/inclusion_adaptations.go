@@ -14,27 +14,29 @@ import (
 )
 
 type adaptationResponse struct {
-	ID                   int64    `json:"id"`
-	StudentID            *int64   `json:"student_id,omitempty"`
-	StudentName          string   `json:"student_name"`
-	TeacherID            int64    `json:"teacher_id"`
-	TeacherName          string   `json:"teacher_name"`
-	DeviceID             *int64   `json:"device_id,omitempty"`
-	DeviceName           *string  `json:"device_name,omitempty"`
-	DeviceIDs            []int64  `json:"device_ids"`
-	DeviceNames          []string `json:"device_names"`
-	Title                string   `json:"title"`
-	Subject              string   `json:"subject"`
-	ActivityDescription  *string  `json:"activity_description,omitempty"`
-	AdaptationStrategy   *string  `json:"adaptation_strategy,omitempty"`
-	AdaptationType       string   `json:"adaptation_type"`
-	Outcome              *string  `json:"outcome,omitempty"`
-	Notes                *string  `json:"notes,omitempty"`
-	Status               string   `json:"status"`
-	SourceConversationID *int64   `json:"source_conversation_id,omitempty"`
-	SourceMessageID      *int64   `json:"source_message_id,omitempty"`
-	CreatedAt            string   `json:"created_at"`
-	UpdatedAt            string   `json:"updated_at"`
+	ID                   int64                    `json:"id"`
+	StudentID            *int64                   `json:"student_id,omitempty"`
+	StudentName          string                   `json:"student_name"`
+	TeacherID            int64                    `json:"teacher_id"`
+	TeacherName          string                   `json:"teacher_name"`
+	DeviceID             *int64                   `json:"device_id,omitempty"`
+	DeviceName           *string                  `json:"device_name,omitempty"`
+	DeviceIDs            []int64                  `json:"device_ids"`
+	DeviceNames          []string                 `json:"device_names"`
+	Title                string                   `json:"title"`
+	Subject              string                   `json:"subject"`
+	ActivityDescription  *string                  `json:"activity_description,omitempty"`
+	AdaptationStrategy   *string                  `json:"adaptation_strategy,omitempty"`
+	AdaptationType       string                   `json:"adaptation_type"`
+	Outcome              *string                  `json:"outcome,omitempty"`
+	Notes                *string                  `json:"notes,omitempty"`
+	Status               string                   `json:"status"`
+	Steps                entities.AdaptationSteps `json:"steps"`
+	RampID               *int64                   `json:"ramp_id,omitempty"`
+	SourceConversationID *int64                   `json:"source_conversation_id,omitempty"`
+	SourceMessageID      *int64                   `json:"source_message_id,omitempty"`
+	CreatedAt            string                   `json:"created_at"`
+	UpdatedAt            string                   `json:"updated_at"`
 }
 
 func mapAdaptation(a entities.Adaptation) adaptationResponse {
@@ -51,12 +53,17 @@ func mapAdaptation(a entities.Adaptation) adaptationResponse {
 		Outcome:              a.Outcome,
 		Notes:                a.Notes,
 		Status:               a.Status,
+		Steps:                a.Steps,
+		RampID:               a.RampID,
 		SourceConversationID: a.SourceConversationID,
 		SourceMessageID:      a.SourceMessageID,
 		CreatedAt:            a.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:            a.UpdatedAt.Format(time.RFC3339),
 		DeviceIDs:            make([]int64, 0),
 		DeviceNames:          make([]string, 0),
+	}
+	if resp.Steps == nil {
+		resp.Steps = entities.AdaptationSteps{}
 	}
 	if a.Student != nil {
 		resp.StudentName = a.Student.Name
@@ -84,30 +91,52 @@ func mapAdaptations(as []entities.Adaptation) []adaptationResponse {
 }
 
 type createAdaptationBody struct {
-	StudentID            *int64  `json:"student_id"`
-	DeviceID             *int64  `json:"device_id"`
-	DeviceIDs            []int64 `json:"device_ids"`
-	Title                *string `json:"title"`
-	Subject              string  `json:"subject"`
-	ActivityDescription  *string `json:"activity_description"`
-	AdaptationStrategy   *string `json:"adaptation_strategy"`
-	AdaptationType       string  `json:"adaptation_type"`
-	Notes                *string `json:"notes"`
-	SourceConversationID *int64  `json:"source_conversation_id"`
-	SourceMessageID      *int64  `json:"source_message_id"`
+	StudentID            *int64                   `json:"student_id"`
+	DeviceID             *int64                   `json:"device_id"`
+	DeviceIDs            []int64                  `json:"device_ids"`
+	Title                *string                  `json:"title"`
+	Subject              string                   `json:"subject"`
+	ActivityDescription  *string                  `json:"activity_description"`
+	AdaptationStrategy   *string                  `json:"adaptation_strategy"`
+	AdaptationType       string                   `json:"adaptation_type"`
+	Notes                *string                  `json:"notes"`
+	Steps                entities.AdaptationSteps `json:"steps"`
+	RampID               *int64                   `json:"ramp_id"`
+	SourceConversationID *int64                   `json:"source_conversation_id"`
+	SourceMessageID      *int64                   `json:"source_message_id"`
 }
 
 type updateAdaptationBody struct {
-	DeviceID            *int64   `json:"device_id"`
-	DeviceIDs           *[]int64 `json:"device_ids"`
-	Title               *string  `json:"title"`
-	Subject             *string  `json:"subject"`
-	ActivityDescription *string  `json:"activity_description"`
-	AdaptationStrategy  *string  `json:"adaptation_strategy"`
-	AdaptationType      *string  `json:"adaptation_type"`
-	Outcome             *string  `json:"outcome"`
-	Notes               *string  `json:"notes"`
-	Status              *string  `json:"status"`
+	DeviceID            *int64                    `json:"device_id"`
+	DeviceIDs           *[]int64                  `json:"device_ids"`
+	Title               *string                   `json:"title"`
+	Subject             *string                   `json:"subject"`
+	ActivityDescription *string                   `json:"activity_description"`
+	AdaptationStrategy  *string                   `json:"adaptation_strategy"`
+	AdaptationType      *string                   `json:"adaptation_type"`
+	Outcome             *string                   `json:"outcome"`
+	Notes               *string                   `json:"notes"`
+	Status              *string                   `json:"status"`
+	Steps               *entities.AdaptationSteps `json:"steps"`
+	RampID              *int64                    `json:"ramp_id"`
+}
+
+// rangeToCreatedAfter traduce el filtro ?range=today|week|month a un umbral de
+// created_at (frontera temporal calculada con el reloj del server). Vacío/otro = sin filtro.
+func rangeToCreatedAfter(r string) *time.Time {
+	now := time.Now()
+	var t time.Time
+	switch r {
+	case "today":
+		t = now.AddDate(0, 0, -1)
+	case "week":
+		t = now.AddDate(0, 0, -7)
+	case "month":
+		t = now.AddDate(0, -1, 0)
+	default:
+		return nil
+	}
+	return &t
 }
 
 func (c *InclusionContainer) HandleListAdaptations(req web.Request) web.Response {
@@ -121,8 +150,9 @@ func (c *InclusionContainer) HandleListAdaptations(req web.Request) web.Response
 	}
 
 	result, err := c.ListAdaptations.Execute(req.Context(), inclusion.ListAdaptationsRequest{
-		OrgID:     middleware.OrgID(req),
-		StudentID: studentID,
+		OrgID:        middleware.OrgID(req),
+		StudentID:    studentID,
+		CreatedAfter: rangeToCreatedAfter(req.Query("range")),
 	})
 	if err != nil {
 		return rest.HandleError(err)
@@ -169,6 +199,8 @@ func (c *InclusionContainer) HandleCreateAdaptation(req web.Request) web.Respons
 		AdaptationStrategy:   body.AdaptationStrategy,
 		AdaptationType:       body.AdaptationType,
 		Notes:                body.Notes,
+		Steps:                body.Steps,
+		RampID:               body.RampID,
 		SourceConversationID: body.SourceConversationID,
 		SourceMessageID:      body.SourceMessageID,
 	})
@@ -202,6 +234,8 @@ func (c *InclusionContainer) HandleUpdateAdaptation(req web.Request) web.Respons
 		Outcome:             body.Outcome,
 		Notes:               body.Notes,
 		Status:              body.Status,
+		Steps:               body.Steps,
+		RampID:              body.RampID,
 	})
 	if err != nil {
 		return rest.HandleError(err)

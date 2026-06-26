@@ -22,6 +22,8 @@ type UpdateAdaptationRequest struct {
 	Outcome             *string
 	Notes               *string
 	Status              *string
+	Steps               *entities.AdaptationSteps
+	RampID              *int64
 }
 
 var validStatuses = map[string]bool{
@@ -92,6 +94,12 @@ func (uc *updateAdaptationImpl) Execute(ctx context.Context, req UpdateAdaptatio
 	}
 	if req.Status != nil {
 		existing.Status = *req.Status
+	}
+	if req.Steps != nil {
+		existing.Steps = *req.Steps
+	}
+	if req.RampID != nil {
+		existing.RampID = req.RampID
 	}
 
 	if err := uc.adaptations.Update(ctx, existing); err != nil {

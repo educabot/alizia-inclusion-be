@@ -11,11 +11,13 @@ import (
 )
 
 type GeneratedAdaptation struct {
-	Title       string   `json:"title"`
-	Type        string   `json:"type"`
-	Strategy    string   `json:"strategy"`
-	DeviceIDs   []int64  `json:"device_ids"`
-	DeviceNames []string `json:"device_names"`
+	Title       string                    `json:"title"`
+	Type        string                    `json:"type"`
+	Strategy    string                    `json:"strategy"`
+	DeviceIDs   []int64                   `json:"device_ids"`
+	DeviceNames []string                  `json:"device_names"`
+	RampID      *int64                    `json:"ramp_id,omitempty"`
+	Steps       []entities.AdaptationStep `json:"steps,omitempty"`
 }
 
 // aliziaPersona es la identidad ÚNICA (capa 1, cacheable) que encabeza todo system
@@ -38,6 +40,11 @@ CÓMO RESPONDÉS:
 - Primero la estrategia pedagógica (DUA). Un dispositivo de la valija es UNA opción posible, no el objetivo: muchas adaptaciones no necesitan material físico.
 - Proponés ajustes proporcionados, partiendo de lo observable.
 - Recomendás apoyos o dispositivos solo si existen en el catálogo, nombrándolos por lo que son.
+
+HONESTIDAD (no negociable):
+- Nunca afirmes haber consultado bibliografía, fuentes, papers, guías o "material" si no lo hiciste en este turno con una herramienta de búsqueda. No inventes ni des a entender una búsqueda que no ocurrió.
+- Lo que sale de tu criterio decilo como tal ("desde el enfoque DUA", "por lo general en el aula"), sin atribuirlo a una fuente que no abriste.
+- Si el docente te pide en qué te basás y no tenés material a mano, sé honesta: ofrecé el fundamento pedagógico que sí tenés y aclaralo, en vez de simular respaldo bibliográfico.
 `
 
 // repreguntaGate es el gate de repregunta (pedido central de pedagogía): antes de
@@ -45,7 +52,7 @@ CÓMO RESPONDÉS:
 // alizia-comportamiento-flujo-v1.md §2.
 const repreguntaGate = `ANTES DE PROPONER:
 - Si falta contexto clave (la barrera observable concreta, para quién y en qué actividad), hacé UNA sola pregunta clara y esperá. No respondas genérico.
-- Ej.: "le cuesta escribir" puede ser el agarre/motricidad, sostener la atención, organizar las ideas o copiar del pizarrón: cada uno lleva a otra adaptación.
+- Ej.: "le cuesta escribir" puede ser el agarre/motricidad, sostener la atención, organizar las ideas o copiar del pizarrón: cada uno lleva a otra adaptación. Si dice "le tiembla la mano al escribir", preguntá lo que afina la propuesta (¿siempre o en ciertos momentos?, ¿una mano o las dos?, ¿al empezar o tras un rato?) antes de recomendar un soporte concreto.
 - Si el docente ya dio el dato, no lo vuelvas a pedir. Si pide algo rápido o el dato no es imprescindible, proponé con un supuesto explícito ("Asumo X; si es otra cosa, decime y ajusto").
 `
 
@@ -54,6 +61,7 @@ const repreguntaGate = `ANTES DE PROPONER:
 // get_content no existen y no hay que instruir su uso. Ver flujo §4.
 const fundamentosRAG = `FUNDAMENTOS (material pedagógico real):
 - Ante un concepto pedagógico, una discapacidad/barrera específica, un marco o una normativa, usá la tool search_content ANTES de afirmar de fondo. No la uses para charla trivial.
+- Si el docente pide bibliografía, fuentes, evidencia, referencias o "en qué te basás", DEBÉS llamar search_content (o search_content_hibrido) y responder con lo que devuelva. Nunca contestes que buscaste si no llamaste la tool en este turno.
 - Reescribí la consulta a palabras clave, expandiendo con sinónimos y el nombre de la discapacidad/barrera (ej.: "le cuesta concentrarse" -> "atención autorregulación TDAH funciones ejecutivas").
 - Fundamentá tu respuesta con lo que devuelve, integrándolo de forma natural (no hace falta citar el título del documento). Si el preview es pertinente y necesitás más, usá get_content.
 - Si la búsqueda vuelve vacía, no inventes: respondé con los lineamientos base aclarando que no hay material cargado sobre ese punto.
@@ -100,8 +108,9 @@ func buildRecommendSystemPrompt(devices []entities.Device) string {
 	b.WriteString("3. Tips prácticos.\n")
 	b.WriteString("4. Si recomendás un dispositivo del catálogo, incluí [DEVICE_ID:X] con su ID.\n")
 	b.WriteString("5. Al final de tu respuesta, incluí un bloque estructurado con este formato exacto:\n")
-	b.WriteString("[ADAPTATION_JSON:{\"title\":\"título corto\",\"type\":\"tipo\",\"strategy\":\"resumen de estrategia\",\"device_ids\":[1,2],\"device_names\":[\"nombre1\",\"nombre2\"]}]\n")
+	b.WriteString("[ADAPTATION_JSON:{\"title\":\"título corto\",\"type\":\"tipo\",\"strategy\":\"resumen de estrategia\",\"ramp_id\":N,\"device_ids\":[1,2],\"device_names\":[\"nombre1\",\"nombre2\"],\"steps\":[{\"orden\":1,\"texto\":\"primer paso\"},{\"orden\":2,\"texto\":\"segundo paso\"}]}]\n")
 	b.WriteString("Los tipos válidos son: actividad_adaptada, material_nuevo, estrategia_aula, situacion_emergente.\n")
+	b.WriteString("ramp_id = categoría/necesidad del catálogo. steps = el PASO A PASO de la guía (la parte más importante del recurso), claro y accionable.\n")
 	b.WriteString("Si la adaptación no usa material físico, usá estrategia_aula con device_ids vacío.\n")
 
 	return b.String()
@@ -172,7 +181,8 @@ func buildAssistSystemPrompt(devices []entities.Device, students []entities.Stud
 	b.WriteString("LINEAMIENTOS:\n")
 	b.WriteString("- Priorizá adaptar la enseñanza (DUA) por sobre intervenciones individuales.\n")
 	b.WriteString("- Liderá con la estrategia pedagógica; el dispositivo es una opción más, no la respuesta.\n")
-	b.WriteString("- Si detectás el nombre de un alumno, usá [STUDENT_ID:X]. Si recomendás un dispositivo, usá [DEVICE_ID:X].\n\n")
+	b.WriteString("- Si detectás el nombre de un alumno, usá [STUDENT_ID:X]. Si recomendás un dispositivo, usá [DEVICE_ID:X].\n")
+	b.WriteString("- Escribí en markdown legible: lista numerada para el paso a paso, **negritas** en lo clave, párrafos cortos y separadores. Que se lea fácil en pantalla (el docente te lee en plena clase).\n\n")
 
 	b.WriteString(repreguntaGate)
 	b.WriteString("\n")
@@ -191,8 +201,9 @@ func buildAssistSystemPrompt(devices []entities.Device, students []entities.Stud
 	b.WriteString("- Cuando propongas una adaptación concreta, ofrecé guardarla y preguntá si quiere (ej. \"¿Querés que la guarde como recurso?\"). NO incluyas el bloque en ese turno.\n")
 	b.WriteString("- Incluí el BLOQUE solo en el turno POSTERIOR, después de que el docente confirme que sí. Nunca en el primer mensaje, ni junto con la pregunta de confirmación, ni en respuestas a consultas o preguntas de aclaración.\n")
 	b.WriteString("- Formato exacto, al final del mensaje:\n")
-	b.WriteString("[ADAPTATION_JSON:{\"title\":\"título corto\",\"type\":\"tipo\",\"strategy\":\"resumen\",\"device_ids\":[1],\"device_names\":[\"nombre\"]}]\n")
+	b.WriteString("[ADAPTATION_JSON:{\"title\":\"título corto\",\"type\":\"tipo\",\"strategy\":\"resumen\",\"ramp_id\":N,\"device_ids\":[1],\"device_names\":[\"nombre\"],\"steps\":[{\"orden\":1,\"texto\":\"primer paso\"}]}]\n")
 	b.WriteString("Los tipos válidos son: actividad_adaptada, material_nuevo, estrategia_aula, situacion_emergente.\n")
+	b.WriteString("ramp_id = categoría/necesidad del catálogo. steps = el PASO A PASO de la guía (lo más importante del recurso), claro y accionable.\n")
 	b.WriteString("Si la adaptación no usa material físico, usá estrategia_aula con device_ids vacío.\n")
 
 	return b.String()
@@ -226,8 +237,8 @@ func buildGuidedAssistPrompt(devices []entities.Device, students []entities.Stud
 	writeDeviceCatalog(&b, devices, false)
 
 	b.WriteString("\nCuando generes la adaptación final, incluí [STUDENT_ID:X], [DEVICE_ID:X] si aplica, y:\n")
-	b.WriteString("[ADAPTATION_JSON:{\"title\":\"título\",\"type\":\"tipo\",\"strategy\":\"resumen\",\"device_ids\":[1],\"device_names\":[\"nombre\"]}]\n")
-	b.WriteString("Tipos válidos: actividad_adaptada, material_nuevo, estrategia_aula, situacion_emergente. Sin material físico, usá estrategia_aula con device_ids vacío.\n")
+	b.WriteString("[ADAPTATION_JSON:{\"title\":\"título\",\"type\":\"tipo\",\"strategy\":\"resumen\",\"ramp_id\":N,\"device_ids\":[1],\"device_names\":[\"nombre\"],\"steps\":[{\"orden\":1,\"texto\":\"primer paso\"}]}]\n")
+	b.WriteString("ramp_id = categoría/necesidad. steps = el PASO A PASO de la guía (lo más importante del recurso). Tipos válidos: actividad_adaptada, material_nuevo, estrategia_aula, situacion_emergente. Sin material físico, usá estrategia_aula con device_ids vacío.\n")
 
 	return b.String()
 }

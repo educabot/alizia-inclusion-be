@@ -189,16 +189,64 @@ func TestCreateAdaptation_RejectsInvalidType(t *testing.T) {
 	adaptations.AssertNotCalled(t, "Create", mock.Anything, mock.Anything)
 }
 
-func TestCreateAdaptation_RejectsEmptySubject(t *testing.T) {
+// La ficha del recurso lleva paso a paso (steps) y categoría (ramp_id): deben
+// llegar a la entidad que se persiste.
+func TestCreateAdaptation_PersistsStepsAndRamp(t *testing.T) {
 	adaptations := new(mockproviders.MockAdaptationProvider)
+	ctx := context.Background()
+	var captured *entities.Adaptation
+	adaptations.On("Create", ctx, mock.AnythingOfType("*entities.Adaptation")).
+		Run(func(args mock.Arguments) {
+			a, ok := args.Get(1).(*entities.Adaptation)
+			require.True(t, ok)
+			a.ID = 1
+			captured = a
+		}).
+		Return(nil)
+	got := testutil.NewAdaptation(1, 1, 1)
+	adaptations.On("Get", ctx, testutil.TestOrgID, int64(1)).Return(&got, nil)
 
-	_, err := inclusion.NewCreateAdaptation(adaptations).Execute(context.Background(), inclusion.CreateAdaptationRequest{
-		OrgID:     testutil.TestOrgID,
-		StudentID: testutil.Ptr(int64(1)),
-		TeacherID: 1,
-		Subject:   "",
+	ramp := int64(4)
+	_, err := inclusion.NewCreateAdaptation(adaptations).Execute(ctx, inclusion.CreateAdaptationRequest{
+		OrgID:          testutil.TestOrgID,
+		TeacherID:      1,
+		AdaptationType: "estrategia_aula",
+		RampID:         &ramp,
+		Steps:          entities.AdaptationSteps{{Orden: 1, Texto: "primer paso"}, {Orden: 2, Texto: "segundo paso"}},
 	})
 
-	assert.ErrorIs(t, err, providers.ErrValidation)
-	adaptations.AssertNotCalled(t, "Create", mock.Anything, mock.Anything)
+	require.NoError(t, err)
+	require.NotNil(t, captured)
+	require.NotNil(t, captured.RampID)
+	assert.Equal(t, int64(4), *captured.RampID)
+	require.Len(t, captured.Steps, 2)
+	assert.Equal(t, "primer paso", captured.Steps[0].Texto)
+}
+
+// El subject (materia) es opcional: el flujo del docente lo descartó y el guardado
+// desde el chat no lo envía. Un subject vacío debe crear la adaptación igual.
+func TestCreateAdaptation_AllowsEmptySubject(t *testing.T) {
+	adaptations := new(mockproviders.MockAdaptationProvider)
+	ctx := context.Background()
+	adaptations.On("Create", ctx, mock.AnythingOfType("*entities.Adaptation")).
+		Run(func(args mock.Arguments) {
+			a, ok := args.Get(1).(*entities.Adaptation)
+			require.True(t, ok)
+			a.ID = 1
+		}).
+		Return(nil)
+	got := testutil.NewAdaptation(1, 1, 1)
+	adaptations.On("Get", ctx, testutil.TestOrgID, int64(1)).Return(&got, nil)
+
+	result, err := inclusion.NewCreateAdaptation(adaptations).Execute(ctx, inclusion.CreateAdaptationRequest{
+		OrgID:          testutil.TestOrgID,
+		StudentID:      testutil.Ptr(int64(1)),
+		TeacherID:      1,
+		Subject:        "",
+		AdaptationType: "estrategia_aula",
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	adaptations.AssertExpectations(t)
 }

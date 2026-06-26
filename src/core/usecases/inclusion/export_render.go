@@ -49,26 +49,64 @@ func teacherName(a *entities.Adaptation) string {
 	return ""
 }
 
+// studentLine arma "Nombre, Curso" para el encabezado del recurso (ej "Martina Gómez, 3°B").
+func studentLine(a *entities.Adaptation) string {
+	name := studentName(a)
+	if a.Student != nil && a.Student.GradeLevel != nil && strings.TrimSpace(*a.Student.GradeLevel) != "" {
+		return fmt.Sprintf("%s, %s", name, strings.TrimSpace(*a.Student.GradeLevel))
+	}
+	return name
+}
+
+// categoryName devuelve la categoría/necesidad del recurso si está cargada.
+func categoryName(a *entities.Adaptation) string {
+	if a.Ramp != nil {
+		return a.Ramp.Name
+	}
+	return ""
+}
+
+func resourceTitle(a *entities.Adaptation) string {
+	if strings.TrimSpace(a.Title) != "" {
+		return a.Title
+	}
+	if a.Subject != "" {
+		return a.Subject
+	}
+	return "Recurso"
+}
+
 func renderAdaptationMarkdown(a *entities.Adaptation) []byte {
 	var b strings.Builder
 
-	title := a.Subject
-	if title == "" {
-		title = "Adaptación"
-	}
-	fmt.Fprintf(&b, "# %s\n\n", title)
-	fmt.Fprintf(&b, "**Alumno:** %s  \n", studentName(a))
+	fmt.Fprintf(&b, "# %s\n\n", resourceTitle(a))
+	fmt.Fprintf(&b, "**Alumno:** %s  \n", studentLine(a))
 	if t := teacherName(a); t != "" {
 		fmt.Fprintf(&b, "**Docente:** %s  \n", t)
 	}
-	fmt.Fprintf(&b, "**Tipo:** %s  \n", a.AdaptationType)
+	if c := categoryName(a); c != "" {
+		fmt.Fprintf(&b, "**Categoría:** %s  \n", c)
+	}
 	fmt.Fprintf(&b, "**Estado:** %s\n\n", statusLabel(a.Status))
 
 	if s := deref(a.ActivityDescription); s != "" {
-		fmt.Fprintf(&b, "## Actividad\n\n%s\n\n", s)
+		fmt.Fprintf(&b, "## Situación trabajada\n\n%s\n\n", s)
 	}
 	if s := deref(a.AdaptationStrategy); s != "" {
-		fmt.Fprintf(&b, "## Estrategia\n\n%s\n\n", s)
+		fmt.Fprintf(&b, "## Adaptación\n\n%s\n\n", s)
+	}
+
+	if len(a.Steps) > 0 {
+		b.WriteString("## Paso a paso\n\n")
+		for i := range a.Steps {
+			st := &a.Steps[i]
+			box := ""
+			if st.Checkbox {
+				box = "[ ] "
+			}
+			fmt.Fprintf(&b, "%d. %s%s\n", i+1, box, strings.TrimSpace(st.Texto))
+		}
+		b.WriteString("\n")
 	}
 
 	devices := adaptationDevices(a)
@@ -140,25 +178,33 @@ func renderAdaptationPDF(a *entities.Adaptation) ([]byte, error) {
 	}
 
 	pdf.SetFont("Arial", "B", 18)
-	title := a.Subject
-	if title == "" {
-		title = "Adaptación"
-	}
-	pdf.MultiCell(contentWidth, 9, tr(title), "", "L", false)
+	pdf.MultiCell(contentWidth, 9, tr(resourceTitle(a)), "", "L", false)
 	pdf.Ln(2)
 
-	field("Alumno", studentName(a))
+	field("Alumno", studentLine(a))
 	field("Docente", teacherName(a))
-	field("Tipo", a.AdaptationType)
+	field("Categoría", categoryName(a))
 	field("Estado", statusLabel(a.Status))
 
 	if s := deref(a.ActivityDescription); s != "" {
-		heading("Actividad")
+		heading("Situación trabajada")
 		body(s)
 	}
 	if s := deref(a.AdaptationStrategy); s != "" {
-		heading("Estrategia")
+		heading("Adaptación")
 		body(s)
+	}
+
+	if len(a.Steps) > 0 {
+		heading("Paso a paso")
+		for i := range a.Steps {
+			st := &a.Steps[i]
+			prefix := fmt.Sprintf("%d. ", i+1)
+			if st.Checkbox {
+				prefix = fmt.Sprintf("%d. [ ] ", i+1)
+			}
+			body(prefix + strings.TrimSpace(st.Texto))
+		}
 	}
 
 	devices := adaptationDevices(a)
