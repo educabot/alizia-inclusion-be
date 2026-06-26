@@ -9,9 +9,10 @@ import (
 
 type Config struct {
 	bcfg.BaseConfig
-	AzureOpenAIKey      string
-	AzureOpenAIEndpoint string
-	AzureOpenAIModel    string
+	AzureOpenAIKey        string
+	AzureOpenAIEndpoint   string
+	AzureOpenAIModel      string
+	AzureOpenAIAPIVersion string
 
 	// Azure embeddings (búsqueda híbrida RAG). Recurso Azure potencialmente distinto
 	// del de chat, por eso endpoint/key/deployment propios. EmbeddingDim ya existe.
@@ -60,7 +61,9 @@ func Load() *Config {
 		BaseConfig:          base,
 		AzureOpenAIKey:      bcfg.EnvOr("AZURE_OPENAI_API_KEY", ""),
 		AzureOpenAIEndpoint: bcfg.EnvOr("AZURE_OPENAI_ENDPOINT", ""),
-		AzureOpenAIModel:    bcfg.EnvOr("AZURE_OPENAI_MODEL", "gpt-4o-mini"),
+		AzureOpenAIModel:    bcfg.EnvOr("AZURE_OPENAI_MODEL", "gpt-5.4"),
+		// Reasoning (gpt-5.x) requiere api-version 2024-12-01-preview o posterior.
+		AzureOpenAIAPIVersion: bcfg.EnvOr("AZURE_OPENAI_API_VERSION", "2024-12-01-preview"),
 
 		AzureEmbeddingEndpoint:   bcfg.EnvOr("AZURE_OPENAI_EMBEDDING_ENDPOINT", ""),
 		AzureEmbeddingAPIKey:     bcfg.EnvOr("AZURE_OPENAI_EMBEDDING_API_KEY", ""),

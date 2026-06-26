@@ -19,15 +19,17 @@ type AzureClient struct {
 	endpoint   string
 	apiKey     string
 	deployment string
+	apiVersion string
 	httpClient *http.Client
 }
 
-func NewAzureClient(endpoint, apiKey, deployment string) providers.AIClient {
+func NewAzureClient(endpoint, apiKey, deployment, apiVersion string) providers.AIClient {
 	endpoint = strings.TrimRight(endpoint, "/")
 	return &AzureClient{
 		endpoint:   endpoint,
 		apiKey:     apiKey,
 		deployment: deployment,
+		apiVersion: apiVersion,
 		httpClient: &http.Client{},
 	}
 }
@@ -50,11 +52,13 @@ type azureTool struct {
 	Function azureToolFunction `json:"function"`
 }
 
+// azureRequest modela el body de chat/completions para modelos de reasoning
+// (gpt-5.x): usan max_completion_tokens en vez de max_tokens y NO aceptan
+// temperature distinta del default (1), por eso no se envía.
 type azureRequest struct {
-	Messages    []azureMessage `json:"messages"`
-	Temperature *float32       `json:"temperature,omitempty"`
-	MaxTokens   *int           `json:"max_tokens,omitempty"`
-	Tools       []azureTool    `json:"tools,omitempty"`
+	Messages            []azureMessage `json:"messages"`
+	MaxCompletionTokens *int           `json:"max_completion_tokens,omitempty"`
+	Tools               []azureTool    `json:"tools,omitempty"`
 }
 
 type azureToolCall struct {
@@ -99,7 +103,7 @@ func (a *AzureClient) doRequest(ctx context.Context, req azureRequest) (*azureRe
 		return nil, fmt.Errorf("marshal request: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/openai/deployments/%s/chat/completions?api-version=2024-10-21", a.endpoint, a.deployment)
+	url := fmt.Sprintf("%s/openai/deployments/%s/chat/completions?api-version=%s", a.endpoint, a.deployment, a.apiVersion)
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
@@ -176,10 +180,10 @@ func (a *AzureClient) Generate(ctx context.Context, params providers.GeneratePar
 		{Role: "user", Content: params.UserPrompt},
 	}
 
+	// gpt-5.x (reasoning) ignora temperature; solo mapeamos el límite de tokens.
 	resp, err := a.doRequest(ctx, azureRequest{
-		Messages:    messages,
-		Temperature: params.Temperature,
-		MaxTokens:   params.MaxTokens,
+		Messages:            messages,
+		MaxCompletionTokens: params.MaxTokens,
 	})
 	if err != nil {
 		return "", err

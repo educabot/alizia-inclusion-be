@@ -39,7 +39,7 @@ func TestAzureClient_Generate_ReturnsGeneratedContent(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := ai.NewAzureClient(server.URL, "test-key", "gpt-4o-mini")
+	client := ai.NewAzureClient(server.URL, "test-key", "gpt-4o-mini", "2024-12-01-preview")
 	got, err := client.Generate(context.Background(), providers.GenerateParams{
 		SystemPrompt: "you are helpful",
 		UserPrompt:   "hello",
@@ -55,7 +55,7 @@ func TestAzureClient_Generate_ReturnsErrorForNon200Status(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := ai.NewAzureClient(server.URL, "test-key", "gpt-4o-mini")
+	client := ai.NewAzureClient(server.URL, "test-key", "gpt-4o-mini", "2024-12-01-preview")
 	_, err := client.Generate(context.Background(), providers.GenerateParams{
 		SystemPrompt: "you are helpful",
 		UserPrompt:   "hello",
@@ -71,7 +71,7 @@ func TestAzureClient_Generate_ReturnsErrorForEmptyChoices(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := ai.NewAzureClient(server.URL, "test-key", "gpt-4o-mini")
+	client := ai.NewAzureClient(server.URL, "test-key", "gpt-4o-mini", "2024-12-01-preview")
 	_, err := client.Generate(context.Background(), providers.GenerateParams{
 		SystemPrompt: "you are helpful",
 		UserPrompt:   "hello",
@@ -87,7 +87,7 @@ func TestAzureClient_Chat_ReturnsChatResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := ai.NewAzureClient(server.URL, "test-key", "gpt-4o-mini")
+	client := ai.NewAzureClient(server.URL, "test-key", "gpt-4o-mini", "2024-12-01-preview")
 	resp, err := client.Chat(context.Background(), []providers.ChatMessage{
 		{Role: "user", Content: "hello"},
 	})
@@ -107,7 +107,7 @@ func TestAzureClient_Chat_SendsMessagesCorrectly(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := ai.NewAzureClient(server.URL, "test-key", "gpt-4o-mini")
+	client := ai.NewAzureClient(server.URL, "test-key", "gpt-4o-mini", "2024-12-01-preview")
 	messages := []providers.ChatMessage{
 		{Role: "system", Content: "be helpful"},
 		{Role: "user", Content: "what is Go?"},
@@ -136,7 +136,7 @@ func TestAzureClient_ChatWithTools_ReturnsResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := ai.NewAzureClient(server.URL, "test-key", "gpt-4o-mini")
+	client := ai.NewAzureClient(server.URL, "test-key", "gpt-4o-mini", "2024-12-01-preview")
 	resp, err := client.ChatWithTools(
 		context.Background(),
 		[]providers.ChatMessage{{Role: "user", Content: "use a tool"}},
@@ -157,7 +157,7 @@ func TestAzureClient_ChatWithTools_SendsToolDefinitionsInOpenAIFunctionFormat(t 
 	}))
 	defer server.Close()
 
-	client := ai.NewAzureClient(server.URL, "test-key", "gpt-4o-mini")
+	client := ai.NewAzureClient(server.URL, "test-key", "gpt-4o-mini", "2024-12-01-preview")
 	_, err := client.ChatWithTools(
 		context.Background(),
 		[]providers.ChatMessage{{Role: "user", Content: "buscar dispositivos"}},
@@ -205,7 +205,7 @@ func TestAzureClient_ChatWithTools_ParsesToolCallsFromResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := ai.NewAzureClient(server.URL, "test-key", "gpt-4o-mini")
+	client := ai.NewAzureClient(server.URL, "test-key", "gpt-4o-mini", "2024-12-01-preview")
 	resp, err := client.ChatWithTools(
 		context.Background(),
 		[]providers.ChatMessage{{Role: "user", Content: "buscar timer"}},
@@ -229,7 +229,7 @@ func TestAzureClient_ChatWithTools_SerializesAssistantToolCallsAndToolResultMess
 	}))
 	defer server.Close()
 
-	client := ai.NewAzureClient(server.URL, "test-key", "gpt-4o-mini")
+	client := ai.NewAzureClient(server.URL, "test-key", "gpt-4o-mini", "2024-12-01-preview")
 	_, err := client.ChatWithTools(
 		context.Background(),
 		[]providers.ChatMessage{
@@ -272,7 +272,7 @@ func TestAzureClient_URLConstruction_TrimsTrailingSlashFromEndpoint(t *testing.T
 	}))
 	defer server.Close()
 
-	client := ai.NewAzureClient(server.URL+"/", "test-key", "gpt-4o-mini")
+	client := ai.NewAzureClient(server.URL+"/", "test-key", "gpt-4o-mini", "2024-12-01-preview")
 	_, err := client.Generate(context.Background(), providers.GenerateParams{
 		SystemPrompt: "s",
 		UserPrompt:   "u",

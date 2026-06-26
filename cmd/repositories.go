@@ -41,7 +41,7 @@ func NewRepositories(db *gorm.DB, cfg *config.Config) *Repositories {
 	var aiClient providers.AIClient
 	if cfg.AzureOpenAIKey != "" && cfg.AzureOpenAIEndpoint != "" && cfg.AzureOpenAIKey != "your-azure-openai-key" {
 		aiClient = air.NewCircuitBreaker(
-			air.NewAzureClient(cfg.AzureOpenAIEndpoint, cfg.AzureOpenAIKey, cfg.AzureOpenAIModel),
+			air.NewAzureClient(cfg.AzureOpenAIEndpoint, cfg.AzureOpenAIKey, cfg.AzureOpenAIModel, cfg.AzureOpenAIAPIVersion),
 			cfg.AICircuitFailureThreshold,
 			cfg.AICircuitCooldown,
 			nil,
