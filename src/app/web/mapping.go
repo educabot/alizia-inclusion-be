@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/educabot/alizia-inclusion-be/config"
+	"github.com/educabot/alizia-inclusion-be/src/app/web/static"
 	inclusionuc "github.com/educabot/alizia-inclusion-be/src/core/usecases/inclusion"
 	"github.com/educabot/alizia-inclusion-be/src/entrypoints"
 	"github.com/educabot/alizia-inclusion-be/src/entrypoints/middleware"
@@ -15,6 +16,12 @@ import (
 )
 
 func ConfigureMappings(engine *gin.Engine, h *entrypoints.WebHandlerContainer, cfg *config.Config) {
+	// Assets estáticos públicos (imágenes de devices). Fuera del grupo /api/v1:
+	// son públicos (el <img src> del FE no manda Authorization) y no llevan
+	// auth ni tenant. Las imágenes están embebidas (ver package static), keyed
+	// por product_code: /images/devices/ETE-XXXX-EB.png.
+	registerStaticAssets(engine)
+
 	api := engine.Group("/api/v1")
 	api.Use(webgin.AdaptMiddleware(h.AuthMiddleware))
 	api.Use(webgin.AdaptMiddleware(h.TenantMiddleware))
@@ -87,6 +94,18 @@ func ConfigureMappings(engine *gin.Engine, h *entrypoints.WebHandlerContainer, c
 	// AI endpoints (rate-limited per organization)
 	api.POST("/inclusion/recommend", aiRateLimit, webgin.Adapt(h.Inclusion.HandleRecommendDevice))
 	api.POST("/inclusion/assist", aiRateLimit, webgin.Adapt(h.Inclusion.HandleAssistClassroom))
+}
+
+// registerStaticAssets monta el file server embebido en /images/*. Sirve los
+// binarios desde el embed.FS del package static y agrega Cache-Control: las
+// imágenes de devices son inmutables por nombre (product_code), así que el
+// browser/CDN puede cachearlas con holgura.
+func registerStaticAssets(engine *gin.Engine) {
+	fileServer := http.StripPrefix("/images/", http.FileServer(http.FS(static.Images())))
+	engine.GET("/images/*filepath", func(c *gin.Context) {
+		c.Header("Cache-Control", "public, max-age=86400")
+		fileServer.ServeHTTP(c.Writer, c.Request)
+	})
 }
 
 // exportAdaptationRoute serves a binary document download. It bypasses the
