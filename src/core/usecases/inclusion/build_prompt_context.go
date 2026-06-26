@@ -220,7 +220,7 @@ func (uc *buildPromptContextImpl) loadStudentDimension(ctx context.Context, req 
 		return err
 	}
 
-	adaptations, err := uc.adaptations.List(ctx, req.OrgID, req.StudentID)
+	adaptations, err := uc.adaptations.List(ctx, req.OrgID, req.StudentID, nil)
 	if err != nil {
 		return err
 	}

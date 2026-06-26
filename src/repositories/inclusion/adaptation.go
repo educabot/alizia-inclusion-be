@@ -20,7 +20,7 @@ func NewAdaptationRepo(db *gorm.DB) providers.AdaptationProvider {
 	return &adaptationRepo{db: db}
 }
 
-func (r *adaptationRepo) List(ctx context.Context, orgID uuid.UUID, studentID *int64) ([]entities.Adaptation, error) {
+func (r *adaptationRepo) List(ctx context.Context, orgID uuid.UUID, studentID *int64, createdAfter *time.Time) ([]entities.Adaptation, error) {
 	var adaptations []entities.Adaptation
 	q := r.db.WithContext(ctx).
 		Preload("Student").
@@ -31,6 +31,9 @@ func (r *adaptationRepo) List(ctx context.Context, orgID uuid.UUID, studentID *i
 		Where("organization_id = ?", orgID)
 	if studentID != nil {
 		q = q.Where("student_id = ?", *studentID)
+	}
+	if createdAfter != nil {
+		q = q.Where("created_at >= ?", *createdAfter)
 	}
 	err := q.Order("created_at DESC").Find(&adaptations).Error
 	if err != nil {

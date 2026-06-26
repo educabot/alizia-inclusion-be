@@ -2,6 +2,7 @@ package inclusion
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -10,8 +11,9 @@ import (
 )
 
 type ListAdaptationsRequest struct {
-	OrgID     uuid.UUID
-	StudentID *int64
+	OrgID        uuid.UUID
+	StudentID    *int64
+	CreatedAfter *time.Time
 }
 
 func (r ListAdaptationsRequest) Validate() error {
@@ -37,5 +39,5 @@ func (uc *listAdaptationsImpl) Execute(ctx context.Context, req ListAdaptationsR
 	if err := req.Validate(); err != nil {
 		return nil, err
 	}
-	return uc.adaptations.List(ctx, req.OrgID, req.StudentID)
+	return uc.adaptations.List(ctx, req.OrgID, req.StudentID, req.CreatedAfter)
 }

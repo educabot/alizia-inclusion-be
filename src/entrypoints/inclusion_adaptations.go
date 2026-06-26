@@ -121,6 +121,24 @@ type updateAdaptationBody struct {
 	RampID              *int64                    `json:"ramp_id"`
 }
 
+// rangeToCreatedAfter traduce el filtro ?range=today|week|month a un umbral de
+// created_at (frontera temporal calculada con el reloj del server). Vacío/otro = sin filtro.
+func rangeToCreatedAfter(r string) *time.Time {
+	now := time.Now()
+	var t time.Time
+	switch r {
+	case "today":
+		t = now.AddDate(0, 0, -1)
+	case "week":
+		t = now.AddDate(0, 0, -7)
+	case "month":
+		t = now.AddDate(0, -1, 0)
+	default:
+		return nil
+	}
+	return &t
+}
+
 func (c *InclusionContainer) HandleListAdaptations(req web.Request) web.Response {
 	var studentID *int64
 	if v := req.Query("student_id"); v != "" {
@@ -132,8 +150,9 @@ func (c *InclusionContainer) HandleListAdaptations(req web.Request) web.Response
 	}
 
 	result, err := c.ListAdaptations.Execute(req.Context(), inclusion.ListAdaptationsRequest{
-		OrgID:     middleware.OrgID(req),
-		StudentID: studentID,
+		OrgID:        middleware.OrgID(req),
+		StudentID:    studentID,
+		CreatedAfter: rangeToCreatedAfter(req.Query("range")),
 	})
 	if err != nil {
 		return rest.HandleError(err)

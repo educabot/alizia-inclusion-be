@@ -371,7 +371,7 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 		if err := json.Unmarshal([]byte(call.Arguments), &args); err != nil {
 			return "", fmt.Errorf("invalid arguments for get_past_adaptations: %w", err)
 		}
-		adaptations, err := d.adaptations.List(ctx, orgID, &args.StudentID)
+		adaptations, err := d.adaptations.List(ctx, orgID, &args.StudentID, nil)
 		if err != nil {
 			return "", err
 		}

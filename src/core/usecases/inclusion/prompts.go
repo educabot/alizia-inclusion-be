@@ -47,7 +47,7 @@ CÓMO RESPONDÉS:
 // alizia-comportamiento-flujo-v1.md §2.
 const repreguntaGate = `ANTES DE PROPONER:
 - Si falta contexto clave (la barrera observable concreta, para quién y en qué actividad), hacé UNA sola pregunta clara y esperá. No respondas genérico.
-- Ej.: "le cuesta escribir" puede ser el agarre/motricidad, sostener la atención, organizar las ideas o copiar del pizarrón: cada uno lleva a otra adaptación.
+- Ej.: "le cuesta escribir" puede ser el agarre/motricidad, sostener la atención, organizar las ideas o copiar del pizarrón: cada uno lleva a otra adaptación. Si dice "le tiembla la mano al escribir", preguntá lo que afina la propuesta (¿siempre o en ciertos momentos?, ¿una mano o las dos?, ¿al empezar o tras un rato?) antes de recomendar un soporte concreto.
 - Si el docente ya dio el dato, no lo vuelvas a pedir. Si pide algo rápido o el dato no es imprescindible, proponé con un supuesto explícito ("Asumo X; si es otra cosa, decime y ajusto").
 `
 
@@ -175,7 +175,8 @@ func buildAssistSystemPrompt(devices []entities.Device, students []entities.Stud
 	b.WriteString("LINEAMIENTOS:\n")
 	b.WriteString("- Priorizá adaptar la enseñanza (DUA) por sobre intervenciones individuales.\n")
 	b.WriteString("- Liderá con la estrategia pedagógica; el dispositivo es una opción más, no la respuesta.\n")
-	b.WriteString("- Si detectás el nombre de un alumno, usá [STUDENT_ID:X]. Si recomendás un dispositivo, usá [DEVICE_ID:X].\n\n")
+	b.WriteString("- Si detectás el nombre de un alumno, usá [STUDENT_ID:X]. Si recomendás un dispositivo, usá [DEVICE_ID:X].\n")
+	b.WriteString("- Escribí en markdown legible: lista numerada para el paso a paso, **negritas** en lo clave, párrafos cortos y separadores. Que se lea fácil en pantalla (el docente te lee en plena clase).\n\n")
 
 	b.WriteString(repreguntaGate)
 	b.WriteString("\n")

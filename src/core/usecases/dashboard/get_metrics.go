@@ -68,7 +68,7 @@ func (uc *getMetricsImpl) Execute(ctx context.Context, req GetMetricsRequest) (*
 		}
 	}
 
-	adaptations, err := uc.adaptations.List(ctx, req.OrgID, nil)
+	adaptations, err := uc.adaptations.List(ctx, req.OrgID, nil, nil)
 	if err != nil {
 		return nil, err
 	}

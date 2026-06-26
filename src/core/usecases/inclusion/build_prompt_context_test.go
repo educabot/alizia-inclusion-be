@@ -111,7 +111,7 @@ func TestBuildContext_StudentDimensionLoadsFullContext(t *testing.T) {
 		Return([]entities.StudentDiagnosis{{ID: 1, StudentProfileID: 7, DiagnosisID: 2}}, nil)
 	m.ppi.On("GetByStudentID", mock.Anything, testutil.TestOrgID, int64(7)).
 		Return(&entities.PPI{ID: 9, StudentID: 7, OrganizationID: testutil.TestOrgID, Status: "active"}, nil)
-	m.adaptations.On("List", mock.Anything, testutil.TestOrgID, testutil.Ptr(int64(7))).
+	m.adaptations.On("List", mock.Anything, testutil.TestOrgID, testutil.Ptr(int64(7)), mock.Anything).
 		Return([]entities.Adaptation{testutil.NewAdaptation(1, 7, 1)}, nil)
 	classroom := testutil.NewClassroom(3, "4to A")
 	m.classrooms.On("Get", mock.Anything, testutil.TestOrgID, int64(3)).Return(&classroom, nil)
@@ -151,7 +151,7 @@ func TestBuildContext_StudentWithoutProfileAndPPIDegradesGracefully(t *testing.T
 	m.students.On("GetStudent", mock.Anything, testutil.TestOrgID, int64(8)).Return(&student, nil)
 	m.ppi.On("GetByStudentID", mock.Anything, testutil.TestOrgID, int64(8)).
 		Return(nil, providers.ErrNotFound)
-	m.adaptations.On("List", mock.Anything, testutil.TestOrgID, testutil.Ptr(int64(8))).
+	m.adaptations.On("List", mock.Anything, testutil.TestOrgID, testutil.Ptr(int64(8)), mock.Anything).
 		Return([]entities.Adaptation{}, nil)
 	m.summaries.On("RecentByStudent", mock.Anything, testutil.TestOrgID, int64(8), 10).
 		Return([]entities.ConversationSummary{}, nil)

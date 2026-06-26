@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
@@ -69,7 +70,7 @@ func TestInclusionDispatcher_GetPastAdaptationsReturnsStatusAndOutcome(t *testin
 	outcome := "funcionó muy bien con time timer"
 	adaptations := new(mockproviders.MockAdaptationProvider)
 	studentID := int64(7)
-	adaptations.On("List", ctx, orgID, &studentID).
+	adaptations.On("List", ctx, orgID, &studentID, mock.Anything).
 		Return([]entities.Adaptation{
 			{ID: 1, Subject: "Lengua", Status: "funcionó", Outcome: &outcome},
 		}, nil)
