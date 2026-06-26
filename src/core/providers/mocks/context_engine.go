@@ -56,20 +56,3 @@ func (m *MockPPIProvider) GetByStudentID(ctx context.Context, orgID uuid.UUID, s
 	}
 	return args.Get(0).(*entities.PPI), args.Error(1)
 }
-
-type MockIntegradoraAssignmentProvider struct {
-	mock.Mock
-}
-
-func (m *MockIntegradoraAssignmentProvider) ListStudentIDsByUser(ctx context.Context, orgID uuid.UUID, userID int64) ([]int64, error) {
-	args := m.Called(ctx, orgID, userID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]int64), args.Error(1)
-}
-
-func (m *MockIntegradoraAssignmentProvider) IsAssigned(ctx context.Context, orgID uuid.UUID, userID, studentID int64) (bool, error) {
-	args := m.Called(ctx, orgID, userID, studentID)
-	return args.Bool(0), args.Error(1)
-}

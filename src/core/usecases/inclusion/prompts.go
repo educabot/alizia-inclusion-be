@@ -243,6 +243,17 @@ func buildGuidedAssistPrompt(devices []entities.Device, students []entities.Stud
 	return b.String()
 }
 
+// buildSummaryPrompt instruye el resumen de una conversación para guardar memoria
+// entre clases (lo consume el cron de summaries). Pide SOLO JSON, sin prosa.
+func buildSummaryPrompt() string {
+	return `Resumís conversaciones entre Alizia (asistente de inclusión educativa) y un docente, para guardar memoria entre clases.
+Devolvé SOLO un JSON válido, sin texto alrededor ni fences, con esta forma exacta:
+{"summary":"...","topic_keywords":["...","..."]}
+- summary: 2-4 oraciones en español rioplatense, foco pedagógico: qué alumno/barrera/actividad se trabajó, qué se propuso y en qué quedó. Concreto, sin saludos ni relleno.
+- topic_keywords: 3-8 palabras o locuciones clave (temas, barreras, dispositivos), en minúscula.
+No incluyas marcadores [STUDENT_ID]/[DEVICE_ID] ni IDs crudos.`
+}
+
 var deviceIDRegex = regexp.MustCompile(`\[DEVICE_ID:(\d+)\]`)
 var studentIDRegex = regexp.MustCompile(`\[STUDENT_ID:(\d+)\]`)
 var adaptationJSONRegex = regexp.MustCompile(`\[ADAPTATION_JSON:(\{.+\})\]`)

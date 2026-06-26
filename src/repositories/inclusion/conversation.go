@@ -39,6 +39,41 @@ func (r *conversationRepo) ListByUser(ctx context.Context, orgID uuid.UUID, user
 	return conversations, nil
 }
 
+// ListPendingSummary trae conversaciones "cerradas" (último mensaje anterior a
+// idleBefore) cuyo resumen falta o quedó viejo respecto del último mensaje, con
+// sus Messages precargados en orden. Lo consume el batch de resúmenes (cron).
+func (r *conversationRepo) ListPendingSummary(ctx context.Context, idleBefore time.Time, limit int) ([]entities.Conversation, error) {
+	var ids []int64
+	err := r.db.WithContext(ctx).Raw(`
+		SELECT c.id
+		FROM conversations c
+		JOIN conversation_messages m ON m.conversation_id = c.id
+		LEFT JOIN conversation_summaries s ON s.conversation_id = c.id
+		GROUP BY c.id, s.updated_at
+		HAVING MAX(m.created_at) < ?
+		   AND (s.updated_at IS NULL OR s.updated_at < MAX(m.created_at))
+		ORDER BY MAX(m.created_at) ASC
+		LIMIT ?`, idleBefore, limit).Scan(&ids).Error
+	if err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	var conversations []entities.Conversation
+	err = r.db.WithContext(ctx).
+		Preload("Messages", func(db *gorm.DB) *gorm.DB {
+			return db.Order("created_at ASC")
+		}).
+		Where("id IN ?", ids).
+		Find(&conversations).Error
+	if err != nil {
+		return nil, err
+	}
+	return conversations, nil
+}
+
 func (r *conversationRepo) Delete(ctx context.Context, orgID uuid.UUID, id int64) error {
 	result := r.db.WithContext(ctx).
 		Where("organization_id = ? AND id = ?", orgID, id).
