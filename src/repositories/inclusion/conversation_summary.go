@@ -2,9 +2,11 @@ package inclusion
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
@@ -16,6 +18,43 @@ type conversationSummaryRepo struct {
 
 func NewConversationSummaryRepo(db *gorm.DB) providers.ConversationSummaryProvider {
 	return &conversationSummaryRepo{db: db}
+}
+
+// Upsert escribe (o reemplaza) el resumen de una conversación y rehace sus filas
+// de join con alumnos/dispositivos, todo en una transacción. Idempotente por
+// conversation_id: re-resumir una conversación pisa el resumen anterior.
+func (r *conversationSummaryRepo) Upsert(ctx context.Context, s entities.ConversationSummary, studentIDs, deviceIDs []int64) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "conversation_id"}},
+			DoUpdates: clause.AssignmentColumns([]string{"summary", "topic_keywords", "token_count", "updated_at"}),
+		}).Create(&s).Error; err != nil {
+			return fmt.Errorf("upsert summary: %w", err)
+		}
+
+		if err := tx.Exec("DELETE FROM conversation_summary_students WHERE conversation_id = ?", s.ConversationID).Error; err != nil {
+			return fmt.Errorf("clear student joins: %w", err)
+		}
+		for _, sid := range studentIDs {
+			if err := tx.Exec(
+				"INSERT INTO conversation_summary_students (conversation_id, student_id) VALUES (?, ?) ON CONFLICT DO NOTHING",
+				s.ConversationID, sid).Error; err != nil {
+				return fmt.Errorf("insert student join: %w", err)
+			}
+		}
+
+		if err := tx.Exec("DELETE FROM conversation_summary_devices WHERE conversation_id = ?", s.ConversationID).Error; err != nil {
+			return fmt.Errorf("clear device joins: %w", err)
+		}
+		for _, did := range deviceIDs {
+			if err := tx.Exec(
+				"INSERT INTO conversation_summary_devices (conversation_id, device_id) VALUES (?, ?) ON CONFLICT DO NOTHING",
+				s.ConversationID, did).Error; err != nil {
+				return fmt.Errorf("insert device join: %w", err)
+			}
+		}
+		return nil
+	})
 }
 
 // RecentByStudent trae los resúmenes más recientes ligados a un alumno, acotados por org.

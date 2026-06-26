@@ -28,9 +28,3 @@ type DiagnosisProvider interface {
 type PPIProvider interface {
 	GetByStudentID(ctx context.Context, orgID uuid.UUID, studentID int64) (*entities.PPI, error)
 }
-
-// IntegradoraAssignmentProvider — asignación maestra integradora ↔ alumno.
-type IntegradoraAssignmentProvider interface {
-	ListStudentIDsByUser(ctx context.Context, orgID uuid.UUID, userID int64) ([]int64, error)
-	IsAssigned(ctx context.Context, orgID uuid.UUID, userID, studentID int64) (bool, error)
-}

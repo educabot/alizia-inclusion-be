@@ -14,4 +14,7 @@ type ConversationSummaryProvider interface {
 	RecentByStudent(ctx context.Context, orgID uuid.UUID, studentID int64, limit int) ([]entities.ConversationSummary, error)
 	RecentByDevice(ctx context.Context, orgID uuid.UUID, deviceID int64, limit int) ([]entities.ConversationSummary, error)
 	RecentByTopic(ctx context.Context, orgID uuid.UUID, keyword string, limit int) ([]entities.ConversationSummary, error)
+	// Upsert escribe/reemplaza el resumen de una conversación + sus joins de
+	// alumnos/dispositivos (transaccional). Lo usa el batch de resúmenes.
+	Upsert(ctx context.Context, s entities.ConversationSummary, studentIDs, deviceIDs []int64) error
 }

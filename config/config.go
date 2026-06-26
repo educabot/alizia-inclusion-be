@@ -51,6 +51,13 @@ type Config struct {
 	// a fixed dimension, so the real value must be confirmed against the Azure model
 	// before enabling it. Default 1536 (OpenAI/Azure text-embedding-3-small).
 	EmbeddingDim int
+
+	// SummaryIdleMinutes is the minimum age (minutes) of a conversation's last
+	// message before the summarizer cron treats it as "closed" and resumes it. Default 20.
+	SummaryIdleMinutes int
+	// SummaryBatchLimit caps how many conversations the summarizer cron processes
+	// per run. Default 50.
+	SummaryBatchLimit int
 }
 
 func Load() *Config {
@@ -87,6 +94,9 @@ func Load() *Config {
 		ChatTraceVerbose: bcfg.EnvOr("CHAT_TRACE_VERBOSE", "true") == "true",
 
 		EmbeddingDim: boundedUintToInt(bcfg.GetEnvUint("EMBEDDING_DIM", "1536")),
+
+		SummaryIdleMinutes: boundedUintToInt(bcfg.GetEnvUint("SUMMARY_IDLE_MINUTES", "20")),
+		SummaryBatchLimit:  boundedUintToInt(bcfg.GetEnvUint("SUMMARY_BATCH_LIMIT", "50")),
 	}
 }
 

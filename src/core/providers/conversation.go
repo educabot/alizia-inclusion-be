@@ -2,6 +2,7 @@ package providers
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -24,4 +25,7 @@ type ConversationProvider interface {
 	AppendTurn(ctx context.Context, params AppendTurnParams) (int64, error)
 	Delete(ctx context.Context, orgID uuid.UUID, id int64) error
 	Rename(ctx context.Context, orgID uuid.UUID, id int64, title string) error
+	// ListPendingSummary devuelve conversaciones inactivas (último mensaje <
+	// idleBefore) sin resumen actualizado, con Messages precargados. Para el cron.
+	ListPendingSummary(ctx context.Context, idleBefore time.Time, limit int) ([]entities.Conversation, error)
 }

@@ -13,11 +13,10 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	gormlogger "gorm.io/gorm/logger"
 
 	"github.com/educabot/alizia-inclusion-be/config"
+	"github.com/educabot/alizia-inclusion-be/src/app/database"
 	appweb "github.com/educabot/alizia-inclusion-be/src/app/web"
 	appmw "github.com/educabot/alizia-inclusion-be/src/entrypoints/middleware"
 	"github.com/educabot/alizia-inclusion-be/src/observability"
@@ -160,62 +159,12 @@ func healthHandler(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-// dbConnectMaxAttempts y dbConnectBackoff acotan el reintento de conexión al
-// boot. Las DB gestionadas detrás de un proxy (ej. Railway) suelen resetear la
-// primera conexión en frío; un único intento haría que el server muera al
-// arrancar. Reintentamos con backoff fijo antes de rendirnos.
-const (
-	dbConnectMaxAttempts = 10
-	dbConnectBackoff     = 2 * time.Second
-)
-
 func connectDB(cfg *config.Config) *gorm.DB {
-	var db *gorm.DB
-	var lastErr error
-
-	for attempt := 1; attempt <= dbConnectMaxAttempts; attempt++ {
-		db, lastErr = openAndPing(cfg)
-		if lastErr == nil {
-			break
-		}
-		slog.Warn("database connection attempt failed",
-			"attempt", attempt, "max_attempts", dbConnectMaxAttempts, "error", lastErr)
-		if attempt < dbConnectMaxAttempts {
-			time.Sleep(dbConnectBackoff)
-		}
-	}
-	if lastErr != nil {
-		slog.Error("database connection failed", "error", lastErr)
+	db, err := database.Connect(cfg)
+	if err != nil {
+		slog.Error("database connection failed", "error", err)
 		os.Exit(1)
 	}
-
 	slog.Info("database connected")
 	return db
-}
-
-// openAndPing abre la conexión y la verifica con un Ping. Devuelve error en vez
-// de matar el proceso para que connectDB pueda reintentar.
-func openAndPing(cfg *config.Config) (*gorm.DB, error) {
-	db, err := gorm.Open(postgres.Open(cfg.DatabaseURL), &gorm.Config{
-		Logger: gormlogger.Default.LogMode(gormlogger.Warn),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("open: %w", err)
-	}
-
-	sqlDB, err := db.DB()
-	if err != nil {
-		return nil, fmt.Errorf("sql.DB: %w", err)
-	}
-
-	if err := sqlDB.Ping(); err != nil {
-		return nil, fmt.Errorf("ping: %w", err)
-	}
-
-	sqlDB.SetMaxOpenConns(cfg.DBMaxOpenConns)
-	sqlDB.SetMaxIdleConns(cfg.DBMaxIdleConns)
-	sqlDB.SetConnMaxLifetime(cfg.DBConnMaxLifetime)
-	sqlDB.SetConnMaxIdleTime(cfg.DBConnMaxIdleTime)
-
-	return db, nil
 }

@@ -49,25 +49,6 @@ WHERE NOT EXISTS (
   SELECT 1 FROM diagnoses_catalog d WHERE d.organization_id IS NULL AND d.name = v.name
 );
 
--- ---------- response_examples: few-shot golden 'curated' (cold-start) ----------
--- Ligados a su situación vía tags. mode='assist', label='golden', source='curated'.
-INSERT INTO response_examples (organization_id, mode, context_snapshot, response, label, tags, source)
-SELECT NULL, v.mode, '{}'::jsonb, v.response, 'golden', v.tags, 'curated'
-FROM (VALUES
-  ('assist',
-   'Para que arranque: dividí la consigna en 1 solo paso visible a la vez y dale un inicio concreto ("escribí solo el título"). Usá un time timer de la valija para marcar 5 minutos de foco. Reforzá apenas empieza, no recién al terminar.',
-   ARRAY['no_inicia_tarea','dependencia_adulto']),
-  ('assist',
-   'Anticipá los cambios: avisá la transición 2 minutos antes con apoyo visual (pictograma o cartel de "ahora / después"). Para la sobrecarga, ofrecé auriculares de cancelación de ruido y un rincón de calma. Mantené la rutina estable.',
-   ARRAY['dificultad_transiciones','fatiga_sensorial','TEA']),
-  ('assist',
-   'Para la lectura: entregá el texto en fragmentos cortos con tipografía accesible y mayor interlineado. Permití lectura en voz alta o apoyo audio. Evaluá la comprensión de forma oral, separándola de la decodificación.',
-   ARRAY['dificultad_lectura','dislexia'])
-) AS v(mode, response, tags)
-WHERE NOT EXISTS (
-  SELECT 1 FROM response_examples r WHERE r.source = 'curated' AND r.response = v.response
-);
-
 -- ---------- pedagogical_content (RAG): documentos globales de ejemplo ----------
 -- MVP: 1 chunk = documento entero; embedding queda NULL hasta fijar el modelo de Azure.
 INSERT INTO pedagogical_content (parent_id, type, title, status, keywords, organization_id)
