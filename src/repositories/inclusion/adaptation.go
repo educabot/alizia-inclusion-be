@@ -27,6 +27,7 @@ func (r *adaptationRepo) List(ctx context.Context, orgID uuid.UUID, studentID *i
 		Preload("Teacher").
 		Preload("Device").
 		Preload("Devices").
+		Preload("Ramp").
 		Where("organization_id = ?", orgID)
 	if studentID != nil {
 		q = q.Where("student_id = ?", *studentID)
@@ -45,6 +46,7 @@ func (r *adaptationRepo) Get(ctx context.Context, orgID uuid.UUID, id int64) (*e
 		Preload("Teacher").
 		Preload("Device").
 		Preload("Devices").
+		Preload("Ramp").
 		Where("organization_id = ? AND id = ?", orgID, id).
 		First(&adaptation).Error
 	if err != nil {

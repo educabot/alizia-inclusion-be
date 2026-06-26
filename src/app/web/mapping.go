@@ -137,7 +137,13 @@ func exportAdaptationRoute(uc inclusionuc.ExportAdaptation) gin.HandlerFunc {
 			return
 		}
 
-		c.Header("Content-Disposition", `attachment; filename="`+doc.Filename+`"`)
+		// disposition=inline abre el archivo en el navegador (preview, tipo Drive)
+		// en vez de forzar la descarga. Default: attachment.
+		disposition := "attachment"
+		if c.Query("disposition") == "inline" {
+			disposition = "inline"
+		}
+		c.Header("Content-Disposition", disposition+`; filename="`+doc.Filename+`"`)
 		c.Data(http.StatusOK, doc.ContentType, doc.Data)
 	}
 }
