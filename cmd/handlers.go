@@ -33,6 +33,8 @@ func NewHandlers(uc *UseCases, cfg *config.Config) *entrypoints.WebHandlerContai
 			CreateStudent:            uc.CreateStudent,
 			UpdateStudent:            uc.UpdateStudent,
 			DeleteStudent:            uc.DeleteStudent,
+			ListStudentNotes:         uc.ListStudentNotes,
+			CreateStudentNote:        uc.CreateStudentNote,
 			ListAdaptations:          uc.ListAdaptations,
 			GetAdaptation:            uc.GetAdaptation,
 			CreateAdaptation:         uc.CreateAdaptation,

@@ -54,6 +54,8 @@ func ConfigureMappings(engine *gin.Engine, h *entrypoints.WebHandlerContainer, c
 	studentByID.DELETE("", webgin.Adapt(h.Inclusion.HandleDeleteStudent))
 	studentByID.GET("/profile", webgin.Adapt(h.Inclusion.HandleGetStudentProfile))
 	studentByID.PUT("/profile", webgin.Adapt(h.Inclusion.HandleUpsertStudentProfile))
+	studentByID.GET("/notes", webgin.Adapt(h.Inclusion.HandleListStudentNotes))
+	studentByID.POST("/notes", webgin.Adapt(h.Inclusion.HandleCreateStudentNote))
 
 	// Catalog: ramps & devices
 	api.GET("/ramps", webgin.Adapt(h.Catalog.HandleListRamps))

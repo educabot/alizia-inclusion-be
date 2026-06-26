@@ -23,4 +23,6 @@ var (
 	errInvalidExportFormat    = fmt.Errorf("%w: format must be one of: md, pdf", providers.ErrValidation)
 	errInvalidAdaptationType  = fmt.Errorf("%w: type must be one of: actividad_adaptada, material_nuevo, estrategia_aula, situacion_emergente", providers.ErrValidation)
 	errQuestionRequired       = fmt.Errorf("%w: semantic_question is required", providers.ErrValidation)
+	errContentRequired        = fmt.Errorf("%w: content is required", providers.ErrValidation)
+	errInvalidNoteType        = fmt.Errorf("%w: type must be one of: diagnostico, observable, seguimiento", providers.ErrValidation)
 )
