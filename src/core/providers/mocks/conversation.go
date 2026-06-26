@@ -26,3 +26,13 @@ func (m *MockConversationProvider) AppendTurn(ctx context.Context, params provid
 	args := m.Called(ctx, params)
 	return args.Get(0).(int64), args.Error(1)
 }
+
+func (m *MockConversationProvider) Delete(ctx context.Context, orgID uuid.UUID, id int64) error {
+	args := m.Called(ctx, orgID, id)
+	return args.Error(0)
+}
+
+func (m *MockConversationProvider) Rename(ctx context.Context, orgID uuid.UUID, id int64, title string) error {
+	args := m.Called(ctx, orgID, id, title)
+	return args.Error(0)
+}

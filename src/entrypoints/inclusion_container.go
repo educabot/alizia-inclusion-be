@@ -27,4 +27,6 @@ type InclusionContainer struct {
 	ListAdaptationResources inclusionuc.ListAdaptationResources
 	ExportAdaptation        inclusionuc.ExportAdaptation
 	GetChatHistory          inclusionuc.GetChatHistory
+	DeleteConversation      inclusionuc.DeleteConversation
+	RenameConversation      inclusionuc.RenameConversation
 }
