@@ -21,6 +21,8 @@ type CreateAdaptationRequest struct {
 	AdaptationStrategy  *string
 	AdaptationType      string
 	Notes               *string
+	Steps               entities.AdaptationSteps
+	RampID              *int64
 	// Origen opcional cuando la adaptación se guarda desde el chat (GAP B).
 	SourceConversationID *int64
 	SourceMessageID      *int64
@@ -90,6 +92,8 @@ func (uc *createAdaptationImpl) Execute(ctx context.Context, req CreateAdaptatio
 		AdaptationStrategy:   req.AdaptationStrategy,
 		AdaptationType:       adaptationType,
 		Notes:                req.Notes,
+		Steps:                req.Steps,
+		RampID:               req.RampID,
 		Status:               "en_curso",
 		SourceConversationID: req.SourceConversationID,
 		SourceMessageID:      req.SourceMessageID,

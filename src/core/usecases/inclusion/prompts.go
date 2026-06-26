@@ -11,11 +11,13 @@ import (
 )
 
 type GeneratedAdaptation struct {
-	Title       string   `json:"title"`
-	Type        string   `json:"type"`
-	Strategy    string   `json:"strategy"`
-	DeviceIDs   []int64  `json:"device_ids"`
-	DeviceNames []string `json:"device_names"`
+	Title       string                    `json:"title"`
+	Type        string                    `json:"type"`
+	Strategy    string                    `json:"strategy"`
+	DeviceIDs   []int64                   `json:"device_ids"`
+	DeviceNames []string                  `json:"device_names"`
+	RampID      *int64                    `json:"ramp_id,omitempty"`
+	Steps       []entities.AdaptationStep `json:"steps,omitempty"`
 }
 
 // aliziaPersona es la identidad ÚNICA (capa 1, cacheable) que encabeza todo system
@@ -100,8 +102,9 @@ func buildRecommendSystemPrompt(devices []entities.Device) string {
 	b.WriteString("3. Tips prácticos.\n")
 	b.WriteString("4. Si recomendás un dispositivo del catálogo, incluí [DEVICE_ID:X] con su ID.\n")
 	b.WriteString("5. Al final de tu respuesta, incluí un bloque estructurado con este formato exacto:\n")
-	b.WriteString("[ADAPTATION_JSON:{\"title\":\"título corto\",\"type\":\"tipo\",\"strategy\":\"resumen de estrategia\",\"device_ids\":[1,2],\"device_names\":[\"nombre1\",\"nombre2\"]}]\n")
+	b.WriteString("[ADAPTATION_JSON:{\"title\":\"título corto\",\"type\":\"tipo\",\"strategy\":\"resumen de estrategia\",\"ramp_id\":N,\"device_ids\":[1,2],\"device_names\":[\"nombre1\",\"nombre2\"],\"steps\":[{\"orden\":1,\"texto\":\"primer paso\"},{\"orden\":2,\"texto\":\"segundo paso\"}]}]\n")
 	b.WriteString("Los tipos válidos son: actividad_adaptada, material_nuevo, estrategia_aula, situacion_emergente.\n")
+	b.WriteString("ramp_id = categoría/necesidad del catálogo. steps = el PASO A PASO de la guía (la parte más importante del recurso), claro y accionable.\n")
 	b.WriteString("Si la adaptación no usa material físico, usá estrategia_aula con device_ids vacío.\n")
 
 	return b.String()
@@ -191,8 +194,9 @@ func buildAssistSystemPrompt(devices []entities.Device, students []entities.Stud
 	b.WriteString("- Cuando propongas una adaptación concreta, ofrecé guardarla y preguntá si quiere (ej. \"¿Querés que la guarde como recurso?\"). NO incluyas el bloque en ese turno.\n")
 	b.WriteString("- Incluí el BLOQUE solo en el turno POSTERIOR, después de que el docente confirme que sí. Nunca en el primer mensaje, ni junto con la pregunta de confirmación, ni en respuestas a consultas o preguntas de aclaración.\n")
 	b.WriteString("- Formato exacto, al final del mensaje:\n")
-	b.WriteString("[ADAPTATION_JSON:{\"title\":\"título corto\",\"type\":\"tipo\",\"strategy\":\"resumen\",\"device_ids\":[1],\"device_names\":[\"nombre\"]}]\n")
+	b.WriteString("[ADAPTATION_JSON:{\"title\":\"título corto\",\"type\":\"tipo\",\"strategy\":\"resumen\",\"ramp_id\":N,\"device_ids\":[1],\"device_names\":[\"nombre\"],\"steps\":[{\"orden\":1,\"texto\":\"primer paso\"}]}]\n")
 	b.WriteString("Los tipos válidos son: actividad_adaptada, material_nuevo, estrategia_aula, situacion_emergente.\n")
+	b.WriteString("ramp_id = categoría/necesidad del catálogo. steps = el PASO A PASO de la guía (lo más importante del recurso), claro y accionable.\n")
 	b.WriteString("Si la adaptación no usa material físico, usá estrategia_aula con device_ids vacío.\n")
 
 	return b.String()
@@ -226,8 +230,8 @@ func buildGuidedAssistPrompt(devices []entities.Device, students []entities.Stud
 	writeDeviceCatalog(&b, devices, false)
 
 	b.WriteString("\nCuando generes la adaptación final, incluí [STUDENT_ID:X], [DEVICE_ID:X] si aplica, y:\n")
-	b.WriteString("[ADAPTATION_JSON:{\"title\":\"título\",\"type\":\"tipo\",\"strategy\":\"resumen\",\"device_ids\":[1],\"device_names\":[\"nombre\"]}]\n")
-	b.WriteString("Tipos válidos: actividad_adaptada, material_nuevo, estrategia_aula, situacion_emergente. Sin material físico, usá estrategia_aula con device_ids vacío.\n")
+	b.WriteString("[ADAPTATION_JSON:{\"title\":\"título\",\"type\":\"tipo\",\"strategy\":\"resumen\",\"ramp_id\":N,\"device_ids\":[1],\"device_names\":[\"nombre\"],\"steps\":[{\"orden\":1,\"texto\":\"primer paso\"}]}]\n")
+	b.WriteString("ramp_id = categoría/necesidad. steps = el PASO A PASO de la guía (lo más importante del recurso). Tipos válidos: actividad_adaptada, material_nuevo, estrategia_aula, situacion_emergente. Sin material físico, usá estrategia_aula con device_ids vacío.\n")
 
 	return b.String()
 }
