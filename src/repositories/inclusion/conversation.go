@@ -39,6 +39,33 @@ func (r *conversationRepo) ListByUser(ctx context.Context, orgID uuid.UUID, user
 	return conversations, nil
 }
 
+func (r *conversationRepo) Delete(ctx context.Context, orgID uuid.UUID, id int64) error {
+	result := r.db.WithContext(ctx).
+		Where("organization_id = ? AND id = ?", orgID, id).
+		Delete(&entities.Conversation{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return providers.ErrNotFound
+	}
+	return nil
+}
+
+func (r *conversationRepo) Rename(ctx context.Context, orgID uuid.UUID, id int64, title string) error {
+	result := r.db.WithContext(ctx).
+		Model(&entities.Conversation{}).
+		Where("organization_id = ? AND id = ?", orgID, id).
+		Update("title", title)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return providers.ErrNotFound
+	}
+	return nil
+}
+
 func (r *conversationRepo) AppendTurn(ctx context.Context, params providers.AppendTurnParams) (int64, error) {
 	var convID int64
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {

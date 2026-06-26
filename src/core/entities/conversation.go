@@ -13,6 +13,7 @@ type Conversation struct {
 	UserID         int64                 `json:"user_id"`
 	StudentID      *int64                `json:"student_id,omitempty"`
 	Mode           string                `json:"mode"`
+	Title          string                `json:"title"`
 	Messages       []ConversationMessage `json:"messages,omitempty" gorm:"foreignKey:ConversationID"`
 	TimeTrackedEntity
 }

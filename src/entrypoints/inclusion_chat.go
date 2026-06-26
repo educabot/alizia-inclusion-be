@@ -1,6 +1,8 @@
 package entrypoints
 
 import (
+	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/educabot/team-ai-toolkit/web"
@@ -61,4 +63,44 @@ func (c *InclusionContainer) HandleGetChatHistory(req web.Request) web.Response 
 		return rest.HandleError(err)
 	}
 	return web.OK(mapConversations(result))
+}
+
+func (c *InclusionContainer) HandleDeleteConversation(req web.Request) web.Response {
+	id, err := strconv.ParseInt(req.Param("id"), 10, 64)
+	if err != nil {
+		return rest.HandleError(err)
+	}
+
+	if err := c.DeleteConversation.Execute(req.Context(), inclusion.DeleteConversationRequest{
+		OrgID:          middleware.OrgID(req),
+		ConversationID: id,
+	}); err != nil {
+		return rest.HandleError(err)
+	}
+	return web.Response{Status: http.StatusNoContent}
+}
+
+type renameConversationBody struct {
+	Title string `json:"title"`
+}
+
+func (c *InclusionContainer) HandleRenameConversation(req web.Request) web.Response {
+	id, err := strconv.ParseInt(req.Param("id"), 10, 64)
+	if err != nil {
+		return rest.HandleError(err)
+	}
+
+	var body renameConversationBody
+	if err := req.BindJSON(&body); err != nil {
+		return rest.HandleError(err)
+	}
+
+	if err := c.RenameConversation.Execute(req.Context(), inclusion.RenameConversationRequest{
+		OrgID:          middleware.OrgID(req),
+		ConversationID: id,
+		Title:          body.Title,
+	}); err != nil {
+		return rest.HandleError(err)
+	}
+	return web.Response{Status: http.StatusNoContent}
 }

@@ -65,6 +65,8 @@ func ConfigureMappings(engine *gin.Engine, h *entrypoints.WebHandlerContainer, c
 
 	// Chat history
 	api.GET("/chat/history/:contextId", webgin.Adapt(h.Inclusion.HandleGetChatHistory))
+	api.DELETE("/chat/conversation/:id", webgin.Adapt(h.Inclusion.HandleDeleteConversation))
+	api.PATCH("/chat/conversation/:id", webgin.Adapt(h.Inclusion.HandleRenameConversation))
 
 	// Dashboard
 	api.GET("/dashboard/metrics", webgin.Adapt(h.Dashboard.HandleGetMetrics))
