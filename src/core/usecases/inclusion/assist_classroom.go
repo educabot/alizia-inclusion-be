@@ -73,9 +73,9 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 
 	var systemPrompt string
 	if req.Mode == "guided" {
-		systemPrompt = buildGuidedAssistPrompt(devices, allStudents)
+		systemPrompt = buildGuidedAssistPrompt(devices, allStudents, uc.agentic)
 	} else {
-		systemPrompt = buildAssistSystemPrompt(devices, allStudents)
+		systemPrompt = buildAssistSystemPrompt(devices, allStudents, uc.agentic)
 	}
 
 	messages := make([]providers.ChatMessage, 0, len(req.History)+2)
