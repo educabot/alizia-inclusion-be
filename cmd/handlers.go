@@ -40,6 +40,8 @@ func NewHandlers(uc *UseCases, cfg *config.Config) *entrypoints.WebHandlerContai
 			ListAdaptationResources:  uc.ListAdaptationResources,
 			ExportAdaptation:         uc.ExportAdaptation,
 			GetChatHistory:           uc.GetChatHistory,
+			DeleteConversation:       uc.DeleteConversation,
+			RenameConversation:       uc.RenameConversation,
 		},
 		Management: &entrypoints.ManagementContainer{
 			ListClassrooms:  uc.ListClassrooms,

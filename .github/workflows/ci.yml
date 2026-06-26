@@ -23,7 +23,7 @@ jobs:
           go-version: "1.26.1"
       - name: Configure private modules
         run: git config --global url."https://x-token:${{ secrets.GH_PAT }}@github.com/educabot/".insteadOf "https://github.com/educabot/"
-      - uses: golangci/golangci-lint-action@9fae48acfc02a90574d7c304a1758ef9895495fa # v7.0.1
+      - uses: golangci/golangci-lint-action@db582008a42febd596419635a5abc9d9815daa9c # v9.2.1
         with:
           version: v2.12.2
 

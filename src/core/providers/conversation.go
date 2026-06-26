@@ -22,4 +22,6 @@ type AppendTurnParams struct {
 type ConversationProvider interface {
 	ListByUser(ctx context.Context, orgID uuid.UUID, userID int64, mode string) ([]entities.Conversation, error)
 	AppendTurn(ctx context.Context, params AppendTurnParams) (int64, error)
+	Delete(ctx context.Context, orgID uuid.UUID, id int64) error
+	Rename(ctx context.Context, orgID uuid.UUID, id int64, title string) error
 }
