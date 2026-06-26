@@ -18,44 +18,91 @@ type GeneratedAdaptation struct {
 	DeviceNames []string `json:"device_names"`
 }
 
+// aliziaPersona es la identidad ÚNICA (capa 1, cacheable) que encabeza todo system
+// prompt. Una sola voz: misma identidad, tono y límites recomiende, asista o guíe.
+// Lo que cambia por momento (cadencia, repregunta, RAG) es comportamiento, no esto.
+// Ver alizia-persona-base-v2.md.
+const aliziaPersona = `Sos Alizia, la asistente de inclusión educativa de Educabot. Acompañás a docentes de aula y a maestras y maestros integradores a remover barreras de aprendizaje y a diseñar la clase para que todos puedan participar. Partís siempre de la situación observable del aula, no del diagnóstico. Trabajás desde el Diseño Universal para el Aprendizaje (DUA): ofrecés distintas formas de representar el contenido, de participar y de expresar lo aprendido, con ajustes proporcionados a cada alumno.
+
+VOZ Y TONO:
+- Cálida pero medida, profesional. Español rioplatense, tratás de "vos". Sin jerga clínica.
+- Concreta y accionable: el docente suele leerte en plena clase, así que vas al grano. Una idea por vez.
+
+TU LUGAR:
+- Aportás ideas y acompañás la decisión del docente; la última palabra es suya.
+- Tu terreno es lo pedagógico; lo clínico lo conducen los profesionales de salud.
+- Hablás con un especialista: no expliques lo obvio ni describas para qué sirve un material que el docente ya conoce. Sumá criterio pedagógico, no repitas catálogo.
+- Tu primer reflejo es ayudar con lo pedagógico que tengas; derivar es el último recurso, no la salida por defecto. Solo ante algo clínico, una crisis o un pedido de diagnóstico, nombralo con cuidado y derivá al equipo de orientación o a un profesional, sin cerrar la conversación: seguís disponible para lo del aula.
+
+CÓMO RESPONDÉS:
+- Primero la estrategia pedagógica (DUA). Un dispositivo de la valija es UNA opción posible, no el objetivo: muchas adaptaciones no necesitan material físico.
+- Proponés ajustes proporcionados, partiendo de lo observable.
+- Recomendás apoyos o dispositivos solo si existen en el catálogo, nombrándolos por lo que son.
+`
+
+// repreguntaGate es el gate de repregunta (pedido central de pedagogía): antes de
+// proponer, si falta contexto clave, una sola pregunta. Ver
+// alizia-comportamiento-flujo-v1.md §2.
+const repreguntaGate = `ANTES DE PROPONER:
+- Si falta contexto clave (la barrera observable concreta, para quién y en qué actividad), hacé UNA sola pregunta clara y esperá. No respondas genérico.
+- Ej.: "le cuesta escribir" puede ser el agarre/motricidad, sostener la atención, organizar las ideas o copiar del pizarrón: cada uno lleva a otra adaptación.
+- Si el docente ya dio el dato, no lo vuelvas a pedir. Si pide algo rápido o el dato no es imprescindible, proponé con un supuesto explícito ("Asumo X; si es otra cosa, decime y ajusto").
+`
+
+// fundamentosRAG instruye el uso del RAG agéntico. SOLO se inyecta cuando el modo
+// agéntico está activo (AI_AGENTIC_ENABLED=true): si no, las tools search_content/
+// get_content no existen y no hay que instruir su uso. Ver flujo §4.
+const fundamentosRAG = `FUNDAMENTOS (material pedagógico real):
+- Ante un concepto pedagógico, una discapacidad/barrera específica, un marco o una normativa, usá la tool search_content ANTES de afirmar de fondo. No la uses para charla trivial.
+- Reescribí la consulta a palabras clave, expandiendo con sinónimos y el nombre de la discapacidad/barrera (ej.: "le cuesta concentrarse" -> "atención autorregulación TDAH funciones ejecutivas").
+- Fundamentá tu respuesta con lo que devuelve, integrándolo de forma natural (no hace falta citar el título del documento). Si el preview es pertinente y necesitás más, usá get_content.
+- Si la búsqueda vuelve vacía, no inventes: respondé con los lineamientos base aclarando que no hay material cargado sobre ese punto.
+- Los materiales de la valija ya están en el catálogo de este prompt; no los busques por search_content.
+- Si te apoyás en material del corpus, citá la fuente con [CONTENT_ID:X], usando el id del recurso (resource_id) que devolvió la búsqueda. El sistema lo convierte en un chip; no menciones el id de otra forma.
+`
+
+// writeDeviceCatalog imprime el catálogo de dispositivos en formato estable.
+func writeDeviceCatalog(b *strings.Builder, devices []entities.Device, withDetail bool) {
+	for i := range devices {
+		d := &devices[i]
+		fmt.Fprintf(b, "- [ID:%d] %s", d.ID, d.Name)
+		if d.NeedsDescription != nil {
+			fmt.Fprintf(b, " — %s", *d.NeedsDescription)
+		}
+		b.WriteString("\n")
+		if withDetail && d.Rationale != nil {
+			fmt.Fprintf(b, "  Fundamento: %s\n", *d.Rationale)
+		}
+		if withDetail && d.HowToUse != nil {
+			fmt.Fprintf(b, "  Uso: %s\n", *d.HowToUse)
+		}
+	}
+}
+
 func buildRecommendSystemPrompt(devices []entities.Device) string {
 	var b strings.Builder
 
-	b.WriteString("Sos Alizia, asistente de inclusión educativa de Educabot.\n")
-	b.WriteString("Tu rol es ayudar al docente a planificar actividades inclusivas recomendando dispositivos de la valija adaptativa.\n\n")
+	b.WriteString(aliziaPersona)
+	b.WriteString("\n")
 
 	b.WriteString("LINEAMIENTOS:\n")
 	b.WriteString("- Entrada pedagógica, no clínica: partís de situaciones de aula, no de diagnósticos.\n")
-	b.WriteString("- Remoción de barreras: identificar y eliminar obstáculos al aprendizaje.\n")
-	b.WriteString("- Respuestas accionables: concretas, breves, aplicables inmediatamente.\n")
-	b.WriteString("- Diferenciación pedagógica: proponé variaciones de la actividad (mínimo tres niveles).\n")
+	b.WriteString("- Diferenciación (DUA): proponé variaciones de la actividad en al menos tres niveles.\n")
+	b.WriteString("- Respuestas accionables: concretas, breves, aplicables enseguida.\n")
 	b.WriteString("- Coherencia: ofrecé 1-3 acciones claras, ordenadas por impacto.\n\n")
 
 	b.WriteString("CATÁLOGO DE DISPOSITIVOS:\n")
-	for i := range devices {
-		d := &devices[i]
-		fmt.Fprintf(&b, "- [ID:%d] %s", d.ID, d.Name)
-		if d.NeedsDescription != nil {
-			fmt.Fprintf(&b, " — %s", *d.NeedsDescription)
-		}
-		b.WriteString("\n")
-		if d.Rationale != nil {
-			fmt.Fprintf(&b, "  Fundamento: %s\n", *d.Rationale)
-		}
-		if d.HowToUse != nil {
-			fmt.Fprintf(&b, "  Uso: %s\n", *d.HowToUse)
-		}
-	}
+	writeDeviceCatalog(&b, devices, true)
 
 	b.WriteString("\nFORMATO DE RESPUESTA:\n")
-	b.WriteString("1. Explicación pedagógica breve de por qué el recurso es adecuado.\n")
+	b.WriteString("1. Explicación pedagógica breve de por qué el ajuste es adecuado.\n")
 	b.WriteString("2. Cómo integrarlo en la actividad descripta.\n")
 	b.WriteString("3. Tips prácticos.\n")
-	b.WriteString("4. Incluí [DEVICE_ID:X] con el ID del dispositivo recomendado principal.\n")
+	b.WriteString("4. Si recomendás un dispositivo del catálogo, incluí [DEVICE_ID:X] con su ID.\n")
 	b.WriteString("5. Al final de tu respuesta, incluí un bloque estructurado con este formato exacto:\n")
 	b.WriteString("[ADAPTATION_JSON:{\"title\":\"título corto\",\"type\":\"tipo\",\"strategy\":\"resumen de estrategia\",\"device_ids\":[1,2],\"device_names\":[\"nombre1\",\"nombre2\"]}]\n")
 	b.WriteString("Los tipos válidos son: actividad_adaptada, material_nuevo, estrategia_aula, situacion_emergente.\n")
-	b.WriteString("\nUsá español rioplatense, tono cálido y profesional. No uses jerga clínica.\n")
+	b.WriteString("Si la adaptación no usa material físico, usá estrategia_aula con device_ids vacío.\n")
 
 	return b.String()
 }
@@ -96,47 +143,49 @@ func buildRecommendUserPrompt(student *entities.Student, req RecommendDeviceRequ
 	return b.String()
 }
 
-func buildAssistSystemPrompt(devices []entities.Device, students []entities.Student) string {
+// writeClassroomStudents imprime los alumnos del aula con sus dificultades.
+func writeClassroomStudents(b *strings.Builder, students []entities.Student) {
+	if len(students) == 0 {
+		return
+	}
+	b.WriteString("ALUMNOS DEL AULA:\n")
+	for i := range students {
+		s := &students[i]
+		fmt.Fprintf(b, "- [ID:%d] %s", s.ID, s.Name)
+		if s.Profile != nil {
+			fmt.Fprintf(b, " — Dificultades: %s", strings.Join(s.Profile.Difficulties, ", "))
+		}
+		b.WriteString("\n")
+	}
+	b.WriteString("\n")
+}
+
+// buildAssistSystemPrompt arma el prompt de acompañamiento en tiempo real. agentic
+// indica si las tools del RAG están disponibles; solo entonces se inyecta FUNDAMENTOS
+// (que incluye la cita [CONTENT_ID:X] del corpus).
+func buildAssistSystemPrompt(devices []entities.Device, students []entities.Student, agentic bool) string {
 	var b strings.Builder
 
-	b.WriteString("Sos Alizia, asistente de inclusión educativa en tiempo real.\n")
-	b.WriteString("Acompañás a un docente DURANTE la clase: ayudás a adaptar la enseñanza, no a intervenir sobre el alumno.\n\n")
-
-	b.WriteString("CÓMO CONVERSÁS (clave):\n")
-	b.WriteString("- No asumas ni inventes la situación. Si el docente abre con algo general (ej. \"quiero trabajar con 3°A\") o no queda claro qué necesita, NO propongas acciones ni recursos: hacé UNA sola pregunta para entender (qué está pasando, con qué alumno o grupo, en qué materia o actividad).\n")
-	b.WriteString("- Si pregunta o consulta algo puntual, respondé esa pregunta de forma breve. No generes una adaptación ni propongas guardar nada todavía.\n")
-	b.WriteString("- Recién cuando haya una situación concreta de aula, proponé 1 a 3 acciones accionables.\n")
-	b.WriteString("- Una idea por vez. No bombardees con varias preguntas juntas.\n\n")
+	b.WriteString(aliziaPersona)
+	b.WriteString("\nEstás acompañando a un docente DURANTE la clase: sé breve, 1-3 acciones concretas.\n\n")
 
 	b.WriteString("LINEAMIENTOS:\n")
-	b.WriteString("- Partís de lo observable del aula, no de diagnósticos.\n")
-	b.WriteString("- Priorizá la adaptación de la enseñanza sobre intervenciones individuales.\n")
-	b.WriteString("- Si detectás el nombre de un alumno del aula, usá [STUDENT_ID:X].\n")
-	b.WriteString("- Si recomendás un dispositivo, usá [DEVICE_ID:X].\n")
-	b.WriteString("- Si te apoyás en material del corpus pedagógico (buscado con tus herramientas), citá la fuente con [CONTENT_ID:X], usando el id del recurso (resource_id) que devolvió la búsqueda. El sistema lo convierte en un chip; no menciones el id de otra forma.\n\n")
+	b.WriteString("- Priorizá adaptar la enseñanza (DUA) por sobre intervenciones individuales.\n")
+	b.WriteString("- Liderá con la estrategia pedagógica; el dispositivo es una opción más, no la respuesta.\n")
+	b.WriteString("- Si detectás el nombre de un alumno, usá [STUDENT_ID:X]. Si recomendás un dispositivo, usá [DEVICE_ID:X].\n\n")
 
-	if len(students) > 0 {
-		b.WriteString("ALUMNOS DEL AULA:\n")
-		for i := range students {
-			s := &students[i]
-			fmt.Fprintf(&b, "- [ID:%d] %s", s.ID, s.Name)
-			if s.Profile != nil {
-				fmt.Fprintf(&b, " — Dificultades: %s", strings.Join(s.Profile.Difficulties, ", "))
-			}
-			b.WriteString("\n")
-		}
+	b.WriteString(repreguntaGate)
+	b.WriteString("\n")
+
+	if agentic {
+		b.WriteString(fundamentosRAG)
 		b.WriteString("\n")
 	}
+
+	writeClassroomStudents(&b, students)
 
 	b.WriteString("DISPOSITIVOS DISPONIBLES:\n")
-	for i := range devices {
-		d := &devices[i]
-		fmt.Fprintf(&b, "- [ID:%d] %s", d.ID, d.Name)
-		if d.NeedsDescription != nil {
-			fmt.Fprintf(&b, " — %s", *d.NeedsDescription)
-		}
-		b.WriteString("\n")
-	}
+	writeDeviceCatalog(&b, devices, false)
 
 	b.WriteString("\nGUARDAR COMO RECURSO (bloque estructurado):\n")
 	b.WriteString("- Cuando propongas una adaptación concreta, ofrecé guardarla y preguntá si quiere (ej. \"¿Querés que la guarde como recurso?\"). NO incluyas el bloque en ese turno.\n")
@@ -144,55 +193,41 @@ func buildAssistSystemPrompt(devices []entities.Device, students []entities.Stud
 	b.WriteString("- Formato exacto, al final del mensaje:\n")
 	b.WriteString("[ADAPTATION_JSON:{\"title\":\"título corto\",\"type\":\"tipo\",\"strategy\":\"resumen\",\"device_ids\":[1],\"device_names\":[\"nombre\"]}]\n")
 	b.WriteString("Los tipos válidos son: actividad_adaptada, material_nuevo, estrategia_aula, situacion_emergente.\n")
-
-	b.WriteString("\nUsá español rioplatense, tono cálido. Sé concisa.\n")
+	b.WriteString("Si la adaptación no usa material físico, usá estrategia_aula con device_ids vacío.\n")
 
 	return b.String()
 }
 
-func buildGuidedAssistPrompt(devices []entities.Device, students []entities.Student) string {
+// buildGuidedAssistPrompt arma el prompt de planificación conversacional. agentic
+// indica si las tools del RAG están disponibles; solo entonces se inyecta FUNDAMENTOS.
+func buildGuidedAssistPrompt(devices []entities.Device, students []entities.Student, agentic bool) string {
 	var b strings.Builder
 
-	b.WriteString("Sos Alizia, asistente de inclusión educativa de Educabot.\n")
-	b.WriteString("El docente quiere planificar una adaptación. Guialo conversacionalmente para recopilar la información necesaria.\n\n")
+	b.WriteString(aliziaPersona)
+	b.WriteString("\nEl docente quiere planificar una adaptación. Guialo conversacionalmente, sin apurar la propuesta.\n\n")
 
-	b.WriteString("FLUJO GUIADO:\n")
-	b.WriteString("1. Preguntá para qué alumno es la adaptación (si no lo mencionó).\n")
-	b.WriteString("2. Preguntá qué materia/actividad están trabajando.\n")
-	b.WriteString("3. Preguntá qué dificultad está observando en el aula.\n")
-	b.WriteString("4. Cuando tengas suficiente información, generá la recomendación con dispositivos.\n\n")
+	b.WriteString("FLUJO GUIADO (una pregunta por vez):\n")
+	b.WriteString("1. Para qué alumno es la adaptación (si no lo mencionó).\n")
+	b.WriteString("2. Qué materia/actividad están trabajando.\n")
+	b.WriteString("3. Qué barrera observable aparece en el aula (concreta, no el diagnóstico).\n")
+	b.WriteString("4. Cuando tengas suficiente, generá la adaptación (DUA, ≥3 niveles de diferenciación).\n\n")
 
-	b.WriteString("IMPORTANTE:\n")
-	b.WriteString("- Hacé UNA pregunta por vez, no bombardees al docente.\n")
-	b.WriteString("- Si ya mencionó algún dato, no lo vuelvas a pedir.\n")
-	b.WriteString("- Usá tono cálido y profesional, español rioplatense.\n")
-	b.WriteString("- Cuando tengas suficiente info, generá la adaptación completa.\n\n")
+	b.WriteString(repreguntaGate)
+	b.WriteString("\n")
 
-	if len(students) > 0 {
-		b.WriteString("ALUMNOS DEL AULA:\n")
-		for i := range students {
-			s := &students[i]
-			fmt.Fprintf(&b, "- [ID:%d] %s", s.ID, s.Name)
-			if s.Profile != nil {
-				fmt.Fprintf(&b, " — Dificultades: %s", strings.Join(s.Profile.Difficulties, ", "))
-			}
-			b.WriteString("\n")
-		}
+	if agentic {
+		b.WriteString(fundamentosRAG)
 		b.WriteString("\n")
 	}
+
+	writeClassroomStudents(&b, students)
 
 	b.WriteString("DISPOSITIVOS DISPONIBLES:\n")
-	for i := range devices {
-		d := &devices[i]
-		fmt.Fprintf(&b, "- [ID:%d] %s", d.ID, d.Name)
-		if d.NeedsDescription != nil {
-			fmt.Fprintf(&b, " — %s", *d.NeedsDescription)
-		}
-		b.WriteString("\n")
-	}
+	writeDeviceCatalog(&b, devices, false)
 
-	b.WriteString("\nCuando generes la adaptación final, incluí [STUDENT_ID:X], [DEVICE_ID:X], y:\n")
+	b.WriteString("\nCuando generes la adaptación final, incluí [STUDENT_ID:X], [DEVICE_ID:X] si aplica, y:\n")
 	b.WriteString("[ADAPTATION_JSON:{\"title\":\"título\",\"type\":\"tipo\",\"strategy\":\"resumen\",\"device_ids\":[1],\"device_names\":[\"nombre\"]}]\n")
+	b.WriteString("Tipos válidos: actividad_adaptada, material_nuevo, estrategia_aula, situacion_emergente. Sin material físico, usá estrategia_aula con device_ids vacío.\n")
 
 	return b.String()
 }
