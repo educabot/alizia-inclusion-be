@@ -47,9 +47,8 @@ func (r CreateAdaptationRequest) Validate() error {
 	if r.TeacherID <= 0 {
 		return errTeacherIDRequired
 	}
-	if r.Subject == "" {
-		return errSubjectRequired
-	}
+	// Subject (materia) es opcional: el diseño del flujo del docente descarta "materia"
+	// (se usa el curso/grado del alumno). El guardado desde el chat tampoco lo envía.
 	if r.AdaptationType != "" {
 		if _, ok := validAdaptationTypes[r.AdaptationType]; !ok {
 			return errInvalidAdaptationType
