@@ -20,6 +20,7 @@ import (
 	"github.com/educabot/alizia-inclusion-be/config"
 	appweb "github.com/educabot/alizia-inclusion-be/src/app/web"
 	appmw "github.com/educabot/alizia-inclusion-be/src/entrypoints/middleware"
+	"github.com/educabot/alizia-inclusion-be/src/observability"
 )
 
 type App struct {
@@ -128,7 +129,9 @@ func initLogger(cfg *config.Config) {
 	} else {
 		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
 	}
-	slog.SetDefault(slog.New(handler))
+	// ContextHandler enriquece cada log con request_id/org_id/user_id del contexto.
+	slog.SetDefault(slog.New(observability.NewContextHandler(handler)))
+	observability.SetVerbose(cfg.ChatTraceVerbose)
 }
 
 func healthHandler(db *gorm.DB) gin.HandlerFunc {

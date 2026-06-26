@@ -25,7 +25,7 @@ func TestRunAgenticChat_ReturnsPlainChatResponseWhenNoToolsProvided(t *testing.T
 		Return(&providers.ChatResponse{Content: "hola"}, nil)
 	msgs := []providers.ChatMessage{{Role: "user", Content: "hola"}}
 
-	resp, err := runAgenticChat(ctx, ai, msgs, nil, inclusionDispatcher{}, orgID, maxAgenticIterations)
+	resp, _, err := runAgenticChat(ctx, ai, msgs, nil, inclusionDispatcher{}, orgID, maxAgenticIterations)
 
 	require.NoError(t, err)
 	assert.Equal(t, "hola", resp.Content)
@@ -61,7 +61,7 @@ func TestRunAgenticChat_ExecutesToolThenReturnsTheFinalAnswer(t *testing.T) {
 	dispatcher := inclusionDispatcher{devices: devices}
 	msgs := []providers.ChatMessage{{Role: "user", Content: "que dispositivo uso?"}}
 
-	resp, err := runAgenticChat(ctx, ai, msgs, inclusionTools(), dispatcher, orgID, maxAgenticIterations)
+	resp, _, err := runAgenticChat(ctx, ai, msgs, inclusionTools(), dispatcher, orgID, maxAgenticIterations)
 
 	require.NoError(t, err)
 	assert.Equal(t, "Te recomiendo el Timer Visual", resp.Content)
@@ -101,7 +101,7 @@ func TestRunAgenticChat_FeedsErrorResultBackWhenToolFails(t *testing.T) {
 	dispatcher := inclusionDispatcher{devices: devices}
 	msgs := []providers.ChatMessage{{Role: "user", Content: "dispositivos?"}}
 
-	resp, err := runAgenticChat(ctx, ai, msgs, inclusionTools(), dispatcher, orgID, maxAgenticIterations)
+	resp, _, err := runAgenticChat(ctx, ai, msgs, inclusionTools(), dispatcher, orgID, maxAgenticIterations)
 
 	require.NoError(t, err, "loop must not abort on tool error")
 	assert.Equal(t, "lo siento", resp.Content)
@@ -131,7 +131,7 @@ func TestRunAgenticChat_ForcesFinalAnswerWhenIterationBudgetExhausted(t *testing
 	dispatcher := inclusionDispatcher{devices: devices}
 	msgs := []providers.ChatMessage{{Role: "user", Content: "loop"}}
 
-	resp, err := runAgenticChat(ctx, ai, msgs, inclusionTools(), dispatcher, orgID, 2)
+	resp, _, err := runAgenticChat(ctx, ai, msgs, inclusionTools(), dispatcher, orgID, 2)
 
 	require.NoError(t, err)
 	assert.Equal(t, "respuesta forzada", resp.Content)

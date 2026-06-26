@@ -4,10 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
+	"strings"
 
 	"github.com/google/uuid"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
+	"github.com/educabot/alizia-inclusion-be/src/observability"
 )
 
 // maxAgenticIterations caps how many tool-calling rounds a single chat turn may
@@ -20,13 +23,26 @@ type toolDispatcher interface {
 	Dispatch(ctx context.Context, orgID uuid.UUID, call providers.ToolCall) (string, error)
 }
 
+// toolInvocation registra una tool ejecutada en el turno: para trazabilidad
+// (chat.sources_used) y para poblar referenced_content con el material citado.
+type toolInvocation struct {
+	Name        string
+	StudentID   *int64
+	Query       string
+	Hits        int
+	ContentRefs []ContentRef
+	Failed      bool
+}
+
 // runAgenticChat drives a tool-calling loop. It calls ChatWithTools; if the model
 // requests tools, it executes them via dispatcher, appends the results, and loops
 // again until the model answers with no tool calls or maxIters is reached.
 //
 // Token usage is accumulated across every round so callers can record the full
 // cost of the turn. When tools is empty the loop collapses to a single call,
-// behaving identically to a plain Chat.
+// behaving identically to a plain Chat. Devuelve además el trace de tools
+// ejecutadas (vacío en el camino sin tools) para que el caller derive las fuentes
+// usadas y los contenidos citados.
 func runAgenticChat(
 	ctx context.Context,
 	ai providers.AIClient,
@@ -35,19 +51,21 @@ func runAgenticChat(
 	dispatcher toolDispatcher,
 	orgID uuid.UUID,
 	maxIters int,
-) (*providers.ChatResponse, error) {
+) (*providers.ChatResponse, []toolInvocation, error) {
 	// No tools: collapse to a single plain Chat, identical to non-agentic behavior.
 	if len(tools) == 0 {
-		return ai.Chat(ctx, messages)
+		resp, err := ai.Chat(ctx, messages)
+		return resp, nil, err
 	}
 
 	var totalUsage providers.TokenUsage
 	var sawUsage bool
+	var trace []toolInvocation
 
 	for range maxIters {
 		resp, err := ai.ChatWithTools(ctx, messages, tools)
 		if err != nil {
-			return nil, err
+			return nil, trace, err
 		}
 		if resp.Usage != nil {
 			sawUsage = true
@@ -60,8 +78,10 @@ func runAgenticChat(
 			if sawUsage {
 				resp.Usage = &totalUsage
 			}
-			return resp, nil
+			return resp, trace, nil
 		}
+
+		slog.InfoContext(ctx, "chat.agentic_iteration", "tool_calls", len(resp.ToolCalls))
 
 		// Echo the assistant turn (with its tool calls) so the model keeps context.
 		messages = append(messages, providers.ChatMessage{
@@ -72,10 +92,23 @@ func runAgenticChat(
 
 		// Execute each requested tool and append its result as a tool message.
 		for _, call := range resp.ToolCalls {
+			slog.InfoContext(ctx, "chat.tool_call", "tool", call.Name, observability.Text("args", call.Arguments))
 			result, derr := dispatcher.Dispatch(ctx, orgID, call)
-			if derr != nil {
-				result = fmt.Sprintf(`{"error":%q}`, derr.Error())
+			inv := toolInvocation{
+				Name:      call.Name,
+				StudentID: extractToolStudentID(call.Arguments),
+				Query:     extractToolQuery(call.Arguments),
 			}
+			if derr != nil {
+				inv.Failed = true
+				result = fmt.Sprintf(`{"error":%q}`, derr.Error())
+				slog.WarnContext(ctx, "chat.tool_error", "tool", call.Name, "error", derr.Error())
+			} else {
+				inv.Hits = countResults(result)
+				inv.ContentRefs = extractContentRefs(call.Name, result)
+				slog.InfoContext(ctx, "chat.tool_result", "tool", call.Name, "result_len", len(result), observability.Text("result", result))
+			}
+			trace = append(trace, inv)
 			messages = append(messages, providers.ChatMessage{
 				Role:       "tool",
 				Content:    result,
@@ -87,7 +120,7 @@ func runAgenticChat(
 	// Iteration budget exhausted: ask once more without tools to force an answer.
 	final, err := ai.Chat(ctx, messages)
 	if err != nil {
-		return nil, err
+		return nil, trace, err
 	}
 	if final.Usage != nil {
 		sawUsage = true
@@ -98,7 +131,7 @@ func runAgenticChat(
 	if sawUsage {
 		final.Usage = &totalUsage
 	}
-	return final, nil
+	return final, trace, nil
 }
 
 // inclusionTools are the domain tools Alizia can call to ground its answers in
@@ -184,6 +217,33 @@ func inclusionTools() []providers.ToolDefinition {
 			},
 		},
 		{
+			Name:        "search_content_hibrido",
+			Description: "Búsqueda semántica híbrida (vector + texto + conceptos) en el corpus de material pedagógico. Pasá la pregunta del docente COMPLETA en semantic_question (se usa para el embedding) y, opcionalmente, palabras clave en terms para reforzar. Devuelve los fragmentos más relevantes con score, fuente y un extracto. Si vuelve vacío, no inventes.",
+			Parameters: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"semantic_question": map[string]any{
+						"type":        "string",
+						"description": "La pregunta del docente completa, en lenguaje natural.",
+					},
+					"terms": map[string]any{
+						"type":        "array",
+						"items":       map[string]any{"type": "string"},
+						"description": "Palabras o locuciones clave para reforzar (temas, discapacidades, nombres de guías).",
+					},
+					"resource_id": map[string]any{
+						"type":        "integer",
+						"description": "Opcional: acota la búsqueda a un documento puntual por su id.",
+					},
+					"limit": map[string]any{
+						"type":        "integer",
+						"description": "Máximo de fragmentos a devolver (default 5).",
+					},
+				},
+				"required": []string{"semantic_question"},
+			},
+		},
+		{
 			Name:        "get_content",
 			Description: "Trae el contenido pedagógico completo de un documento por su id (obtenido de search_content), con todos sus fragmentos.",
 			Parameters: map[string]any{
@@ -209,6 +269,8 @@ type inclusionDispatcher struct {
 	summaries   providers.ConversationSummaryProvider
 	adaptations providers.AdaptationProvider
 	content     providers.PedagogicalContentProvider
+	embedder    providers.Embedder
+	rag         providers.RAGSearchProvider
 }
 
 // defaultContentSearchLimit acota cuántos chunks devuelve el RAG por búsqueda.
@@ -363,9 +425,73 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 		}
 		return marshalToolResult(content)
 
+	case "search_content_hibrido":
+		if d.rag == nil || d.embedder == nil {
+			return "", fmt.Errorf("search_content_hibrido no disponible")
+		}
+		var args struct {
+			SemanticQuestion string   `json:"semantic_question"`
+			Terms            []string `json:"terms"`
+			ResourceID       *int64   `json:"resource_id"`
+			Limit            int      `json:"limit"`
+		}
+		if err := json.Unmarshal([]byte(call.Arguments), &args); err != nil {
+			return "", fmt.Errorf("invalid arguments for search_content_hibrido: %w", err)
+		}
+		limit := args.Limit
+		if limit <= 0 {
+			limit = defaultContentSearchLimit
+		}
+		embedding, err := d.embedder.EmbedQuery(ctx, args.SemanticQuestion)
+		if err != nil {
+			return "", err
+		}
+		hits, err := d.rag.HybridSearch(ctx, providers.HybridSearchSpec{
+			ResourceID:       args.ResourceID,
+			SemanticQuestion: args.SemanticQuestion,
+			Terms:            args.Terms,
+			Limit:            limit,
+		}, embedding)
+		if err != nil {
+			return "", err
+		}
+		// Vista recortada para la LLM: sin el content completo, solo un extracto.
+		type chunkLite struct {
+			ResourceID int64    `json:"resource_id"`
+			Title      string   `json:"title"`
+			Score      float64  `json:"score"`
+			Pages      string   `json:"pages,omitempty"`
+			Summary    string   `json:"summary,omitempty"`
+			Concepts   []string `json:"concepts,omitempty"`
+			Snippet    string   `json:"snippet"`
+		}
+		out := make([]chunkLite, len(hits))
+		for i := range hits {
+			out[i] = chunkLite{
+				ResourceID: hits[i].ResourceID,
+				Title:      hits[i].Title,
+				Score:      hits[i].Score,
+				Pages:      fmt.Sprintf("%d-%d", hits[i].PageStart, hits[i].PageEnd),
+				Summary:    hits[i].Summary,
+				Concepts:   hits[i].Concepts,
+				Snippet:    snippet(hits[i].Content, 650),
+			}
+		}
+		return marshalToolResult(map[string]any{"results": out})
+
 	default:
 		return "", fmt.Errorf("unknown tool: %s", call.Name)
 	}
+}
+
+// snippet normaliza espacios y recorta a maxRunes para no inflar el contexto de la LLM.
+func snippet(text string, maxRunes int) string {
+	clean := strings.Join(strings.Fields(text), " ")
+	runes := []rune(clean)
+	if len(runes) <= maxRunes {
+		return clean
+	}
+	return string(runes[:maxRunes]) + "..."
 }
 
 func marshalToolResult(v any) (string, error) {

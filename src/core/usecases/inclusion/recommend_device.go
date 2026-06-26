@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
+	"github.com/educabot/alizia-inclusion-be/src/observability"
 )
 
 type RecommendDeviceRequest struct {
@@ -65,6 +66,10 @@ func (uc *recommendDeviceImpl) Execute(ctx context.Context, req RecommendDeviceR
 		return nil, err
 	}
 
+	// Correlación de logs del turno (el prompt/respuesta se trazan en el cliente AI).
+	ctx = observability.WithOrg(ctx, req.OrgID)
+	ctx = observability.WithUser(ctx, req.UserID)
+
 	student, err := uc.students.GetStudent(ctx, req.OrgID, req.StudentID)
 	if err != nil {
 		return nil, err
@@ -93,15 +98,16 @@ func (uc *recommendDeviceImpl) Execute(ctx context.Context, req RecommendDeviceR
 
 	deviceID := extractDeviceID(resp.Content)
 	adaptation := extractAdaptationJSON(resp.Content)
+	cleaned := stripInternalMarkers(resp.Content)
 
-	convID, persistErr := uc.persistTurn(ctx, req, userPrompt, resp.Content, deviceID, adaptation)
+	convID, persistErr := uc.persistTurn(ctx, req, userPrompt, cleaned, deviceID, adaptation)
 	if persistErr != nil {
 		slog.WarnContext(ctx, "recommend_device: persist turn failed", "error", persistErr, "user_id", req.UserID, "student_id", req.StudentID)
 		convID = req.ConversationID
 	}
 
 	return &RecommendDeviceResponse{
-		Response:       resp.Content,
+		Response:       cleaned,
 		ConversationID: convID,
 		DeviceID:       deviceID,
 		Adaptation:     adaptation,

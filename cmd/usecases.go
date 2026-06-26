@@ -23,6 +23,7 @@ type UseCases struct {
 	OpenSession              inclusionuc.OpenSession
 	BuildPromptContext       inclusionuc.BuildPromptContext
 	SearchPedagogicalContent inclusionuc.SearchPedagogicalContent
+	HybridSearchContent      inclusionuc.HybridSearchContent
 
 	GetMe authuc.GetMe
 
@@ -63,13 +64,14 @@ func NewUseCases(repos *Repositories, cfg *config.Config) *UseCases {
 		UpsertStudentProfile:  inclusionuc.NewUpsertStudentProfile(repos.Students, repos.StudentProfiles),
 		ListClassroomStudents: inclusionuc.NewListClassroomStudents(repos.Students),
 		RecommendDevice:       inclusionuc.NewRecommendDevice(repos.AI, repos.Students, repos.Devices, repos.Ramps, repos.Conversations, repos.AIUsage),
-		AssistClassroom:       inclusionuc.NewAssistClassroom(repos.AI, repos.Students, repos.Devices, repos.Conversations, repos.ConversationSummaries, repos.Adaptations, repos.PedagogicalContent, repos.AIUsage, cfg.AIAgenticEnabled),
+		AssistClassroom:       inclusionuc.NewAssistClassroom(repos.AI, repos.Students, repos.Devices, repos.Conversations, repos.ConversationSummaries, repos.Adaptations, repos.PedagogicalContent, repos.Embedder, repos.RAGSearch, repos.AIUsage, cfg.AIAgenticEnabled),
 		OpenSession:           inclusionuc.NewOpenSession(repos.Students, repos.ConversationSummaries),
 		BuildPromptContext: inclusionuc.NewBuildPromptContext(
 			repos.Students, repos.TeacherProfiles, repos.Situations, repos.Diagnoses, repos.PPIs,
 			repos.Adaptations, repos.Classrooms, repos.Devices, repos.ConversationSummaries,
 		),
 		SearchPedagogicalContent: inclusionuc.NewSearchPedagogicalContent(repos.PedagogicalContent),
+		HybridSearchContent:      inclusionuc.NewHybridSearchContent(repos.Embedder, repos.RAGSearch),
 
 		GetMe: authuc.NewGetMe(repos.Users),
 

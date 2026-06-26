@@ -33,6 +33,8 @@ type Repositories struct {
 	PPIs                   providers.PPIProvider
 	IntegradoraAssignments providers.IntegradoraAssignmentProvider
 	PedagogicalContent     providers.PedagogicalContentProvider
+	Embedder               providers.Embedder
+	RAGSearch              providers.RAGSearchProvider
 }
 
 func NewRepositories(db *gorm.DB, cfg *config.Config) *Repositories {
@@ -74,5 +76,7 @@ func NewRepositories(db *gorm.DB, cfg *config.Config) *Repositories {
 		PPIs:                   inclusionr.NewPPIRepo(db),
 		IntegradoraAssignments: inclusionr.NewIntegradoraAssignmentRepo(db),
 		PedagogicalContent:     inclusionr.NewPedagogicalContentRepo(db),
+		Embedder:               air.NewAzureEmbedder(cfg.AzureEmbeddingEndpoint, cfg.AzureEmbeddingAPIKey, cfg.AzureEmbeddingDeployment, cfg.AzureEmbeddingAPIVersion, cfg.EmbeddingDim),
+		RAGSearch:              inclusionr.NewRAGSearchRepo(db),
 	}
 }

@@ -14,45 +14,49 @@ import (
 )
 
 type adaptationResponse struct {
-	ID                  int64    `json:"id"`
-	StudentID           int64    `json:"student_id"`
-	StudentName         string   `json:"student_name"`
-	TeacherID           int64    `json:"teacher_id"`
-	TeacherName         string   `json:"teacher_name"`
-	DeviceID            *int64   `json:"device_id,omitempty"`
-	DeviceName          *string  `json:"device_name,omitempty"`
-	DeviceIDs           []int64  `json:"device_ids"`
-	DeviceNames         []string `json:"device_names"`
-	Title               string   `json:"title"`
-	Subject             string   `json:"subject"`
-	ActivityDescription *string  `json:"activity_description,omitempty"`
-	AdaptationStrategy  *string  `json:"adaptation_strategy,omitempty"`
-	AdaptationType      string   `json:"adaptation_type"`
-	Outcome             *string  `json:"outcome,omitempty"`
-	Notes               *string  `json:"notes,omitempty"`
-	Status              string   `json:"status"`
-	CreatedAt           string   `json:"created_at"`
-	UpdatedAt           string   `json:"updated_at"`
+	ID                   int64    `json:"id"`
+	StudentID            *int64   `json:"student_id,omitempty"`
+	StudentName          string   `json:"student_name"`
+	TeacherID            int64    `json:"teacher_id"`
+	TeacherName          string   `json:"teacher_name"`
+	DeviceID             *int64   `json:"device_id,omitempty"`
+	DeviceName           *string  `json:"device_name,omitempty"`
+	DeviceIDs            []int64  `json:"device_ids"`
+	DeviceNames          []string `json:"device_names"`
+	Title                string   `json:"title"`
+	Subject              string   `json:"subject"`
+	ActivityDescription  *string  `json:"activity_description,omitempty"`
+	AdaptationStrategy   *string  `json:"adaptation_strategy,omitempty"`
+	AdaptationType       string   `json:"adaptation_type"`
+	Outcome              *string  `json:"outcome,omitempty"`
+	Notes                *string  `json:"notes,omitempty"`
+	Status               string   `json:"status"`
+	SourceConversationID *int64   `json:"source_conversation_id,omitempty"`
+	SourceMessageID      *int64   `json:"source_message_id,omitempty"`
+	CreatedAt            string   `json:"created_at"`
+	UpdatedAt            string   `json:"updated_at"`
 }
 
 func mapAdaptation(a entities.Adaptation) adaptationResponse {
 	resp := adaptationResponse{
-		ID:                  a.ID,
-		StudentID:           a.StudentID,
-		TeacherID:           a.TeacherID,
-		DeviceID:            a.DeviceID,
-		Title:               a.Title,
-		Subject:             a.Subject,
-		ActivityDescription: a.ActivityDescription,
-		AdaptationStrategy:  a.AdaptationStrategy,
-		AdaptationType:      a.AdaptationType,
-		Outcome:             a.Outcome,
-		Notes:               a.Notes,
-		Status:              a.Status,
-		CreatedAt:           a.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:           a.UpdatedAt.Format(time.RFC3339),
-		DeviceIDs:           make([]int64, 0),
-		DeviceNames:         make([]string, 0),
+		ID:                   a.ID,
+		StudentID:            a.StudentID,
+		TeacherID:            a.TeacherID,
+		DeviceID:             a.DeviceID,
+		Title:                a.Title,
+		Subject:              a.Subject,
+		ActivityDescription:  a.ActivityDescription,
+		AdaptationStrategy:   a.AdaptationStrategy,
+		AdaptationType:       a.AdaptationType,
+		Outcome:              a.Outcome,
+		Notes:                a.Notes,
+		Status:               a.Status,
+		SourceConversationID: a.SourceConversationID,
+		SourceMessageID:      a.SourceMessageID,
+		CreatedAt:            a.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:            a.UpdatedAt.Format(time.RFC3339),
+		DeviceIDs:            make([]int64, 0),
+		DeviceNames:          make([]string, 0),
 	}
 	if a.Student != nil {
 		resp.StudentName = a.Student.Name
@@ -80,15 +84,17 @@ func mapAdaptations(as []entities.Adaptation) []adaptationResponse {
 }
 
 type createAdaptationBody struct {
-	StudentID           int64   `json:"student_id"`
-	DeviceID            *int64  `json:"device_id"`
-	DeviceIDs           []int64 `json:"device_ids"`
-	Title               *string `json:"title"`
-	Subject             string  `json:"subject"`
-	ActivityDescription *string `json:"activity_description"`
-	AdaptationStrategy  *string `json:"adaptation_strategy"`
-	AdaptationType      string  `json:"adaptation_type"`
-	Notes               *string `json:"notes"`
+	StudentID            *int64  `json:"student_id"`
+	DeviceID             *int64  `json:"device_id"`
+	DeviceIDs            []int64 `json:"device_ids"`
+	Title                *string `json:"title"`
+	Subject              string  `json:"subject"`
+	ActivityDescription  *string `json:"activity_description"`
+	AdaptationStrategy   *string `json:"adaptation_strategy"`
+	AdaptationType       string  `json:"adaptation_type"`
+	Notes                *string `json:"notes"`
+	SourceConversationID *int64  `json:"source_conversation_id"`
+	SourceMessageID      *int64  `json:"source_message_id"`
 }
 
 type updateAdaptationBody struct {
@@ -152,17 +158,19 @@ func (c *InclusionContainer) HandleCreateAdaptation(req web.Request) web.Respons
 	}
 
 	result, err := c.CreateAdaptation.Execute(req.Context(), inclusion.CreateAdaptationRequest{
-		OrgID:               middleware.OrgID(req),
-		StudentID:           body.StudentID,
-		TeacherID:           middleware.UserID(req),
-		DeviceID:            body.DeviceID,
-		DeviceIDs:           body.DeviceIDs,
-		Title:               title,
-		Subject:             body.Subject,
-		ActivityDescription: body.ActivityDescription,
-		AdaptationStrategy:  body.AdaptationStrategy,
-		AdaptationType:      body.AdaptationType,
-		Notes:               body.Notes,
+		OrgID:                middleware.OrgID(req),
+		StudentID:            body.StudentID,
+		TeacherID:            middleware.UserID(req),
+		DeviceID:             body.DeviceID,
+		DeviceIDs:            body.DeviceIDs,
+		Title:                title,
+		Subject:              body.Subject,
+		ActivityDescription:  body.ActivityDescription,
+		AdaptationStrategy:   body.AdaptationStrategy,
+		AdaptationType:       body.AdaptationType,
+		Notes:                body.Notes,
+		SourceConversationID: body.SourceConversationID,
+		SourceMessageID:      body.SourceMessageID,
 	})
 	if err != nil {
 		return rest.HandleError(err)

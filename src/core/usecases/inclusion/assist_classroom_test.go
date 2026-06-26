@@ -56,7 +56,7 @@ func assistClassroomMocks(t *testing.T, aiContent string, aiErr error) (
 func TestAssistClassroom_ReturnsAssistResponse(t *testing.T) {
 	ai, students, devices, conversations, usage := assistClassroomMocks(t, "Podrias usar pictogramas [DEVICE_ID:1]", nil)
 
-	got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, nil, nil, nil, usage, false).
+	got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, nil, nil, nil, nil, nil, usage, false).
 		Execute(context.Background(), assistClassroomBaseRequest)
 
 	require.NoError(t, err)
@@ -69,7 +69,7 @@ func TestAssistClassroom_WorksInGuidedMode(t *testing.T) {
 	req := assistClassroomBaseRequest
 	req.Mode = "guided"
 
-	got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, nil, nil, nil, usage, false).
+	got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, nil, nil, nil, nil, nil, usage, false).
 		Execute(context.Background(), req)
 
 	require.NoError(t, err)
@@ -80,7 +80,7 @@ func TestAssistClassroom_WorksInGuidedMode(t *testing.T) {
 func TestAssistClassroom_WrapsAIError(t *testing.T) {
 	ai, students, devices, conversations, usage := assistClassroomMocks(t, "", errDB)
 
-	_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, nil, nil, nil, usage, false).
+	_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, nil, nil, nil, nil, nil, usage, false).
 		Execute(context.Background(), assistClassroomBaseRequest)
 
 	assert.ErrorIs(t, err, providers.ErrServiceUnavailable)
@@ -95,7 +95,7 @@ func TestAssistClassroom_RejectsNilOrgID(t *testing.T) {
 	req := assistClassroomBaseRequest
 	req.OrgID = uuid.Nil
 
-	_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, nil, nil, nil, usage, false).
+	_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, nil, nil, nil, nil, nil, usage, false).
 		Execute(context.Background(), req)
 
 	assert.ErrorIs(t, err, providers.ErrValidation)
@@ -112,7 +112,7 @@ func TestAssistClassroom_RejectsEmptyMessage(t *testing.T) {
 	req := assistClassroomBaseRequest
 	req.Message = ""
 
-	_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, nil, nil, nil, usage, false).
+	_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, nil, nil, nil, nil, nil, usage, false).
 		Execute(context.Background(), req)
 
 	assert.ErrorIs(t, err, providers.ErrValidation)
@@ -132,7 +132,7 @@ func TestAssistClassroom_PersistsTurnWhenUserIDPresent(t *testing.T) {
 	req := assistClassroomBaseRequest
 	req.UserID = 7
 
-	got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, nil, nil, nil, usage, false).
+	got, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, nil, nil, nil, nil, nil, usage, false).
 		Execute(context.Background(), req)
 
 	require.NoError(t, err)
@@ -145,7 +145,7 @@ func TestAssistClassroom_PersistsTurnWhenUserIDPresent(t *testing.T) {
 func TestAssistClassroom_SkipsPersistenceWhenUserIDMissing(t *testing.T) {
 	ai, students, devices, conversations, usage := assistClassroomMocks(t, "ok", nil)
 
-	_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, nil, nil, nil, usage, false).
+	_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, nil, nil, nil, nil, nil, usage, false).
 		Execute(context.Background(), assistClassroomBaseRequest)
 
 	require.NoError(t, err)
@@ -182,7 +182,7 @@ func TestAssistClassroom_RecordsTokenUsageWhenPresent(t *testing.T) {
 	req := assistClassroomBaseRequest
 	req.UserID = 7
 
-	_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, nil, nil, nil, usage, false).
+	_, err := inclusion.NewAssistClassroom(ai, students, devices, conversations, nil, nil, nil, nil, nil, usage, false).
 		Execute(context.Background(), req)
 
 	require.NoError(t, err)

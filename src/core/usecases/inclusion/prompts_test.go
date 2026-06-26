@@ -12,6 +12,25 @@ import (
 
 func ptr(s string) *string { return &s }
 
+func Test_stripInternalMarkers_RemovesTagsFromVisibleText(t *testing.T) {
+	// Arrange: respuesta del modelo con marcadores internos intercalados en la prosa.
+	in := "Para [STUDENT_ID:2] que le cuesta escribir, probá el cronómetro [DEVICE_ID:5]. Listo. [ADAPTATION_JSON:{\"title\":\"x\",\"type\":\"t\",\"strategy\":\"s\",\"device_ids\":[1],\"device_names\":[\"n\"]}]"
+
+	// Act
+	out := stripInternalMarkers(in)
+
+	// Assert: ningún marcador interno queda visible y los espacios quedan prolijos.
+	assert.NotContains(t, out, "[STUDENT_ID:")
+	assert.NotContains(t, out, "[DEVICE_ID:")
+	assert.NotContains(t, out, "[ADAPTATION_JSON:")
+	assert.Equal(t, "Para que le cuesta escribir, probá el cronómetro. Listo.", out)
+}
+
+func Test_stripInternalMarkers_LeavesCleanTextUnchanged(t *testing.T) {
+	in := "Probá anticipar la consigna en pasos cortos. ¿Querés que la guarde como recurso?"
+	assert.Equal(t, in, stripInternalMarkers(in))
+}
+
 func Test_extractDeviceID_ExtractsValidID(t *testing.T) {
 	input := "Use this [DEVICE_ID:42] for the student"
 

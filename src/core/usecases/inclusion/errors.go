@@ -21,4 +21,6 @@ var (
 	errUserIDRequired         = fmt.Errorf("%w: user_id is required", providers.ErrValidation)
 	errInvalidStatus          = fmt.Errorf("%w: status must be one of: en_curso, probado, funciono, para_ajustar", providers.ErrValidation)
 	errInvalidExportFormat    = fmt.Errorf("%w: format must be one of: md, pdf", providers.ErrValidation)
+	errInvalidAdaptationType  = fmt.Errorf("%w: type must be one of: actividad_adaptada, material_nuevo, estrategia_aula, situacion_emergente", providers.ErrValidation)
+	errQuestionRequired       = fmt.Errorf("%w: semantic_question is required", providers.ErrValidation)
 )

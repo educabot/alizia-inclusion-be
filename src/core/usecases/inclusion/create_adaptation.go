@@ -11,7 +11,7 @@ import (
 
 type CreateAdaptationRequest struct {
 	OrgID               uuid.UUID
-	StudentID           int64
+	StudentID           *int64
 	TeacherID           int64
 	DeviceID            *int64
 	DeviceIDs           []int64
@@ -21,15 +21,27 @@ type CreateAdaptationRequest struct {
 	AdaptationStrategy  *string
 	AdaptationType      string
 	Notes               *string
+	// Origen opcional cuando la adaptación se guarda desde el chat (GAP B).
+	SourceConversationID *int64
+	SourceMessageID      *int64
 }
 
 const defaultAdaptationType = "actividad_adaptada"
+
+// validAdaptationTypes es el enum permitido para adaptation_type. Vacío → default;
+// un valor no vacío debe pertenecer al set (si no, error de validación).
+var validAdaptationTypes = map[string]struct{}{
+	"actividad_adaptada":  {},
+	"material_nuevo":      {},
+	"estrategia_aula":     {},
+	"situacion_emergente": {},
+}
 
 func (r CreateAdaptationRequest) Validate() error {
 	if r.OrgID == uuid.Nil {
 		return errOrgIDRequired
 	}
-	if r.StudentID <= 0 {
+	if r.StudentID != nil && *r.StudentID <= 0 {
 		return errStudentIDRequired
 	}
 	if r.TeacherID <= 0 {
@@ -37,6 +49,11 @@ func (r CreateAdaptationRequest) Validate() error {
 	}
 	if r.Subject == "" {
 		return errSubjectRequired
+	}
+	if r.AdaptationType != "" {
+		if _, ok := validAdaptationTypes[r.AdaptationType]; !ok {
+			return errInvalidAdaptationType
+		}
 	}
 	return nil
 }
@@ -64,17 +81,19 @@ func (uc *createAdaptationImpl) Execute(ctx context.Context, req CreateAdaptatio
 	}
 
 	adaptation := &entities.Adaptation{
-		OrganizationID:      req.OrgID,
-		StudentID:           req.StudentID,
-		TeacherID:           req.TeacherID,
-		DeviceID:            req.DeviceID,
-		Title:               req.Title,
-		Subject:             req.Subject,
-		ActivityDescription: req.ActivityDescription,
-		AdaptationStrategy:  req.AdaptationStrategy,
-		AdaptationType:      adaptationType,
-		Notes:               req.Notes,
-		Status:              "en_curso",
+		OrganizationID:       req.OrgID,
+		StudentID:            req.StudentID,
+		TeacherID:            req.TeacherID,
+		DeviceID:             req.DeviceID,
+		Title:                req.Title,
+		Subject:              req.Subject,
+		ActivityDescription:  req.ActivityDescription,
+		AdaptationStrategy:   req.AdaptationStrategy,
+		AdaptationType:       adaptationType,
+		Notes:                req.Notes,
+		Status:               "en_curso",
+		SourceConversationID: req.SourceConversationID,
+		SourceMessageID:      req.SourceMessageID,
 	}
 
 	if err := uc.adaptations.Create(ctx, adaptation); err != nil {

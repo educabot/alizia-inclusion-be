@@ -13,6 +13,13 @@ type Config struct {
 	AzureOpenAIEndpoint string
 	AzureOpenAIModel    string
 
+	// Azure embeddings (búsqueda híbrida RAG). Recurso Azure potencialmente distinto
+	// del de chat, por eso endpoint/key/deployment propios. EmbeddingDim ya existe.
+	AzureEmbeddingEndpoint   string
+	AzureEmbeddingAPIKey     string
+	AzureEmbeddingDeployment string
+	AzureEmbeddingAPIVersion string
+
 	JWTPublicKey string
 
 	DBMaxOpenConns    int
@@ -32,6 +39,11 @@ type Config struct {
 	// assist endpoint. Off by default until validated against the live AI provider.
 	AIAgenticEnabled bool
 
+	// ChatTraceVerbose enables full-text logging of the chat pipeline (prompts,
+	// responses, student names). Default true; set false in prod to avoid PII in logs
+	// (metadata —ids, counts, scores, tokens— is always logged regardless).
+	ChatTraceVerbose bool
+
 	// EmbeddingDim is the dimension of the pedagogical-content embedding vectors.
 	// Single source of truth for the (Futuro) vector search: the embedding column
 	// stays inert in the MVP (keyword/full-text first), and the vector index needs
@@ -50,6 +62,11 @@ func Load() *Config {
 		AzureOpenAIEndpoint: bcfg.EnvOr("AZURE_OPENAI_ENDPOINT", ""),
 		AzureOpenAIModel:    bcfg.EnvOr("AZURE_OPENAI_MODEL", "gpt-4o-mini"),
 
+		AzureEmbeddingEndpoint:   bcfg.EnvOr("AZURE_OPENAI_EMBEDDING_ENDPOINT", ""),
+		AzureEmbeddingAPIKey:     bcfg.EnvOr("AZURE_OPENAI_EMBEDDING_API_KEY", ""),
+		AzureEmbeddingDeployment: bcfg.EnvOr("AZURE_OPENAI_EMBEDDING_DEPLOYMENT", "text-embedding-3-small"),
+		AzureEmbeddingAPIVersion: bcfg.EnvOr("AZURE_OPENAI_EMBEDDING_API_VERSION", "2024-02-01"),
+
 		// AUTH_PUBLIC_KEY es el nombre nuevo (auth-service actualizado); JWT_PUBLIC_KEY queda como fallback.
 		JWTPublicKey: bcfg.EnvOr("AUTH_PUBLIC_KEY", bcfg.EnvOr("JWT_PUBLIC_KEY", "")),
 
@@ -63,6 +80,8 @@ func Load() *Config {
 		AICircuitCooldown:         time.Duration(boundedUintToInt(bcfg.GetEnvUint("AI_CIRCUIT_COOLDOWN_SEC", "30"))) * time.Second,
 
 		AIAgenticEnabled: bcfg.EnvOr("AI_AGENTIC_ENABLED", "false") == "true",
+
+		ChatTraceVerbose: bcfg.EnvOr("CHAT_TRACE_VERBOSE", "true") == "true",
 
 		EmbeddingDim: boundedUintToInt(bcfg.GetEnvUint("EMBEDDING_DIM", "1536")),
 	}

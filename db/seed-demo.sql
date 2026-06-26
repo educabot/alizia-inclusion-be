@@ -325,23 +325,11 @@ UPDATE ramps SET video_url = '/videos/ramps/lectura-escritura-produccion.mp4' WH
 UPDATE ramps SET video_url = '/videos/ramps/acceso-tecnologico-adaptado.mp4' WHERE id = 5;
 
 -- =============================================================================
--- 7. Actualizar devices con image_url de ejemplo (placeholders)
+-- 7. image_url de devices
 -- =============================================================================
-
-UPDATE devices SET image_url = '/images/devices/elastico-silla.png' WHERE id = 1;
-UPDATE devices SET image_url = '/images/devices/pelota-antiestres.png' WHERE id = 2;
-UPDATE devices SET image_url = '/images/devices/auriculares-microfono.png' WHERE id = 3;
-UPDATE devices SET image_url = '/images/devices/auriculares-cancelacion.png' WHERE id = 4;
-UPDATE devices SET image_url = '/images/devices/time-timer.png' WHERE id = 5;
-UPDATE devices SET image_url = '/images/devices/pen-reader.png' WHERE id = 6;
-UPDATE devices SET image_url = '/images/devices/regla-lectura.png' WHERE id = 7;
-UPDATE devices SET image_url = '/images/devices/finger-focus.png' WHERE id = 8;
-UPDATE devices SET image_url = '/images/devices/tijeras-adaptadas.png' WHERE id = 9;
-UPDATE devices SET image_url = '/images/devices/pinzas-escritura.png' WHERE id = 10;
-UPDATE devices SET image_url = '/images/devices/tablet-educativa.png' WHERE id = 11;
-UPDATE devices SET image_url = '/images/devices/mouse-trackball.png' WHERE id = 12;
-UPDATE devices SET image_url = '/images/devices/teclado-clevy.png' WHERE id = 13;
-UPDATE devices SET image_url = '/images/devices/pulsador-boton.png' WHERE id = 14;
-UPDATE devices SET image_url = '/images/devices/soporte-flexible.png' WHERE id = 15;
+-- Las imágenes de la valija se setean por product_code en
+-- db/seeds/valija_chubut_images.sql (fuente única, servidas por el BE embebido
+-- bajo /images/devices/<product_code>.<ext>). Se quitaron los placeholders por
+-- id de acá para no competir como segunda fuente de verdad.
 
 COMMIT;

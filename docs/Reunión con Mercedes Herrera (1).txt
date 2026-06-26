@@ -1,0 +1,174 @@
+# Reunión con Mercedes Herrera
+
+  Meeting started: 25/6/2026, 12:16:45
+  Duration: 32 minutes
+  Participants: Juan M. | Educabot.com, Juan Mateos | Educabot.com, Mercedes Gabriela Herrera, Rocío E. | Educabot.com, Sebastian L. | Educabot.com
+
+  [View original transcript](https://app.tactiq.io/api/2/u/m/r/jgzcX6q6a3dxjKASSxyF?o=txt)
+
+    
+
+  
+
+  
+    ## Highlights
+
+    > 07:19 Juan Mateos | Educabot.com: Total, quieres ropas sobre el link así vemos como del figma que después Bueno hay cuestiones de implementación, lo corregimos, pero importante que estén bien los diseños, no?
+> 21:25 Mercedes Gabriela Herrera: Te acordás que decíamos que cuando terminaba de chatear con Alicia le tiraba como un resumen y le proponía querés que te lo convierta en ficha pedagógica, que es la que estamos viendo ahí Creo no ficha.
+> 31:38 Juan Mateos | Educabot.com: Claro, a ver acá yo le digo Bueno en realidad queremos hacer dictado en una hoja no le puse como alumno genérico dice Bueno antes de sugerir adaptaciones el objetivo es que cada alumno escriba el dictado a mano en la hoja obligatoriamente o aceptas alternativas que alguien les transcriba uso de
+> 32:08 Mercedes Gabriela Herrera: No no es no, porque no, no me parece una buena pregunta el objetivo de cada
+
+  ## Transcript
+
+  00:00 Juan Mateos | Educabot.com: particular Acá está Mercedes buenas buenas Cómo estás mer.
+00:07 Mercedes Gabriela Herrera: Hola cómo va
+00:08 Juan Mateos | Educabot.com: Todo muy bien por aquí vos.
+00:10 Mercedes Gabriela Herrera: Bien, cuánta gente conectada.
+00:13 Juan Mateos | Educabot.com: Viste este es todo el equipo detrás de bambalinas, Yo soy solo la cara ponele Que bonita que viene.
+00:18 Mercedes Gabriela Herrera: la cara la cara bonita de educa hot
+00:24 Juan Mateos | Educabot.com: Así es así es yo soy la masculina o la femenina parece. Bueno me los presento un poco mer con los chicos ya saben Mercedes es quien está dirigiendo todo el área de inclusión de educabot Ahora nos contarán no sé tu formaciones y tus títulos y etcétera Pero bueno aquí mi equipo
+00:51 Juan M. | Educabot.com: Hola, estoy transcribiendo esta llamada con mi extensión Tactiq AI. https://tactiq.io/r/transcribing
+00:51 Juan Mateos | Educabot.com: técnico sobre todo se va quien estuvo ahí trabajando mucho toda la lógica y el backen de el producto Alicia Alan que está viendo toda la parte de cómo responde la guía Y cómo queremos Que responda y Juli que se encarga de que quede todo bonito implementado y ejecutado ahora también seguro se suma Rock quedó es quien hace los diseños de todo esto y bueno básicamente eso como la idea era ver todo lo que tenemos hoy y escuchar tu feedback y también Escuchar qué es lo que estamos planteando hacer en esta en esta demo invité a Para que no sea digamos el teléfono descompuesto de lo que yo interpreto solamente de la reunión, sino que todos tengan todo el contexto.
+01:38 Mercedes Gabriela Herrera: Perfecto, buenísimo. Bueno un gusto chicos a ver quiénes están atrás de todos estos proyectos que yo no tengo ni idea cómo funcionan soy un un ente que no entiende nada ni de Inteligencia artificial ni de tecnología Así que no intenten explicarme mucho técnicamente nada porque no no lo voy a lograr.
+02:02 Juan Mateos | Educabot.com: No, no confiamos en que sí, pero no no va a ser el foco, no va a ser el foco bueno, para entender, digamos creo y aprovechar así el tiempo en lo en lo concreto y lo inmediato entiendo que el martes hay una charla o el lunes.
+02:19 Mercedes Gabriela Herrera: La charla O sea la presentación ahí con el Ministerio Es el martes.
+02:25 Juan Mateos | Educabot.com: La presentación y todo es el martes.
+02:27 Mercedes Gabriela Herrera: Es el martes en lo que se supone que vos y yo tenemos que estar en en virtual. Yo primeramente presentando lo que es la valija. Y apoyándonos en lo que es Alicia o sea, el Software que acompaña la valija física Entonces yo lo que lo que vi con Felipe es yo me voy a encargar de toda la parte física, digamos de los materiales que hay en la valija de presentar también el software, cómo funciona uno con el otro y O sea que funcionan completamente de manera conjunta lo que se me ocurrió para la presentación Es que pudiéramos hacer como una demo de cómo funciona Alicia Digamos como el punto más fuerte de Alicia que es la asistencia al docente Entonces en ese sentido quería saber cómo estaba armado como para que tengamos todos idea de lo que vamos a ver en la demo no Y de lo que van a ver los docentes para que no haya ningún cuac no que pregunten algo y yo no tenga respuesta o que no tenga ni idea de dónde está el botón para clickear o afín que tengamos un armado y la otra era terminar invitar a los docentes aquellos pudieran.
+03:38 Mercedes Gabriela Herrera: transmitirnos situaciones que pudiéramos resolver en vivo con Alicia Quiero saber si eso es algo factible
+03:46 Juan Mateos | Educabot.com: Entiendo chicos que sí que o sea, dentro de lo que planteamos está y que hoy está implementado también ahora. Ahora vamos a verlo, igual merlo, que sí, digamos, no llegamos a ser todavía y está buenísimo, que lo hagamos ahora es esta parte como de testeo de cómo responde Alicia no porque acá va a pasar que vamos a decir Bueno cuando Alicia te diga, ah, cómo responde Alicia hoy nosotros lo que tenemos y ahí lleva Alan corrijanme si digo mal Hola Rock bienvenida.
+04:22 Juan Mateos | Educabot.com: Corríjame ahí chicos, si digo mal, pero básicamente nosotros en base a la documentación que se fue Armando armamos un flujo y una lógica y una especie de identidad de quién es Alicia y cómo responde Alicia bajo situaciones me gustaría que ahora te comparto pantalla y vamos haciendo algunas pruebitas para ver qué es lo que vos te imaginas en la demo, cómo está funcionando hoy y qué tendríamos que corregir también? Ahí digamos. Nos quedemos en lo que en lo que nosotros tengamos que hacer.
+04:54 Juan Mateos | Educabot.com: Si algo falla ahora Quédate tranquila, que lo vamos a resolver a eso a eso voy, o sea, es fácil de resolver las cosas cuando sabemos bien, qué es lo que se espera? No? Y bueno, de momento no habíamos llegado a tener mucha esa conversación. Acá tenemos una pantalla que en realidad Esta no es la pantalla final de La Home pero en esencia, va a verse más o menos así los docentes digamos, pueden entrar a primeros pasos materiales asistencia o esta parte de recursos pedagógicos.
+05:28 Juan Mateos | Educabot.com: Primeros pasos es la parte más formativa, no donde se ingresa van a tener la valija el asistente y aula inclusiva no estas tres pestañitas, que ya veníamos hablando acá los videos Los está haciendo marketing, No veremos con qué estamos listos para salir o no? Eso es como otra conversación. Lo que es materiales, básicamente tenemos como un menú donde están todos o tenemos como específicamente por cada una de las categorías, no que se han definido.
+06:10 Mercedes Gabriela Herrera: me dejas ver las categorías Juan
+06:12 Juan Mateos | Educabot.com: Y obvio de paso nos da feedback regulación atención organización acceso bueno acá está duplicado.
+06:20 Mercedes Gabriela Herrera: Porque está duplicado ahí.
+06:24 Rocío E. | Educabot.com: No están todas las categorías iguales.
+06:26 Juan Mateos | Educabot.com: Ok faltan categorías de la implementación de estos
+06:40 Rocío E. | Educabot.com: Y no están todos.
+06:41 Juan Mateos | Educabot.com: Okay, Bueno eso lo veamos, ahí, no sé si es verdad que no Front querés
+06:47 Mercedes Gabriela Herrera: Sí porque todo esto sea el 30, o sea lo vamos a proyectar, o sea, esto lo van a
+06:48 Juan Mateos | Educabot.com: pasarme.
+06:51 Mercedes Gabriela Herrera: ver el 30 de los ministros, eh? Los docentes los directores como que tienen que quedar sí, como lo van a ver ellos, o sea, digamos que pueden haber pequeñas modificaciones después que no ellos no se van a dar cuenta, pero como que no tiene que haber ningún cuack en el sentido de que eso, o sea, dos veces duplicaba acceso que falta una categoría porque inclusive yo voy a presentar las categorías para presentar los materiales tiene que tener coherencia absoluta esto.
+07:19 Juan Mateos | Educabot.com: Total, quieres ropas sobre el link así vemos como del figma que después Bueno hay cuestiones de implementación, lo corregimos, pero importante que estén bien los diseños, no?
+07:28 Mercedes Gabriela Herrera: El regla de lectura con ventana no sé de dónde a ver espera regla de lectura con ventana Ah no es la antigua, o sea esa imagen eso no va, no sé dónde lo
+07:37 Rocío E. | Educabot.com: https://www.figma.com/design/oPN5UX79RkG6X0Wn9ZIhlj/Alizia---Inclusi%C3%B3n?node-id=47-1052&t=rhhJgLnPbjZtvDVU-1
+07:37 Mercedes Gabriela Herrera: sacaron. que yo sepa
+07:44 Juan Mateos | Educabot.com: Ahora verificamos también si estamos aquí.
+07:46 Mercedes Gabriela Herrera: Regla son las reglas de lectura, pero no es una regla, digamos O sea no es una regla a ver la lista que ustedes están manejando es la que estamos manejando todos, no?
+07:56 Juan Mateos | Educabot.com: Debería Debería ser la misma la última es la que pasó Annie por las dudas la
+07:58 Mercedes Gabriela Herrera: Porque esa regla salió de Mercado hace un montón.
+08:03 Juan Mateos | Educabot.com: voy a compartir en el equipo. así
+08:06 Mercedes Gabriela Herrera: A no sé que hayan últimos minutos agregado esta regla, pero yo no tenía Conocimiento es más no hice nunca el video de esa regla.
+08:13 Juan Mateos | Educabot.com: Probablemente sea sea un error nuestro de la lista.
+08:17 Mercedes Gabriela Herrera: Fíjate que hay adentro.
+08:20 Juan Mateos | Educabot.com: Dale dame un segundo que estoy viendo en el canal acá de productos.
+08:28 Sebastian L. | Educabot.com: Es posible que a la hora de haber cargado la lista y las cosas de datos. eyaculados
+08:39 Juan Mateos | Educabot.com: Ahí pasé chicos al Canal la lista de los productos de la valija de chubut tipo, o sea, eso ese es como la la lista final que tenemos eso, pues
+08:48 Mercedes Gabriela Herrera: Sí, Inclusive Perdón tijeras adaptadas Esa no es la imagen tampoco esa tijera
+08:49 Juan Mateos | Educabot.com: revisemoslo.
+08:53 Mercedes Gabriela Herrera: no la compramos nunca nosotros compramos dos tijeras y no es y no es esa.
+09:01 Juan Mateos | Educabot.com: Perfecto, esto nos llevamos mer toda la lista para chequearlo bien con las imágenes y todo eso que es básicamente a que a ver abro acá el Excel esto es básicamente lo que deberíamos tener, o sea, estos nombres con esta imagen no, no debería escaparse acá.
+09:20 Mercedes Gabriela Herrera: Todo lo que aparece en los vídeos que estamos haciendo va que están haciendo ustedes son los los materiales que van a chubut y es la base después vemos si agregamos otros, pero esa es la base Esas son las imágenes, eso es lo Esos son los nombres adecuados para cada producto y tienen las categorías de cada producto, o sea, no, no sé a ver otra vez más de esa lista, No sé dónde está Yo no sé si estamos, estamos manejando todos la misma. Yo estoy manejando.
+09:55 Mercedes Gabriela Herrera: la lista que aparece en los guiones
+09:58 Juan Mateos | Educabot.com: Me voy a ver la lista de personas Esta es digamos una lista que mandó Ana que tiene que ver con las fechas de entrega aproximada y todo eso Yo entiendo que debería ser lo mismo me vengo a aquí, que es donde están los guiones y todo eso déjame que cargue acá es. Decime si vos estás con este o con otro.
+10:25 Mercedes Gabriela Herrera: ves a esta tijera, sí es exactamente inclusive actualicen, porque también
+10:28 Juan Mateos | Educabot.com: Okay.
+10:30 Mercedes Gabriela Herrera: pasó esto con el teclado Mouse que el teclado Mouse presentaban solamente el acrílico el acrílico que es como el el protector el que guía el pulso son Materiales que se complementan pero son dos materiales separados entonces también con eso no sé si lo actualizaron. En fin, Esa es la Esa es la lista. Las imágenes de cada producto están en el en el Excel estamos compartiendo. Así mismo las categorías
+11:09 Juan Mateos | Educabot.com: Acá, a ver, me vengo a este que teníamos hace mucho Acá está acá donde decías lo de las categorías.
+11:15 Mercedes Gabriela Herrera: Exacto Sí pero ojo sí ojo que esos materiales No todos van a chubut y por eso
+11:17 Juan Mateos | Educabot.com: En la pestañita confirmar.
+11:22 Mercedes Gabriela Herrera: no todos aparecen en los videos los materiales que van a chubut y que van a estar ese día en la valija son los que aparecen en los videos pero en esa que acabas de proyectar tenés todas las categorías categoría primaria categoría secundaria e imagen correcta de producto
+11:37 Juan Mateos | Educabot.com: Perfecto, Sí acá, deberíamos sumar la categoría y esto tendría que ser la fuente, de verdad, básicamente no voy a sumar. Voy a mandarle la invitación de
+11:45 Mercedes Gabriela Herrera: exacto
+11:49 Juan Mateos | Educabot.com: este link a otra persona del equipo que es quien se asegura de que la calidad de todo quede bien para que tenga ahí también toda esta parte. bueno, buenísimo, eso lo de los productos nos llevamos verificar y revisar bien que queden como se espera según esta lista es bastante mecánico esa parte Así que nada lo revisamos que Exactamente igual a esa fuente de verdad recursos pedagógicos Esta es donde ya empieza la parte un poco más compleja creo todo lo que es asistencia y recursos pedagógicos básicamente tenemos esta pantalla en la cual vamos a ver todos los recursos creados sí por el docente obviamente dame un segundo que quiero
+12:48 Mercedes Gabriela Herrera: Por el docente. Y ahí esas categorías vos las las pusiste indicativo o son las que van a
+12:52 Juan Mateos | Educabot.com: achicar.
+12:57 Mercedes Gabriela Herrera: aparecer porque normalmente era el docente que creaba sus propias categorías, no?
+13:02 Juan Mateos | Educabot.com: Sus propias categorías no O sea a qué le llamas categorías a esto?
+13:08 Mercedes Gabriela Herrera: Que viste que en el documento que creamos, habíamos dicho que el docente podía podía categorizar sus recursos según alumnos según materia según grado.
+13:22 Juan Mateos | Educabot.com: Sí eso no lo no lo sumamos, es como muy complejo a nivel datos darle toda esa flexibilidad, o sea, va a tener. Básicamente categorizado según los materiales es decir si vos agarraste con No sé tal material y creaste, siete recurso pedagógico Cuando vos toques, ese material vas a ver los recursos pedagógicos
+13:47 Mercedes Gabriela Herrera: Sí, Ok lo que pasa es que materiales no, no tiene como un nexo conector directo
+13:49 Juan Mateos | Educabot.com: que creaste y si lo hiciste con alumnos también específicamente.
+13:59 Mercedes Gabriela Herrera: con materias, entonces si vos en Materiales me pones matemática práctica de
+14:05 Juan Mateos | Educabot.com: no le deja importancia a lo que acá dice de
+14:05 Mercedes Gabriela Herrera: lenguaje y todo eso. Okay.
+14:12 Juan Mateos | Educabot.com: Del digamos el título, sino que acá sería como acá veríamos lo mismo, no O sea está corregimen si me equivoco, pero acá tendríamos los materiales de atención y foco de organización y cuando yo toque el de organización acá debería decir, me vengo aquí, no sé Time timer Entonces yo toco, el de Time timer y voy a visualizar los recursos pedagógicos que se hayan creado con el Time timer en línea generales lo que se busca acá es permitirle al docente acceder de una manera rápida y cómoda a lo que ya Estuvo trabajando Cómo bueno tres maneras de lo más reciente que es el último que estuve haciendo Ok perfecto.
+15:00 Juan Mateos | Educabot.com: En base a los materiales no me acuerdo cuando lo hice, pero me acuerdo que había utilizado tal material perfecto o en base al alumno no, que bueno, acá hay un flujo de creación de alumno que tenemos que que pulir me parece, o sea, quizá esta parte la escondemos por el momento hasta que lo tengamos mejor defini.
+15:24 Mercedes Gabriela Herrera: OK Pero recuerda que también Había una que era segunda porque el maestro también puede entrar por tengo un chico que tiene necesidades atencionales o de regulación o lo que fuera entonces ahí están como cuestiones que quizás no tienen que ver con un material y que son adaptaciones específicamente pedagógicas en las que no haber nada que tocar y nos falta esa que son que la entrada sería entonces recientes materiales alumnos y la última no sé cómo la habíamos llamado estaba todo en la estructura que se yo no me acuerdo que era
+16:02 Juan Mateos | Educabot.com: Vengo a ver a ver si lo encontramos.
+16:03 Mercedes Gabriela Herrera: Necesidades no sé cómo le habíamos puesto. Poner maqueta de Alicia en la pestaña maqueta.
+16:12 Juan Mateos | Educabot.com: botón materiales tu asistente en el aula primeros pasos el asistente Esto era lo doble inclusiva el asistente.
+16:37 Mercedes Gabriela Herrera: a ver ahí, opción guardar alumnos materiales tipo de adaptación materiales y recursos aprendizaje
+16:45 Juan Mateos | Educabot.com: opción
+16:47 Mercedes Gabriela Herrera: tipo de adaptación
+16:50 Juan Mateos | Educabot.com: tipo de adaptación
+16:53 Mercedes Gabriela Herrera: Y ahí están las categorías.
+16:56 Juan Mateos | Educabot.com: key Acá, sí, yo replantearía un poco esto, a ver si realmente aporta valor porque a ver, yo esto pregunta para osmer, no O sea acá nosotros en este caso donde vos decís Bueno tengo un alumno que tiene cierta dificultad atencional, por ejemplo, lo que vos planteás es que acá haya, no sé una pestañita que diga. Por categoría Quizá no sería como una manera o no sé cuál es la palabra justa, pero cuando yo ingreso. Tengo ahí como la categoría, no sé por atención y Veo todas esas.
+17:38 Rocío E. | Educabot.com: Materiales ve que hice atención y foco están las categorías ahí, si no transformar esta subsección de materiales más para el lado de las categorías
+17:52 Mercedes Gabriela Herrera: Sí, volvemos pasa que no solamente hay adaptaciones con materiales Entonces si
+17:52 Rocío E. | Educabot.com: y no tanto por lo material.
+17:56 Mercedes Gabriela Herrera: de repente Alicia te sugiere, no sé qué sé, yo no se dio cualquier huevada, eh? Ay mira Está muy está muy agitado Bueno qué sé, yo no sé, dale un libro y que cuente hasta cien qué sé yo que no tiene nada que ver con los materiales de la valija. Si vos ponés materiales no la vas a poder clasificar. Entendés y sin embargo la está ayudando igualmente al maestro con la necesidad de atención y foco de regulación o lo que fuera.
+18:26 Rocío E. | Educabot.com: Entonces, las materiales no Debería ser una categoría, sino es que siempre está debería perdón como una subsección sería categorías.
+18:36 Mercedes Gabriela Herrera: Pues yo dejaría materiales, pero le mandaría otra que tiene más que ver con lo pedagógico que no es tan tangible.
+18:48 Juan Mateos | Educabot.com: Llevemos No eso roi, lo lo pensamos porque creo que sí, O sea aunque no todas tengan materiales es algo, pero teniendo en cuenta que el foco de esta pantalla
+18:59 Sebastian L. | Educabot.com: QUe otras categorias podemos clasificar que serian muy probables o importantes de tener
+19:01 Juan Mateos | Educabot.com: o en cierto punto digamos lo que buscamos como usabilidad es permitirle al docente que encuentre lo que ya creó de la manera más fácil. Bueno, recientes es muy clara materiales. Creo que también hace sentido alumnos totalmente y esta que dice Mercedes también tiene sentido si digamos que sería similar a esta Pero bueno, no tiene el material físico, no tengo una cuestión más desde necesidades. Quizá tendría sentido ese nombre.
+19:31 Mercedes Gabriela Herrera: Podría tendría sentido recurso, pedagógicos, recientes recursos pedagógicos
+19:33 Juan Mateos | Educabot.com: Okay.
+19:37 Mercedes Gabriela Herrera: materiales recursos pedagógicos pedagógicos por alumnos y recursos
+19:40 Sebastian L. | Educabot.com: Considerando que el alumno no tiene poder de creacion de categorias , pero si tener una lista guardadas de categorias relevantes para guardar y relacionar recursos pedagogicos
+19:42 Mercedes Gabriela Herrera: pedagógicos por necesidad. O por nivel porque también hemos planteado la del nivel o por materia, o sea, porque lo habíamos planteado, pero si no estamos llegando hasta ahí, por lo menos O sea que lo puedan categorizar también o que Alicia lo vaya categorizando si ellos quieren por necesidad.
+20:02 Juan Mateos | Educabot.com: Sí, sí, sí, sí me gusta Sí todo el tema de materia o nivel o grado viste es
+20:04 Mercedes Gabriela Herrera: necesidades
+20:11 Juan Mateos | Educabot.com: como sumar una capa de complejidad que hoy claro, para el usuario viste tenés
+20:14 Mercedes Gabriela Herrera: saquemos
+20:17 Juan Mateos | Educabot.com: que ponerte a crear tus materias crear tus cursos crear cosas que todas.
+20:21 Mercedes Gabriela Herrera: Sí sí, si viene después viene después Juan y cuando tengamos tiempo lo desarrollamos, pero ahora, o sea, la urgencia es esa que sea coherente y que tenga recursos pedagógicos recientes recursos pedagógicos materiales que es materiales físicos de la valija recursos pedagógicos por alumno recursos pedagógicos por necesidad queremos hasta ahí.
+20:45 Juan Mateos | Educabot.com: De Bueno para mí hace San Diego no sé Rosy querés, preguntar algo verlo ahora o bueno, lo trabajamos después. Bueno Y a ver dentro de lo que es un recurso pedagógico, acá no sé Julie Sebas si esto está implementado no quedó implementado Hoy puedo crear un recurso pedagógico, no?
+21:13 Sebastian L. | Educabot.com: Se va a querer armar uno, pero no te va a poder guardar.
+21:18 Juan Mateos | Educabot.com: Ok bueno
+21:19 Mercedes Gabriela Herrera: el tema de las fichas está
+21:24 Juan Mateos | Educabot.com: la ficha
+21:25 Mercedes Gabriela Herrera: Te acordás que decíamos que cuando terminaba de chatear con Alicia le tiraba como un resumen y le proponía querés que te lo convierta en ficha pedagógica, que es la que estamos viendo ahí Creo no ficha.
+21:38 Juan Mateos | Educabot.com: Esto esto recién esto de la ficha en realidad sea un recurso pedagógico, no?
+21:43 Sebastian L. | Educabot.com: Claro, eso lo llevamos recursos pedagógico. Te habla todo, te lo intenta como
+21:43 Mercedes Gabriela Herrera: sí, un
+21:46 Sebastian L. | Educabot.com: crear O sea no te lo crea de una Tenés una breve conversación con el chat le explicas la situación, ya sea relacionada no un material y te va a intentar decir cheques de esto guardar un recurso pedagógico y es la opción de guardar esa opción de guardar hoy en día te tira un error porque falta conectar algunas cosas de código Pero hay algunos recursos guardados moqueados, digamos o inventados que Serían como lo que debería guardarse.
+22:16 Mercedes Gabriela Herrera: Para el martes se puede tener una demo de eso?
+22:19 Juan Mateos | Educabot.com: Vamos Eso sí, pero creo que más allá de eso que dice guardar acá lo que tendríamos que probar sería como la conversación, no ver cómo responde Alicia y y vamos a generar un recurso pedagógico, no me va a permitir guardar, pero entiendo que vamos a llegar hasta hasta verlo, No qué te imaginas de conversación.
+22:44 Mercedes Gabriela Herrera: Yo me imagino O sea que podamos presentar ponele no nosotros que podamos presentar como una simulación digamos. Bueno, por ejemplo Vamos a ponernos en el lugar de un docente que acaba de recibir la valija y que ve las patas para la Silla no Entonces le pregunta Alicia Hola Alicia veo que hay patas de silla en la valija y me gustaría saber trabajo en una escuela especial con chicos que tienen tal Y tal Y tal necesidad Quisiera saber en qué En qué situaciones puedo usar estas patas?
+23:20 Juan Mateos | Educabot.com: Qué querés decirme los ejemplos puntuales de la necesidad a ver cómo cómo nos responde? A ver qué falta viste.
+23:27 Mercedes Gabriela Herrera: Ahí le estoy preguntando a Alicia Cuáles son las necesidades para poder usar las patas, si yo le quiero decir a Alicia o sea, hay dos entradas la necesidad de Alicia decime Cuáles son las necesidades para que yo pueda usar esto porque lo tengo en la valija. Lo quiero usar, pero no sé cómo y otra es tengo esta situaciones dentro de mi aula que son las necesidades. Quiero que me digas qué puedo hacer y ahí Alicia le tira el material o le tira una un recurso pedagógico
+23:56 Juan Mateos | Educabot.com: Entendiendo vamos a ver plantemosle un caso, digo yo escribo lo que vos me digas yo puse Che que hacen las patas de la silla y me dijiste trabajo en una escuela especial Qué más le mando.
+24:07 Mercedes Gabriela Herrera: trajo una escuela especial con chicos que tienen parálisis cerebral cerebral discapacidad intelectual dificultades de atención Cómo las puedo usar que digamos es algo que el docente ese día de la presentación nos puede preguntar. a ver que tira Alicia
+24:30 Juan Mateos | Educabot.com: Claro, Esto es lo que quiero que veamos y uno diga Bueno bien, no ojo deberíamos, no? Acá les pregunto mientras se va Esto está cableado Con qué? Digo qué fuente tenemos. Acá me dice, te referís al elástico para silla este bueno esto.
+24:54 Mercedes Gabriela Herrera: Okay no
+24:58 Sebastian L. | Educabot.com: Debería tener la referencia la valija de todos los todas las herramientas que tenemos ahí en el listado.
+25:06 Mercedes Gabriela Herrera: Sabes por qué perdón. Sabes por qué te tiró Esto del elástico? Porque no ingresaron todos los
+25:12 Sebastian L. | Educabot.com: pero no sé si
+25:15 Mercedes Gabriela Herrera: materiales de la valija de chubut. Entonces Te está tirando elástico para silla sabiendo que elástico para silla no es el material patas para silla Pero entonces Alicia viosilla y Te está tirando el elástico, pero para así ya tenemos dos. No lo pusieron, o sea, es esencial que los materiales estén para que Alicia empiece a pensar.
+25:36 Juan Mateos | Educabot.com: Obvio obvio, querés chequear se va que esté el material este que es básicamente si no me equivoco las patitas, no el que se pone abajo.
+25:49 Sebastian L. | Educabot.com: Sí el de las patas para Asís habría que revisar si está lo otro que me faltó decir que tiene es
+25:53 Juan Mateos | Educabot.com: Igual este este.
+25:59 Sebastian L. | Educabot.com: la la Data del usuario y los alumnos que tienen el aula, por ejemplo para darle
+26:00 Juan Mateos | Educabot.com: si no Fíjate Sebas si tenemos este cargado, si es lo que tenemos cargado, tenemos Este fíjate ese vapor. Que tiene nombre pata para sillas Así que debería chequearlo. Más allá de eso, mer, veamos un poco la respuesta, a ver si nos gusta Si hay algo que nos hace ruido, querés que te dé ejemplos prácticos. Eso está bien, iríamos por otro lado A ver, vamos, vamos a hacer otra pregunta mejor con algún material que sí tengamos.
+26:52 Juan Mateos | Educabot.com: así vemos el caso de Cómo cómo responden esos casos, vale redundancia? Se va que qué material tenemos O sea me pasas el Excel con el que vos hayas cargado esto.
+27:17 Sebastian L. | Educabot.com: no sé si lo tengo a mano pero Voy a ver qué tenemos cargados.
+27:31 Juan Mateos | Educabot.com: Vamos probando mer, mientras algo digamos del otro lado, o sea, hablemosle de las necesidades, vamos por otro lado que no sea de los materiales a ver cómo responde porque también ahí ya es. más como
+27:47 Mercedes Gabriela Herrera: OK Vamos por una
+27:48 Juan Mateos | Educabot.com: La bibliografía o cómo está? Digamos su su conocimiento de inclusión.
+27:54 Mercedes Gabriela Herrera: Bueno, no voy a nombrar ningún material ponele tengo varios chicos. en un aula de educación especial que tienen dificultades motrices parálisis cerebral temblores en las manos Y no sé cómo ayudarlos para que puedan escribir.
+28:52 Mercedes Gabriela Herrera: pintura a ver
+28:55 Juan Mateos | Educabot.com: Ves bien mero cree que un poco.
+28:57 Mercedes Gabriela Herrera: No, no veo perfecto.
+29:19 Mercedes Gabriela Herrera: Ok es súper genérica y te tira absolutamente todo ahí habría que preguntarle al docente, no? Querés que te arme una adaptación porque, o sea, es muy genérico, Por ejemplo, si me decís como hace viste el copilote de Microsoft o sea, el de la educación que te dice si me decís exactamente si querés que escriban sobre una hoja, si querés que escriban en computadora en te puedo te puedo ayudar o te puedo afinar la respuesta, o sea hay que llevarlo a que el docente porque él tiene todo eso que es genérico. Lo tiene dentro de la valija Pero a mí no me dice nada, No yo quizás estaba pensando en una hoja y no te lo dije entendés, Alicia tiene que Ir más allá de lo que el docente le está diciendo para poder perfeccionar su respuesta Entonces si me decís.
+30:12 Mercedes Gabriela Herrera: Qué tipo de soporte En qué tipo de soporte crees que escriban te puedo ayudar? Te puedo afinar la adaptación? Y ahí el docente le va a tirar y queremos hacer un dictado en una hoja o que estamos estamos intentando hacer dictados en computadora y ahí te va a tirar el clevy, por ejemplo entendés, querés que te ayude sobre los pasos a seguir los para poder implementarlo en el alumno con el que tenés dificultades O sea hay que ir afinando las respuestas.
+30:44 Juan Mateos | Educabot.com: Perfecto, coincido nos lo llevamos eso como un criterio de bueno entender bien, Qué es la situación, digamos antes de recomendar por ahí algo genérico, no?
+30:57 Mercedes Gabriela Herrera: Exacto Porque si el día de la demo nos preguntan esto y nos larga esto Alicia eso ya lo sabe el docente porque son van a ser todos docentes no sé si tenés el contexto pero finalmente son todos docentes de educación especial.
+31:09 Juan Mateos | Educabot.com: Claro que es otro el público al que al final le estábamos pensando, digamos.
+31:12 Mercedes Gabriela Herrera: exacto Eso ya lo tienen lo que el docente de educación especial no tiene es alguien que como un asistente realmente que esté al lado para ayudarlo a ir más lejos, Ok enseguida te tiro otra pregunta, perfecto. Entendí la situación entendí la necesidad. Vamos por el contexto Tac vamos, buscando buscando buscando buscando buscando buscando buscando buscando porque eso se va a estar así Cuando digo en más de lo mismo, o sea.
+31:38 Juan Mateos | Educabot.com: Claro, a ver acá yo le digo Bueno en realidad queremos hacer dictado en una hoja no le puse como alumno genérico dice Bueno antes de sugerir adaptaciones el objetivo es que cada alumno escriba el dictado a mano en la hoja obligatoriamente o aceptas alternativas que alguien les transcriba uso de
+31:58 Juan Mateos | Educabot.com: plantillas soportes o dispositivos digamos este tipo de pregunta más o menos es lo que esperamos, te parece que no es una buena pregunta.
+32:08 Mercedes Gabriela Herrera: No no es no, porque no, no me parece una buena pregunta el objetivo de cada
+32:13 Mercedes Gabriela Herrera: alumno escriba el di.
+  
