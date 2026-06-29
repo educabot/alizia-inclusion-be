@@ -46,9 +46,9 @@ func main() {
 	)
 
 	ctx, cancel := context.WithTimeout(context.Background(), runTimeout)
-	defer cancel()
 
 	res, err := uc.Execute(ctx)
+	cancel()
 	if err != nil {
 		slog.Error("summarizer: run failed", "error", err)
 		os.Exit(1)

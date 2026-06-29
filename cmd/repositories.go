@@ -15,26 +15,26 @@ import (
 )
 
 type Repositories struct {
-	Ramps                  providers.RampProvider
-	Devices                providers.DeviceProvider
-	Students               providers.StudentProvider
-	StudentProfiles        providers.StudentProfileProvider
-	StudentNotes           providers.StudentNoteProvider
-	AI                     providers.AIClient
-	Users                  providers.UserProvider
-	Classrooms             providers.ClassroomProvider
-	Adaptations            providers.AdaptationProvider
-	AdaptationResources    providers.AdaptationResourceProvider
-	Conversations          providers.ConversationProvider
-	ConversationSummaries  providers.ConversationSummaryProvider
-	AIUsage                providers.AIUsageProvider
-	TeacherProfiles        providers.TeacherProfileProvider
-	Situations             providers.SituationCatalogProvider
-	Diagnoses              providers.DiagnosisProvider
-	PPIs                   providers.PPIProvider
-	PedagogicalContent     providers.PedagogicalContentProvider
-	Embedder               providers.Embedder
-	RAGSearch              providers.RAGSearchProvider
+	Ramps                 providers.RampProvider
+	Devices               providers.DeviceProvider
+	Students              providers.StudentProvider
+	StudentProfiles       providers.StudentProfileProvider
+	StudentNotes          providers.StudentNoteProvider
+	AI                    providers.AIClient
+	Users                 providers.UserProvider
+	Classrooms            providers.ClassroomProvider
+	Adaptations           providers.AdaptationProvider
+	AdaptationResources   providers.AdaptationResourceProvider
+	Conversations         providers.ConversationProvider
+	ConversationSummaries providers.ConversationSummaryProvider
+	AIUsage               providers.AIUsageProvider
+	TeacherProfiles       providers.TeacherProfileProvider
+	Situations            providers.SituationCatalogProvider
+	Diagnoses             providers.DiagnosisProvider
+	PPIs                  providers.PPIProvider
+	PedagogicalContent    providers.PedagogicalContentProvider
+	Embedder              providers.Embedder
+	RAGSearch             providers.RAGSearchProvider
 }
 
 func NewRepositories(db *gorm.DB, cfg *config.Config) *Repositories {
@@ -58,25 +58,25 @@ func NewRepositories(db *gorm.DB, cfg *config.Config) *Repositories {
 	}
 
 	return &Repositories{
-		Ramps:                  catalogr.NewRampRepo(db),
-		Devices:                catalogr.NewDeviceRepo(db),
-		Students:               inclusionr.NewStudentRepo(db),
-		StudentProfiles:        inclusionr.NewStudentProfileRepo(db),
-		StudentNotes:           inclusionr.NewStudentNoteRepo(db),
-		AI:                     aiClient,
-		Users:                  authr.NewUserRepo(db),
-		Classrooms:             mgmtr.NewClassroomRepo(db),
-		Adaptations:            inclusionr.NewAdaptationRepo(db),
-		AdaptationResources:    inclusionr.NewAdaptationResourceRepo(db),
-		Conversations:          inclusionr.NewConversationRepo(db),
-		ConversationSummaries:  inclusionr.NewConversationSummaryRepo(db),
-		AIUsage:                inclusionr.NewAIUsageRepo(db),
-		TeacherProfiles:        inclusionr.NewTeacherProfileRepo(db),
-		Situations:             inclusionr.NewSituationRepo(db),
-		Diagnoses:              inclusionr.NewDiagnosisRepo(db),
-		PPIs:                   inclusionr.NewPPIRepo(db),
-		PedagogicalContent:     inclusionr.NewPedagogicalContentRepo(db),
-		Embedder:               air.NewAzureEmbedder(cfg.AzureEmbeddingEndpoint, cfg.AzureEmbeddingAPIKey, cfg.AzureEmbeddingDeployment, cfg.AzureEmbeddingAPIVersion, cfg.EmbeddingDim),
-		RAGSearch:              inclusionr.NewRAGSearchRepo(db),
+		Ramps:                 catalogr.NewRampRepo(db),
+		Devices:               catalogr.NewDeviceRepo(db),
+		Students:              inclusionr.NewStudentRepo(db),
+		StudentProfiles:       inclusionr.NewStudentProfileRepo(db),
+		StudentNotes:          inclusionr.NewStudentNoteRepo(db),
+		AI:                    aiClient,
+		Users:                 authr.NewUserRepo(db),
+		Classrooms:            mgmtr.NewClassroomRepo(db),
+		Adaptations:           inclusionr.NewAdaptationRepo(db),
+		AdaptationResources:   inclusionr.NewAdaptationResourceRepo(db),
+		Conversations:         inclusionr.NewConversationRepo(db),
+		ConversationSummaries: inclusionr.NewConversationSummaryRepo(db),
+		AIUsage:               inclusionr.NewAIUsageRepo(db),
+		TeacherProfiles:       inclusionr.NewTeacherProfileRepo(db),
+		Situations:            inclusionr.NewSituationRepo(db),
+		Diagnoses:             inclusionr.NewDiagnosisRepo(db),
+		PPIs:                  inclusionr.NewPPIRepo(db),
+		PedagogicalContent:    inclusionr.NewPedagogicalContentRepo(db),
+		Embedder:              air.NewAzureEmbedder(cfg.AzureEmbeddingEndpoint, cfg.AzureEmbeddingAPIKey, cfg.AzureEmbeddingDeployment, cfg.AzureEmbeddingAPIVersion, cfg.EmbeddingDim),
+		RAGSearch:             inclusionr.NewRAGSearchRepo(db),
 	}
 }

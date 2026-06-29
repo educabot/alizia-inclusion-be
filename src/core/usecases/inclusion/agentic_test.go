@@ -171,7 +171,9 @@ func TestInclusionDispatcher_CreateStudentCreatesInClassroomWithProfile(t *testi
 	students.On("Create", ctx, mock.AnythingOfType("*entities.Student")).
 		Return(nil).
 		Run(func(args mock.Arguments) {
-			args.Get(1).(*entities.Student).ID = 42
+			s, ok := args.Get(1).(*entities.Student)
+			require.True(t, ok)
+			s.ID = 42
 		})
 	profiles.On("Upsert", ctx, mock.AnythingOfType("*entities.StudentProfile")).Return(nil)
 
@@ -295,7 +297,8 @@ func TestInclusionDispatcher_CreateClassroomNormalizesGrade(t *testing.T) {
 	classrooms.On("Create", ctx, mock.AnythingOfType("*entities.Classroom")).
 		Return(nil).
 		Run(func(args mock.Arguments) {
-			c := args.Get(1).(*entities.Classroom)
+			c, ok := args.Get(1).(*entities.Classroom)
+			require.True(t, ok)
 			c.ID = 11
 			assert.Equal(t, "3ro B", c.Name)
 			require.NotNil(t, c.Grade)
@@ -335,13 +338,14 @@ func TestInclusionDispatcher_CreateClassroomIsIdempotent(t *testing.T) {
 func TestInclusionTools_ExposeCreateStudent(t *testing.T) {
 	var found bool
 	for _, tool := range inclusionTools() {
-		if tool.Name == "create_student" {
-			found = true
-			params, ok := tool.Parameters.(map[string]any)
-			require.True(t, ok)
-			req, _ := params["required"].([]string)
-			assert.Contains(t, req, "name")
+		if tool.Name != "create_student" {
+			continue
 		}
+		found = true
+		params, ok := tool.Parameters.(map[string]any)
+		require.True(t, ok)
+		req, _ := params["required"].([]string)
+		assert.Contains(t, req, "name")
 	}
 	assert.True(t, found, "create_student debe estar expuesta como tool")
 }
