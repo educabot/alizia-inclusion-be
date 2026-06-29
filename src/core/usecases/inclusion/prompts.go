@@ -151,6 +151,7 @@ func writeQuestionsFormat(b *strings.Builder) {
 	b.WriteString("- type: \"open\" (texto libre, sin opciones), \"single\" (elige UNA), \"multiple\" (elige varias). id = clave corta y estable por pregunta.\n")
 	b.WriteString("- En \"single\"/\"multiple\" poné HASTA 4 opciones; NO incluyas \"Otro\" (el docente siempre puede escribir su respuesta, la interfaz se lo ofrece). En \"open\" no pongas opciones.\n")
 	b.WriteString("- Emití el bloque SOLO cuando estés repreguntando. No lo mezcles con una propuesta ni con el bloque ADAPTATION_JSON en el mismo turno.\n")
+	b.WriteString("- IMPORTANTE: el mensaje termina exactamente en el `]` que cierra el bloque. No escribas nada después (ni `}`, ni texto, ni línea en blanco extra).\n")
 }
 
 // writeDeviceCatalog imprime el catálogo de dispositivos en formato estable.
@@ -554,7 +555,7 @@ No incluyas marcadores [STUDENT_ID]/[DEVICE_ID] ni IDs crudos.`
 var deviceIDRegex = regexp.MustCompile(`\[DEVICE_ID:(\d+)\]`)
 var studentIDRegex = regexp.MustCompile(`\[STUDENT_ID:(\d+)\]`)
 var adaptationJSONRegex = regexp.MustCompile(`(?s)\[ADAPTATION_JSON:(\{.+\})\]`)
-var questionsJSONRegex = regexp.MustCompile(`(?s)\[QUESTIONS_JSON:(\{.+\})\]`)
+var questionsJSONRegex = regexp.MustCompile(`(?s)\[QUESTIONS_JSON:(\{.+\})\]\s*\}?`)
 
 func extractDeviceID(content string) *int64 {
 	matches := deviceIDRegex.FindStringSubmatch(content)
