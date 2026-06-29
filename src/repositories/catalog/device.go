@@ -24,6 +24,7 @@ func (r *deviceRepo) ListDevices(ctx context.Context, orgID uuid.UUID, rampID *i
 	q := r.db.WithContext(ctx).
 		Preload("Ramp").
 		Preload("Resources").
+		Preload("Videos", func(db *gorm.DB) *gorm.DB { return db.Order("sort_order ASC") }).
 		Where("organization_id = ?", orgID).
 		Where("is_active = ?", true)
 
@@ -43,6 +44,7 @@ func (r *deviceRepo) GetDevice(ctx context.Context, orgID uuid.UUID, id int64) (
 	err := r.db.WithContext(ctx).
 		Preload("Ramp").
 		Preload("Resources").
+		Preload("Videos", func(db *gorm.DB) *gorm.DB { return db.Order("sort_order ASC") }).
 		Where("organization_id = ? AND id = ?", orgID, id).
 		First(&device).Error
 	if err != nil {

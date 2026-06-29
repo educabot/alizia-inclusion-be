@@ -92,13 +92,13 @@ const propuestaFlow = `PROPONÉ, NO INTERROGUES:
 // get_content no existen y no hay que instruir su uso. El RAG también potencia las
 // preguntas y la integración es sin citar la fuente. Ver alizia-comportamiento-flujo-v2.md §4.
 const fundamentosRAG = `FUNDAMENTOS (material pedagógico real):
-- Ante un concepto pedagógico, una discapacidad/barrera específica, un marco o una normativa, usá la tool search_content ANTES de afirmar de fondo. No la uses para charla trivial.
-- Usá search_content también ANTES DE REPREGUNTAR sobre una barrera o tema que no manejás de fondo: lo que devuelve te sirve para hacer mejores preguntas y ofrecer opciones pertinentes (las que "le leen la mente" al docente), no solo para fundamentar la respuesta.
-- Si el docente pide bibliografía, fuentes, evidencia, referencias o "en qué te basás", DEBÉS llamar search_content (o search_content_hibrido) y responder con lo que devuelva. Nunca contestes que buscaste si no llamaste la tool en este turno.
-- Reescribí la consulta a palabras clave, expandiendo con sinónimos y el nombre de la discapacidad/barrera (ej.: "le cuesta concentrarse" -> "atención autorregulación TDAH funciones ejecutivas").
-- Fundamentá tu respuesta con lo que devuelve, integrándolo de forma natural y SIN citar la fuente: no menciones el título del documento, "según la bibliografía", ni ningún marcador de fuente. El docente recibe el criterio, no la cita.
-- Si la búsqueda vuelve vacía, no inventes: respondé con los lineamientos base aclarando que no hay material cargado sobre ese punto. Si el preview es pertinente y necesitás más, usá get_content.
-- Los materiales de la valija ya están en el catálogo de este prompt; no los busques por search_content.
+- Ante cualquier pregunta sobre una discapacidad, barrera, estrategia pedagógica, marco o normativa, DEBÉS llamar search_content_hibrido ANTES de responder. No la uses para charla trivial.
+- Si el docente pide bibliografía, fuentes, evidencia, referencias o "en qué te basás", DEBÉS llamar search_content_hibrido y responder con lo que devuelva. Nunca contestes que buscaste si no llamaste la tool en este turno.
+- Pasá la pregunta del docente completa en semantic_question y las palabras clave en terms (temas + nombre de la discapacidad/barrera).
+- Fundamentá tu respuesta con lo que devuelve, integrándolo de forma natural (no hace falta citar el título del documento). Si el preview es pertinente y necesitás más, usá get_content.
+- Si la búsqueda vuelve vacía, no inventes: respondé con los lineamientos base aclarando que no hay material cargado sobre ese punto.
+- Los materiales de la valija ya están en el catálogo de este prompt; no los busques por search_content_hibrido.
+- Si te apoyás en material del corpus, citá la fuente con [CONTENT_ID:X], usando el id del recurso (resource_id) que devolvió la búsqueda. El sistema lo convierte en un chip; no menciones el id de otra forma.
 `
 
 // alumnoFlow guía el Caso 2 ("tengo un alumno con tal barrera/diagnóstico"):
@@ -230,10 +230,170 @@ func writeKnownStudents(b *strings.Builder, students []entities.Student) {
 	b.WriteString("\n")
 }
 
+// writeStudentContext agrega el contexto rico que arma el Context Assembler
+// (PromptContext): docente, alumno foco con su perfil, diagnósticos informados, PPI,
+// adaptaciones previas y resúmenes de charlas anteriores. Nil-safe: si no hay
+// contexto (sin alumno foco o el assembler falló) no escribe nada y el prompt queda
+// igual que antes. Ver alizia-comportamiento-flujo-v1.md §6.
+func writeStudentContext(b *strings.Builder, pc *PromptContext) {
+	if pc == nil {
+		return
+	}
+
+	if t := pc.Teacher; t != nil {
+		var parts []string
+		if t.Specialization != nil && *t.Specialization != "" {
+			parts = append(parts, "especialidad "+*t.Specialization)
+		}
+		if len(t.Subjects) > 0 {
+			parts = append(parts, "materias "+strings.Join(t.Subjects, ", "))
+		}
+		if t.YearsExperience != nil {
+			parts = append(parts, fmt.Sprintf("%d años de experiencia", *t.YearsExperience))
+		}
+		if len(parts) > 0 {
+			fmt.Fprintf(b, "DOCENTE: %s.\n\n", strings.Join(parts, "; "))
+		}
+	}
+
+	s := pc.TargetStudent
+	if s == nil {
+		writeMissingData(b, pc.MissingData)
+		return
+	}
+
+	name := s.Name
+	if s.PreferredName != nil && *s.PreferredName != "" {
+		name = *s.PreferredName
+	}
+	fmt.Fprintf(b, "ALUMNO FOCO: %s [ID:%d]", name, s.ID)
+	if s.GradeLevel != nil && *s.GradeLevel != "" {
+		fmt.Fprintf(b, " — %s", *s.GradeLevel)
+	}
+	b.WriteString("\n")
+
+	if p := s.Profile; p != nil {
+		if p.IsTransitory {
+			b.WriteString("- Condición: transitoria\n")
+		} else {
+			b.WriteString("- Condición: permanente\n")
+		}
+		if p.SupportLevel != nil && *p.SupportLevel != "" {
+			fmt.Fprintf(b, "- Nivel de apoyo: %s\n", *p.SupportLevel)
+		}
+		if len(p.Difficulties) > 0 {
+			fmt.Fprintf(b, "- Dificultades observables: %s\n", strings.Join(p.Difficulties, ", "))
+		}
+		if len(p.Strengths) > 0 {
+			fmt.Fprintf(b, "- Fortalezas: %s\n", strings.Join(p.Strengths, ", "))
+		}
+		if len(p.Interests) > 0 {
+			fmt.Fprintf(b, "- Intereses: %s\n", strings.Join(p.Interests, ", "))
+		}
+		if len(p.EffectiveStrategies) > 0 {
+			fmt.Fprintf(b, "- Estrategias que funcionan: %s\n", strings.Join(p.EffectiveStrategies, ", "))
+		}
+		if len(p.IneffectiveStrategies) > 0 {
+			fmt.Fprintf(b, "- Estrategias que NO funcionan: %s\n", strings.Join(p.IneffectiveStrategies, ", "))
+		}
+		if len(p.Triggers) > 0 {
+			fmt.Fprintf(b, "- Disparadores a evitar: %s\n", strings.Join(p.Triggers, ", "))
+		}
+		if p.FreeDescription != nil && *p.FreeDescription != "" {
+			fmt.Fprintf(b, "- Descripción: %s\n", *p.FreeDescription)
+		}
+		if p.EnvironmentNotes != nil && *p.EnvironmentNotes != "" {
+			fmt.Fprintf(b, "- Entorno: %s\n", *p.EnvironmentNotes)
+		}
+		if p.HasTherapeuticCompanion != nil && *p.HasTherapeuticCompanion {
+			b.WriteString("- Tiene acompañante terapéutico (AT) en el aula.\n")
+		}
+	}
+
+	if len(pc.Diagnoses) > 0 {
+		names := make([]string, 0, len(pc.Diagnoses))
+		for i := range pc.Diagnoses {
+			d := &pc.Diagnoses[i]
+			if d.Diagnosis == nil || d.Diagnosis.Name == "" {
+				continue
+			}
+			label := d.Diagnosis.Name
+			if d.Severity != nil && *d.Severity != "" {
+				label += " (" + *d.Severity + ")"
+			}
+			names = append(names, label)
+		}
+		if len(names) > 0 {
+			fmt.Fprintf(b, "- Diagnósticos informados por la escuela (son CONTEXTO; no los afirmes como propios, no los repitas si no suma, partí de lo observable): %s\n", strings.Join(names, ", "))
+		}
+	}
+
+	if ppi := pc.PPI; ppi != nil {
+		b.WriteString("PPI (Proyecto Pedagógico Individual):\n")
+		if len(ppi.Objectives) > 0 {
+			fmt.Fprintf(b, "- Objetivos: %s\n", strings.Join(ppi.Objectives, "; "))
+		}
+		if ppi.CurricularAdaptations != nil && *ppi.CurricularAdaptations != "" {
+			fmt.Fprintf(b, "- Adaptaciones curriculares: %s\n", *ppi.CurricularAdaptations)
+		}
+		if ppi.FollowUp != nil && *ppi.FollowUp != "" {
+			fmt.Fprintf(b, "- Seguimiento: %s\n", *ppi.FollowUp)
+		}
+	}
+
+	if len(pc.PastAdaptations) > 0 {
+		b.WriteString("ADAPTACIONES PREVIAS (no las repitas; construí sobre ellas):\n")
+		for i := range pc.PastAdaptations {
+			a := &pc.PastAdaptations[i]
+			fmt.Fprintf(b, "- %s", a.Title)
+			if a.Subject != "" {
+				fmt.Fprintf(b, " (%s)", a.Subject)
+			}
+			if a.Outcome != nil && *a.Outcome != "" {
+				fmt.Fprintf(b, " — resultado: %s", *a.Outcome)
+			}
+			b.WriteString("\n")
+		}
+	}
+
+	if len(pc.PriorSummaries) > 0 {
+		b.WriteString("CHARLAS ANTERIORES (memoria entre clases):\n")
+		for i := range pc.PriorSummaries {
+			fmt.Fprintf(b, "- %s\n", pc.PriorSummaries[i].Summary)
+		}
+	}
+
+	writeMissingData(b, pc.MissingData)
+	b.WriteString("\n")
+}
+
+// writeMissingData enumera, en lenguaje natural, los datos opcionales que faltan
+// para que Alizia pueda SUGERIR completarlos (nunca exigirlos ni mostrarlos como "N/A").
+func writeMissingData(b *strings.Builder, missing []string) {
+	if len(missing) == 0 {
+		return
+	}
+	labels := map[string]string{
+		missingTeacherProfile: "el perfil del docente",
+		missingStudentProfile: "el perfil del alumno",
+		missingPPI:            "el PPI",
+		missingDiagnoses:      "los diagnósticos",
+	}
+	parts := make([]string, 0, len(missing))
+	for _, m := range missing {
+		if l, ok := labels[m]; ok {
+			parts = append(parts, l)
+		}
+	}
+	if len(parts) > 0 {
+		fmt.Fprintf(b, "DATOS QUE FALTAN (podés sugerir completarlos, sin exigir): %s.\n", strings.Join(parts, ", "))
+	}
+}
+
 // buildAssistSystemPrompt arma el prompt de acompañamiento en tiempo real. agentic
 // indica si las tools del RAG están disponibles; solo entonces se inyecta FUNDAMENTOS
-// (cómo busca y usa el corpus, sin citar la fuente).
-func buildAssistSystemPrompt(devices []entities.Device, students []entities.Student, agentic bool) string {
+// (que incluye la cita [CONTENT_ID:X] del corpus).
+func buildAssistSystemPrompt(devices []entities.Device, students []entities.Student, pc *PromptContext, agentic bool) string {
 	var b strings.Builder
 
 	b.WriteString(aliziaPersona)
@@ -243,7 +403,15 @@ func buildAssistSystemPrompt(devices []entities.Device, students []entities.Stud
 	b.WriteString("- Priorizá adaptar la enseñanza (DUA) por sobre intervenciones individuales.\n")
 	b.WriteString("- Liderá con la estrategia pedagógica; el dispositivo es una opción más, no la respuesta.\n")
 	b.WriteString("- Si detectás el nombre de un alumno, usá [STUDENT_ID:X]. Si recomendás un dispositivo, usá [DEVICE_ID:X].\n")
-	b.WriteString("- Escribí en markdown legible: lista numerada para el paso a paso, **negritas** en lo clave, párrafos cortos y separadores. Que se lea fácil en pantalla (el docente te lee en plena clase).\n\n")
+	b.WriteString("- Escribí en markdown legible: **negritas** en lo clave, párrafos cortos. Que se lea fácil en pantalla (el docente te lee en plena clase).\n\n")
+	b.WriteString("FORMATO DE RESPUESTA CON PASOS:\n")
+	b.WriteString("- Cuando proponés acciones concretas (1-3 pasos para implementar en clase), envolvé SOLO esa parte en el bloque [STEPS]...[/STEPS]. Usá lista numerada adentro.\n")
+	b.WriteString("- Fuera del bloque: párrafo breve de contexto antes, y si tenés material de fundamento citalo con [CONTENT_ID:X] después.\n")
+	b.WriteString("- Si todavía estás preguntando para entender la situación, NO uses [STEPS]: respondé en prosa normal.\n")
+	b.WriteString("Ejemplo de turno con pasos:\n")
+	b.WriteString("Entiendo, el problema es X. Acá van los pasos para arrancar ahora:\n")
+	b.WriteString("[STEPS]\n1. Fragmentá la consigna en dos partes y escribilas en el pizarrón.\n2. Usá el [DEVICE_ID:1] para que pueda seguir el ritmo.\n[/STEPS]\n")
+	b.WriteString("Si te parece bien o querés ajustar algo, avisame.\n\n")
 
 	b.WriteString(repreguntaGate)
 	b.WriteString("\n")
@@ -259,6 +427,7 @@ func buildAssistSystemPrompt(devices []entities.Device, students []entities.Stud
 		b.WriteString("\n")
 	}
 
+	writeStudentContext(&b, pc)
 	writeKnownStudents(&b, students)
 
 	b.WriteString("DISPOSITIVOS DISPONIBLES:\n")
@@ -278,7 +447,7 @@ func buildAssistSystemPrompt(devices []entities.Device, students []entities.Stud
 
 // buildGuidedAssistPrompt arma el prompt de planificación conversacional. agentic
 // indica si las tools del RAG están disponibles; solo entonces se inyecta FUNDAMENTOS.
-func buildGuidedAssistPrompt(devices []entities.Device, students []entities.Student, agentic bool) string {
+func buildGuidedAssistPrompt(devices []entities.Device, students []entities.Student, pc *PromptContext, agentic bool) string {
 	var b strings.Builder
 
 	b.WriteString(aliziaPersona)
@@ -288,7 +457,16 @@ func buildGuidedAssistPrompt(devices []entities.Device, students []entities.Stud
 	b.WriteString("1. Para qué alumno es la adaptación (si no lo mencionó).\n")
 	b.WriteString("2. Qué materia/actividad están trabajando.\n")
 	b.WriteString("3. Qué barrera observable aparece en el aula (concreta, no el diagnóstico).\n")
-	b.WriteString("4. Cuando tengas suficiente, generá la adaptación (DUA, ≥3 niveles de diferenciación).\n\n")
+	b.WriteString("4. Cuando tengas suficiente, generá la propuesta de pasos usando el formato [STEPS] (ver abajo).\n\n")
+	b.WriteString("FORMATO DE RESPUESTA CON PASOS:\n")
+	b.WriteString("- Una vez que tenés la información necesaria, presentá los pasos concretos SIEMPRE dentro del bloque [STEPS]...[/STEPS]. Usá lista numerada adentro.\n")
+	b.WriteString("- Antes del bloque: 1-2 oraciones de cierre que confirmen lo que entendiste. Después: invitá al docente a ajustar si algo no encaja.\n")
+	b.WriteString("- Si tenés material de fundamento (del corpus RAG), citalo con [CONTENT_ID:X] fuera del bloque [STEPS], al final.\n")
+	b.WriteString("- Mientras estás recopilando información (fases 1-3), NO uses [STEPS]: una sola pregunta en prosa.\n")
+	b.WriteString("Ejemplo de turno de propuesta:\n")
+	b.WriteString("Entiendo: Lucas tiene dificultades para escribir al dictado por carga cognitiva. Acá van los pasos:\n")
+	b.WriteString("[STEPS]\n1. Dictá en fragmentos cortos (4-5 palabras), con pausa entre cada uno.\n2. Escribí la primera palabra en el pizarrón como ancla visual.\n3. Usá el [DEVICE_ID:1] si necesita más tiempo para copiar.\n[/STEPS]\n")
+	b.WriteString("Si algo no cierra o querés ajustar, avisame.\n\n")
 
 	b.WriteString(repreguntaGate)
 	b.WriteString("\n")
@@ -304,6 +482,7 @@ func buildGuidedAssistPrompt(devices []entities.Device, students []entities.Stud
 		b.WriteString("\n")
 	}
 
+	writeStudentContext(&b, pc)
 	writeKnownStudents(&b, students)
 
 	b.WriteString("DISPOSITIVOS DISPONIBLES:\n")
