@@ -45,9 +45,13 @@ para quién/en qué actividad, qué se intentó antes), Alizia pregunta y espera
 - Si el docente ya dio el dato, no lo vuelve a pedir. Si pide algo rápido o el dato no es imprescindible,
   propone igual con un supuesto explícito.
 
-> **Estado:** en v2 esto va como **criterio en el prompt** (Alizia emite las preguntas/opciones en
-> markdown). La **tool de preguntas** (marker `QUESTION_JSON` + render de cajitas en el FE, con los tres
-> tipos y "Otro") es una **ronda posterior**: "la incorporación de las preguntas".
+> **Estado:** implementado como **tool de preguntas**. Alizia emite las preguntas en un bloque
+> estructurado `[QUESTIONS_JSON:{"questions":[…]}]` (el cuerpo del mensaje queda como intro breve);
+> el backend lo extrae al campo `questions` de la respuesta (`extractQuestions` en `prompts.go`) y el
+> FE las renderiza como **cajitas** en un Sheet con stepper "X de N" (`QuestionSheet.tsx`), con los
+> tres tipos. El **"Otro"** no se emite como opción: el FE SIEMPRE ofrece un input de texto libre, así
+> que las opciones del modelo van sin un "Otro" explícito (máx 4). Al terminar todas las preguntas, el
+> FE arma un único mensaje del docente (pregunta + respuesta por bloque) y lo envía como turno normal.
 
 ---
 
@@ -120,7 +124,7 @@ El RAG es **agéntico** (tools `search_content` / `search_content_hibrido` / `ge
 
 | Tema | Backend | Prompt (hecho en v2) |
 |---|---|---|
-| Tool de preguntas | Marker `QUESTION_JSON`, extracción, campo en `AssistClassroomResponse`, render de cajitas en FE | Criterio de cuándo/cómo preguntar (`preguntasGate`) |
+| Tool de preguntas | ✅ Marker `[QUESTIONS_JSON]`, `extractQuestions`, campo `questions` en `AssistClassroomResponse`, render de cajitas en FE (`QuestionSheet`) | Criterio de cuándo/cómo preguntar (`preguntasGate`) + formato del bloque (`writeQuestionsFormat`) |
 | Quitar cita de fuentes | (opcional) dejar de poblar `referenced_content`/chips | Retirada la instrucción `[CONTENT_ID:X]` de `fundamentosRAG` |
 | Corpus + agéntico | Cargar corpus y `AI_AGENTIC_ENABLED=true` | `fundamentosRAG` solo si agéntico |
 | Memoria entre turnos | `defaultMaxHistoryTokens` subido 3000→16000 (el system prompt ronda ~2.9k; con 3000 el historial quedaba sin lugar y el afinado perdía memoria del alumno) | — |

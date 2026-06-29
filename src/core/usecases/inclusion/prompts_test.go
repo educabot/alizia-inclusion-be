@@ -158,6 +158,73 @@ func Test_extractAdaptationJSON_ReturnsNilForMalformedJSON(t *testing.T) {
 	assert.Nil(t, result)
 }
 
+func Test_extractQuestions_ExtractsAllThreeTypes(t *testing.T) {
+	input := `Para ayudarte con María, necesito entender un poco más: [QUESTIONS_JSON:{"questions":[` +
+		`{"id":"edad","text":"¿Qué edad tiene?","type":"open"},` +
+		`{"id":"momento","text":"¿Qué momento se le dificulta?","type":"single","options":["Autonomía","Grupal"]},` +
+		`{"id":"tipo","text":"¿Qué observás?","type":"multiple","options":["Pasiva","Activa"]}]}]`
+
+	result := extractQuestions(input)
+
+	require.Len(t, result, 3)
+	assert.Equal(t, "edad", result[0].ID)
+	assert.Equal(t, "open", result[0].Type)
+	assert.Empty(t, result[0].Options, "una pregunta abierta no debe tener opciones")
+	assert.Equal(t, "single", result[1].Type)
+	assert.Len(t, result[1].Options, 2)
+	assert.Equal(t, "multiple", result[2].Type)
+}
+
+func Test_extractQuestions_ReturnsNilForNoMarker(t *testing.T) {
+	assert.Nil(t, extractQuestions("Probá anticipar la consigna en pasos cortos."))
+}
+
+func Test_extractQuestions_ReturnsNilForMalformedJSON(t *testing.T) {
+	assert.Nil(t, extractQuestions("[QUESTIONS_JSON:{not valid}]"))
+}
+
+func Test_extractQuestions_DropsInvalidTypesAndEmptyText(t *testing.T) {
+	// Tipo desconocido y pregunta sin texto se descartan; queda solo la válida.
+	input := `[QUESTIONS_JSON:{"questions":[` +
+		`{"id":"a","text":"","type":"open"},` +
+		`{"id":"b","text":"¿Sí?","type":"checkbox"},` +
+		`{"id":"c","text":"¿Qué edad?","type":"open"}]}]`
+
+	result := extractQuestions(input)
+
+	require.Len(t, result, 1)
+	assert.Equal(t, "c", result[0].ID)
+}
+
+func Test_extractQuestions_OpenTypeIgnoresOptions(t *testing.T) {
+	// Una "open" con opciones (el modelo se equivocó): se limpian las opciones.
+	input := `[QUESTIONS_JSON:{"questions":[{"id":"x","text":"¿Edad?","type":"open","options":["a","b"]}]}]`
+
+	result := extractQuestions(input)
+
+	require.Len(t, result, 1)
+	assert.Empty(t, result[0].Options)
+}
+
+func Test_stripAdaptationBlock_RemovesQuestionsBlock(t *testing.T) {
+	in := `Para ayudarte necesito saber: [QUESTIONS_JSON:{"questions":[{"id":"e","text":"¿Edad?","type":"open"}]}]`
+
+	out := stripAdaptationBlock(in)
+
+	assert.NotContains(t, out, "[QUESTIONS_JSON:")
+	assert.Equal(t, "Para ayudarte necesito saber:", out)
+}
+
+func Test_buildAssistSystemPrompt_ContainsQuestionsBlockFormat(t *testing.T) {
+	prompt := buildAssistSystemPrompt(nil, nil, nil, false)
+
+	assert.Contains(t, prompt, "PREGUNTAS AL DOCENTE (bloque estructurado)")
+	assert.Contains(t, prompt, "[QUESTIONS_JSON:")
+	assert.Contains(t, prompt, `"type":"open"`)
+	assert.Contains(t, prompt, `"type":"single"`)
+	assert.Contains(t, prompt, `"type":"multiple"`)
+}
+
 func Test_buildAssistSystemPrompt_ContainsRepreguntaGate(t *testing.T) {
 	devices := []entities.Device{{ID: 1, Name: "Organizador visual"}}
 
