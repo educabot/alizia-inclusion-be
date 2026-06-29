@@ -13,6 +13,15 @@ import (
 	"github.com/educabot/alizia-inclusion-be/src/observability"
 )
 
+// Cadencia del turno: NO es una personalidad distinta, solo cuánta urgencia/brevedad
+// hay. Una sola Alizia (misma identidad y tono); lo único que cambia es el ritmo.
+// Ortogonal a la Dimension (que dice QUÉ contexto traer, no CÓMO de breve responder).
+// Ver alizia-comportamiento-flujo-v1.md §1.
+const (
+	CadenceInClass  = "assist" // en plena clase: breve, 1-3 acciones, al grano
+	CadencePlanning = "guided" // planificando: puede tomarse un turno más para recopilar
+)
+
 type AssistClassroomRequest struct {
 	OrgID          uuid.UUID
 	UserID         int64
@@ -20,8 +29,13 @@ type AssistClassroomRequest struct {
 	ClassroomID    int64
 	StudentID      *int64
 	Message        string
-	Mode           string
-	History        []providers.ChatMessage
+	// Mode es la cadencia (CadenceInClass / CadencePlanning), no una identidad.
+	Mode string
+	// Dimension (alumno / valija / tema) es la de la sesión abierta en /inclusion/open.
+	// Opcional: si viene, dirige qué contexto trae el assembler; si no, se infiere del
+	// alumno foco. Mismo vocabulario que OpenSession: un solo concepto de dimensión.
+	Dimension string
+	History   []providers.ChatMessage
 }
 
 func (r AssistClassroomRequest) Validate() error {
@@ -76,10 +90,15 @@ func NewAssistClassroom(ai providers.AIClient, students providers.StudentProvide
 	return &assistClassroomImpl{ai: ai, students: students, devices: devices, conversations: conversations, summaries: summaries, adaptations: adaptations, content: content, embedder: embedder, rag: rag, usage: usage, promptCtx: promptCtx, agentic: agentic}
 }
 
-// chatDimension mapea el request del chat a la dimensión del Context Assembler:
-// con alumno foco cargamos su contexto (perfil, PPI, diagnósticos, historial); sin
-// alumno, solo el contexto estático + docente.
-func chatDimension(studentID *int64) string {
+// resolveChatDimension elige la dimensión de contexto del turno: si el FE la manda
+// explícita (la dimensión de la sesión abierta en /inclusion/open) la usa; si no, la
+// infiere del alumno foco. Mode (cadencia) y dimensión quedan ortogonales: uno dice
+// cuán breve responder, la otra qué contexto traer. Ver flujo §1.
+func resolveChatDimension(dimension string, studentID *int64) string {
+	switch d := strings.ToLower(strings.TrimSpace(dimension)); d {
+	case DimensionStudent, DimensionToolkit, DimensionTopic:
+		return d
+	}
 	if studentID != nil && *studentID > 0 {
 		return DimensionStudent
 	}
@@ -117,7 +136,7 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 		built, ctxErr := uc.promptCtx.Execute(ctx, BuildContextRequest{
 			OrgID:     req.OrgID,
 			UserID:    req.UserID,
-			Dimension: chatDimension(req.StudentID),
+			Dimension: resolveChatDimension(req.Dimension, req.StudentID),
 			StudentID: req.StudentID,
 		})
 		if ctxErr != nil {
@@ -150,7 +169,7 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	)
 
 	var systemPrompt string
-	if req.Mode == "guided" {
+	if req.Mode == CadencePlanning {
 		systemPrompt = buildGuidedAssistPrompt(devices, allStudents, pc, uc.agentic)
 	} else {
 		systemPrompt = buildAssistSystemPrompt(devices, allStudents, pc, uc.agentic)
@@ -262,7 +281,7 @@ func (uc *assistClassroomImpl) persistTurn(ctx context.Context, req AssistClassr
 	}
 	mode := req.Mode
 	if mode == "" {
-		mode = "assist"
+		mode = CadenceInClass
 	}
 	metadata := map[string]any{}
 	if studentID != nil {
