@@ -18,6 +18,11 @@ type GeneratedAdaptation struct {
 	DeviceNames []string                  `json:"device_names"`
 	RampID      *int64                    `json:"ramp_id,omitempty"`
 	Steps       []entities.AdaptationStep `json:"steps,omitempty"`
+	StudentID   *int64                    `json:"student_id,omitempty"`
+	Situation   string                    `json:"situation,omitempty"`
+	NextSteps   string                    `json:"next_steps,omitempty"`
+	GuideTitle  string                    `json:"guide_title,omitempty"`
+	GuideURL    string                    `json:"guide_url,omitempty"`
 }
 
 // Question es una pregunta estructurada que Alizia le hace al docente para que el FE
@@ -187,9 +192,10 @@ func buildRecommendSystemPrompt(devices []entities.Device) string {
 	b.WriteString("3. Tips prácticos.\n")
 	b.WriteString("4. Si recomendás un dispositivo del catálogo, incluí [DEVICE_ID:X] con su ID.\n")
 	b.WriteString("5. Al final de tu respuesta, incluí un bloque estructurado con este formato exacto:\n")
-	b.WriteString("[ADAPTATION_JSON:{\"title\":\"título corto\",\"type\":\"tipo\",\"strategy\":\"resumen de estrategia\",\"ramp_id\":N,\"device_ids\":[1,2],\"device_names\":[\"nombre1\",\"nombre2\"],\"steps\":[{\"orden\":1,\"texto\":\"primer paso\"},{\"orden\":2,\"texto\":\"segundo paso\"}]}]\n")
+	b.WriteString("[ADAPTATION_JSON:{\"title\":\"título corto\",\"type\":\"tipo\",\"strategy\":\"resumen de estrategia\",\"situation\":\"barrera observable que describió el docente\",\"next_steps\":\"qué hacer en la próxima clase o seguimiento sugerido\",\"ramp_id\":N,\"device_ids\":[1,2],\"device_names\":[\"nombre1\",\"nombre2\"],\"steps\":[{\"orden\":1,\"texto\":\"primer paso\"},{\"orden\":2,\"texto\":\"segundo paso\"}]}]\n")
 	b.WriteString("Los tipos válidos son: actividad_adaptada, material_nuevo, estrategia_aula, situacion_emergente.\n")
 	b.WriteString("ramp_id = categoría/necesidad del catálogo. steps = el PASO A PASO de la guía (la parte más importante del recurso), claro y accionable.\n")
+	b.WriteString("situation = la barrera concreta que describió el docente en esta conversación (1-2 oraciones). next_steps = sugerencia de seguimiento para la próxima clase.\n")
 	b.WriteString("Si la adaptación no usa material físico, usá estrategia_aula con device_ids vacío.\n")
 
 	return b.String()
@@ -472,9 +478,10 @@ func buildAssistSystemPrompt(devices []entities.Device, students []entities.Stud
 	b.WriteString("- Cuando propongas una adaptación concreta, ofrecé guardarla y preguntá si quiere (ej. \"¿Querés que la guarde como recurso?\"). NO incluyas el bloque en ese turno.\n")
 	b.WriteString("- Incluí el BLOQUE solo en el turno POSTERIOR, después de que el docente confirme que sí. Nunca en el primer mensaje, ni junto con la pregunta de confirmación, ni en respuestas a consultas o preguntas de aclaración.\n")
 	b.WriteString("- Formato exacto, al final del mensaje:\n")
-	b.WriteString("[ADAPTATION_JSON:{\"title\":\"título corto\",\"type\":\"tipo\",\"strategy\":\"resumen\",\"ramp_id\":N,\"device_ids\":[1],\"device_names\":[\"nombre\"],\"steps\":[{\"orden\":1,\"texto\":\"primer paso\"}]}]\n")
+	b.WriteString("[ADAPTATION_JSON:{\"title\":\"título corto\",\"type\":\"tipo\",\"strategy\":\"resumen\",\"situation\":\"barrera observable que describió el docente\",\"next_steps\":\"seguimiento sugerido para la próxima clase\",\"ramp_id\":N,\"device_ids\":[1],\"device_names\":[\"nombre\"],\"steps\":[{\"orden\":1,\"texto\":\"primer paso\"}]}]\n")
 	b.WriteString("Los tipos válidos son: actividad_adaptada, material_nuevo, estrategia_aula, situacion_emergente.\n")
 	b.WriteString("ramp_id = categoría/necesidad del catálogo. steps = el PASO A PASO de la guía (lo más importante del recurso), claro y accionable.\n")
+	b.WriteString("situation = barrera concreta del docente (1-2 oraciones). next_steps = qué probar o evaluar en la próxima clase.\n")
 	b.WriteString("Si la adaptación no usa material físico, usá estrategia_aula con device_ids vacío.\n")
 
 	return b.String()
@@ -526,8 +533,9 @@ func buildGuidedAssistPrompt(devices []entities.Device, students []entities.Stud
 	writeQuestionsFormat(&b)
 
 	b.WriteString("\nCuando generes la adaptación final, incluí [STUDENT_ID:X], [DEVICE_ID:X] si aplica, y:\n")
-	b.WriteString("[ADAPTATION_JSON:{\"title\":\"título\",\"type\":\"tipo\",\"strategy\":\"resumen\",\"ramp_id\":N,\"device_ids\":[1],\"device_names\":[\"nombre\"],\"steps\":[{\"orden\":1,\"texto\":\"primer paso\"}]}]\n")
+	b.WriteString("[ADAPTATION_JSON:{\"title\":\"título\",\"type\":\"tipo\",\"strategy\":\"resumen\",\"situation\":\"barrera observable que describió el docente\",\"next_steps\":\"seguimiento sugerido para la próxima clase\",\"ramp_id\":N,\"device_ids\":[1],\"device_names\":[\"nombre\"],\"steps\":[{\"orden\":1,\"texto\":\"primer paso\"}]}]\n")
 	b.WriteString("ramp_id = categoría/necesidad. steps = el PASO A PASO de la guía (lo más importante del recurso). Tipos válidos: actividad_adaptada, material_nuevo, estrategia_aula, situacion_emergente. Sin material físico, usá estrategia_aula con device_ids vacío.\n")
+	b.WriteString("situation = barrera concreta del docente (1-2 oraciones). next_steps = qué probar o evaluar en la próxima clase.\n")
 
 	return b.String()
 }

@@ -244,6 +244,9 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	// Preguntas estructuradas (cajitas) que Alizia emite este turno. El bloque se quita
 	// del texto visible en stripAdaptationBlock; el FE las renderiza desde este campo.
 	questions := extractQuestions(resp.Content)
+	if adaptation != nil && studentID != nil {
+		adaptation.StudentID = studentID
+	}
 	// Contenido pedagógico citado este turno: el FE lo usa para resolver los chips
 	// [CONTENT_ID:X]. Sale del back (lo que trajo el RAG), no de ids del modelo.
 	referenced := contentRefsFromTrace(trace)
