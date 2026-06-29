@@ -13,6 +13,15 @@ import (
 	"github.com/educabot/alizia-inclusion-be/src/observability"
 )
 
+// Cadencia del turno: NO es una personalidad distinta, solo cuánta urgencia/brevedad
+// hay. Una sola Alizia (misma identidad y tono); lo único que cambia es el ritmo.
+// Ortogonal a la Dimension (que dice QUÉ contexto traer, no CÓMO de breve responder).
+// Ver alizia-comportamiento-flujo-v1.md §1.
+const (
+	CadenceInClass  = "assist" // en plena clase: breve, 1-3 acciones, al grano
+	CadencePlanning = "guided" // planificando: puede tomarse un turno más para recopilar
+)
+
 type AssistClassroomRequest struct {
 	OrgID          uuid.UUID
 	UserID         int64
@@ -20,8 +29,13 @@ type AssistClassroomRequest struct {
 	ClassroomID    int64
 	StudentID      *int64
 	Message        string
-	Mode           string
-	History        []providers.ChatMessage
+	// Mode es la cadencia (CadenceInClass / CadencePlanning), no una identidad.
+	Mode string
+	// Dimension (alumno / valija / tema) es la de la sesión abierta en /inclusion/open.
+	// Opcional: si viene, dirige qué contexto trae el assembler; si no, se infiere del
+	// alumno foco. Mismo vocabulario que OpenSession: un solo concepto de dimensión.
+	Dimension string
+	History   []providers.ChatMessage
 }
 
 func (r AssistClassroomRequest) Validate() error {
@@ -70,7 +84,10 @@ type AssistClassroomDeps struct {
 	Embedder      providers.Embedder
 	RAG           providers.RAGSearchProvider
 	Usage         providers.AIUsageProvider
-	Agentic       bool
+	// PromptCtx arma el contexto tipado del alumno/aula (Context Assembler, HU-2).
+	// Opcional: si es nil o falla, el chat degrada al contexto base.
+	PromptCtx BuildPromptContext
+	Agentic   bool
 }
 
 type assistClassroomImpl struct {
@@ -79,6 +96,21 @@ type assistClassroomImpl struct {
 
 func NewAssistClassroom(deps AssistClassroomDeps) AssistClassroom {
 	return &assistClassroomImpl{deps: deps}
+}
+
+// resolveChatDimension elige la dimensión de contexto del turno: si el FE la manda
+// explícita (la dimensión de la sesión abierta en /inclusion/open) la usa; si no, la
+// infiere del alumno foco. Mode (cadencia) y dimensión quedan ortogonales: uno dice
+// cuán breve responder, la otra qué contexto traer. Ver flujo §1.
+func resolveChatDimension(dimension string, studentID *int64) string {
+	switch d := strings.ToLower(strings.TrimSpace(dimension)); d {
+	case DimensionStudent, DimensionToolkit, DimensionTopic:
+		return d
+	}
+	if studentID != nil && *studentID > 0 {
+		return DimensionStudent
+	}
+	return ""
 }
 
 // studentsDigest arma un resumen legible de los alumnos del aula para el log verbose.
@@ -104,9 +136,33 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	ctx = observability.WithOrg(ctx, req.OrgID)
 	ctx = observability.WithUser(ctx, req.UserID)
 
-	devices, err := uc.deps.Devices.ListDevices(ctx, req.OrgID, nil)
-	if err != nil {
-		return nil, err
+	// Contexto tipado del Context Assembler (HU-2): docente, alumno foco, diagnósticos,
+	// PPI, adaptaciones previas y resúmenes. Opcional y nil-safe: si no está inyectado
+	// o falla, el chat degrada al contexto base (devices + alumnos del aula).
+	var pc *PromptContext
+	if uc.deps.PromptCtx != nil && req.UserID > 0 {
+		built, ctxErr := uc.deps.PromptCtx.Execute(ctx, BuildContextRequest{
+			OrgID:     req.OrgID,
+			UserID:    req.UserID,
+			Dimension: resolveChatDimension(req.Dimension, req.StudentID),
+			StudentID: req.StudentID,
+		})
+		if ctxErr != nil {
+			slog.WarnContext(ctx, "chat.context_build_failed", "error", ctxErr)
+		} else {
+			pc = built
+		}
+	}
+
+	var devices []entities.Device
+	if pc != nil {
+		devices = pc.DeviceCatalog
+	} else {
+		loaded, err := uc.deps.Devices.ListDevices(ctx, req.OrgID, nil)
+		if err != nil {
+			return nil, err
+		}
+		devices = loaded
 	}
 
 	// Todos los alumnos que el docente conoce en la org (no solo los del aula del turno):
@@ -118,14 +174,15 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 		"classroom_id", req.ClassroomID,
 		"students_count", len(allStudents),
 		"devices_count", len(devices),
+		"context_assembled", pc != nil,
 		observability.Text("students", studentsDigest(allStudents)),
 	)
 
 	var systemPrompt string
-	if req.Mode == "guided" {
-		systemPrompt = buildGuidedAssistPrompt(devices, allStudents, uc.deps.Agentic)
+	if req.Mode == CadencePlanning {
+		systemPrompt = buildGuidedAssistPrompt(devices, allStudents, pc, uc.deps.Agentic)
 	} else {
-		systemPrompt = buildAssistSystemPrompt(devices, allStudents, uc.deps.Agentic)
+		systemPrompt = buildAssistSystemPrompt(devices, allStudents, pc, uc.deps.Agentic)
 	}
 
 	messages := make([]providers.ChatMessage, 0, len(req.History)+2)
@@ -189,6 +246,20 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	// chips (nombre/título), nunca como id crudo.
 	cleaned := stripAdaptationBlock(resp.Content)
 
+	// Guardrail duro de off-ramp: si el modelo cruzó el límite clínico (afirmar un
+	// diagnóstico o dar una indicación clínica), reemplazamos la respuesta por una
+	// derivación segura y descartamos la adaptación y las fuentes citadas (que ya no
+	// aparecen en el texto). El prompt es la primera línea; esto es la red. Ver §5.
+	if tripped, reason := crossedClinicalLine(cleaned); tripped {
+		slog.WarnContext(ctx, "chat.guardrail_tripped",
+			"reason", reason,
+			observability.Text("original_response", cleaned),
+		)
+		cleaned = offRampMessage
+		adaptation = nil
+		referenced = nil
+	}
+
 	convID, persistErr := uc.persistTurn(ctx, req, cleaned, studentID, deviceID, adaptation)
 	if persistErr != nil {
 		slog.WarnContext(ctx, "assist_classroom: persist turn failed", "error", persistErr, "user_id", req.UserID, "mode", req.Mode)
@@ -231,7 +302,7 @@ func (uc *assistClassroomImpl) persistTurn(ctx context.Context, req AssistClassr
 	}
 	mode := req.Mode
 	if mode == "" {
-		mode = "assist"
+		mode = CadenceInClass
 	}
 	metadata := map[string]any{}
 	if studentID != nil {

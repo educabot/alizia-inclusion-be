@@ -26,6 +26,7 @@ type assistBody struct {
 	StudentID      *int64                  `json:"student_id"`
 	Message        string                  `json:"message"`
 	Mode           string                  `json:"mode"`
+	Dimension      string                  `json:"dimension"`
 	History        []providers.ChatMessage `json:"history"`
 }
 
@@ -67,6 +68,7 @@ func (c *InclusionContainer) HandleAssistClassroom(req web.Request) web.Response
 		StudentID:      body.StudentID,
 		Message:        body.Message,
 		Mode:           body.Mode,
+		Dimension:      body.Dimension,
 		History:        body.History,
 	})
 	if err != nil {

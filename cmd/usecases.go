@@ -56,6 +56,10 @@ type UseCases struct {
 }
 
 func NewUseCases(repos *Repositories, cfg *config.Config) *UseCases {
+	buildPromptContext := inclusionuc.NewBuildPromptContext(
+		repos.Students, repos.TeacherProfiles, repos.Situations, repos.Diagnoses, repos.PPIs,
+		repos.Adaptations, repos.Classrooms, repos.Devices, repos.ConversationSummaries,
+	)
 	return &UseCases{
 		ListRamps:   cataloguc.NewListRamps(repos.Ramps),
 		GetRamp:     cataloguc.NewGetRamp(repos.Ramps),
@@ -79,13 +83,11 @@ func NewUseCases(repos *Repositories, cfg *config.Config) *UseCases {
 			Embedder:      repos.Embedder,
 			RAG:           repos.RAGSearch,
 			Usage:         repos.AIUsage,
+			PromptCtx:     buildPromptContext,
 			Agentic:       cfg.AIAgenticEnabled,
 		}),
-		OpenSession: inclusionuc.NewOpenSession(repos.Students, repos.ConversationSummaries),
-		BuildPromptContext: inclusionuc.NewBuildPromptContext(
-			repos.Students, repos.TeacherProfiles, repos.Situations, repos.Diagnoses, repos.PPIs,
-			repos.Adaptations, repos.Classrooms, repos.Devices, repos.ConversationSummaries,
-		),
+		OpenSession:              inclusionuc.NewOpenSession(repos.Students, repos.ConversationSummaries),
+		BuildPromptContext:       buildPromptContext,
 		SearchPedagogicalContent: inclusionuc.NewSearchPedagogicalContent(repos.PedagogicalContent),
 		HybridSearchContent:      inclusionuc.NewHybridSearchContent(repos.Embedder, repos.RAGSearch),
 
