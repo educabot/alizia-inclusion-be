@@ -553,8 +553,8 @@ No incluyas marcadores [STUDENT_ID]/[DEVICE_ID] ni IDs crudos.`
 
 var deviceIDRegex = regexp.MustCompile(`\[DEVICE_ID:(\d+)\]`)
 var studentIDRegex = regexp.MustCompile(`\[STUDENT_ID:(\d+)\]`)
-var adaptationJSONRegex = regexp.MustCompile(`\[ADAPTATION_JSON:(\{.+\})\]`)
-var questionsJSONRegex = regexp.MustCompile(`\[QUESTIONS_JSON:(\{.+\})\]`)
+var adaptationJSONRegex = regexp.MustCompile(`(?s)\[ADAPTATION_JSON:(\{.+\})\]`)
+var questionsJSONRegex = regexp.MustCompile(`(?s)\[QUESTIONS_JSON:(\{.+\})\]`)
 
 func extractDeviceID(content string) *int64 {
 	matches := deviceIDRegex.FindStringSubmatch(content)
