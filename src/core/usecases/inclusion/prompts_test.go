@@ -100,6 +100,47 @@ func Test_extractAdaptationJSON_ReturnsNilForMalformedJSON(t *testing.T) {
 	assert.Nil(t, result)
 }
 
+func Test_buildAssistSystemPrompt_ContainsQuestioningCriteria(t *testing.T) {
+	// Arrange
+	devices := []entities.Device{{ID: 1, Name: "Organizador visual"}}
+
+	// Act: el bloque de preguntas se inyecta siempre (no depende de agentic).
+	prompt := buildAssistSystemPrompt(devices, nil, false)
+
+	// Assert: están los criterios definidos con pedagogía (Mercedes).
+	assert.Contains(t, prompt, "CÓMO PREGUNTÁS")
+	assert.Contains(t, prompt, "2-3 preguntas base en el MISMO turno")
+	assert.Contains(t, prompt, "HASTA 4 opciones")
+	assert.Contains(t, prompt, `"Otro"`, "siempre debe ofrecer la opción Otro de texto libre")
+	assert.Contains(t, prompt, "Abierta")
+	assert.Contains(t, prompt, "De opción única")
+	assert.Contains(t, prompt, "De opción múltiple")
+}
+
+func Test_buildAssistSystemPrompt_ContainsFirstProposalAndWarmClose(t *testing.T) {
+	prompt := buildAssistSystemPrompt(nil, nil, false)
+
+	assert.Contains(t, prompt, "PROPONÉ, NO INTERROGUES")
+	assert.Contains(t, prompt, "PRIMERA propuesta concreta")
+	assert.Contains(t, prompt, "¿Continuamos?")
+}
+
+func Test_buildAssistSystemPrompt_AgenticDoesNotCiteSources(t *testing.T) {
+	// Act: con agentic se inyecta FUNDAMENTOS (RAG).
+	prompt := buildAssistSystemPrompt(nil, nil, true)
+
+	// Assert: ya no instruye citar la fuente con el marker de contenido,
+	// pero sí usar el RAG para repreguntar mejor.
+	assert.NotContains(t, prompt, "[CONTENT_ID:")
+	assert.Contains(t, prompt, "SIN citar la fuente")
+	assert.Contains(t, prompt, "ANTES DE REPREGUNTAR")
+}
+
+func Test_aliziaPersona_ReinforcesNoDiagnosis(t *testing.T) {
+	assert.Contains(t, aliziaPersona, "No diagnosticás ni insinuás un diagnóstico")
+	assert.Contains(t, aliziaPersona, "No abrís con empatía en abstracto ni con soluciones genéricas")
+}
+
 func Test_buildRecommendSystemPrompt_ContainsDeviceInfo(t *testing.T) {
 	devices := []entities.Device{
 		{ID: 1, Name: "Timer Visual", NeedsDescription: ptr("Para alumnos con distraccion")},
