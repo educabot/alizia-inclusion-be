@@ -554,6 +554,7 @@ No incluyas marcadores [STUDENT_ID]/[DEVICE_ID] ni IDs crudos.`
 
 var deviceIDRegex = regexp.MustCompile(`\[DEVICE_ID:(\d+)\]`)
 var studentIDRegex = regexp.MustCompile(`\[STUDENT_ID:(\d+)\]`)
+
 // extractJSONMarker extrae el objeto JSON del bloque [PREFIX:{...}] usando conteo de
 // llaves en lugar de regex. Robusto ante modelos que omiten el `]` de cierre y ante
 // sub-markers como [DEVICE_ID:X] dentro de strings JSON que confunden a regex greedy.
