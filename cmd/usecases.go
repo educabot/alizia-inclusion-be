@@ -56,22 +56,23 @@ type UseCases struct {
 }
 
 func NewUseCases(repos *Repositories, cfg *config.Config) *UseCases {
+	buildPromptContext := inclusionuc.NewBuildPromptContext(
+		repos.Students, repos.TeacherProfiles, repos.Situations, repos.Diagnoses, repos.PPIs,
+		repos.Adaptations, repos.Classrooms, repos.Devices, repos.ConversationSummaries,
+	)
 	return &UseCases{
 		ListRamps:   cataloguc.NewListRamps(repos.Ramps),
 		GetRamp:     cataloguc.NewGetRamp(repos.Ramps),
 		ListDevices: cataloguc.NewListDevices(repos.Devices),
 		GetDevice:   cataloguc.NewGetDevice(repos.Devices),
 
-		GetStudentProfile:     inclusionuc.NewGetStudentProfile(repos.Students),
-		UpsertStudentProfile:  inclusionuc.NewUpsertStudentProfile(repos.Students, repos.StudentProfiles),
-		ListClassroomStudents: inclusionuc.NewListClassroomStudents(repos.Students),
-		RecommendDevice:       inclusionuc.NewRecommendDevice(repos.AI, repos.Students, repos.Devices, repos.Ramps, repos.Conversations, repos.AIUsage),
-		AssistClassroom:       inclusionuc.NewAssistClassroom(repos.AI, repos.Students, repos.Devices, repos.Conversations, repos.ConversationSummaries, repos.Adaptations, repos.PedagogicalContent, repos.Embedder, repos.RAGSearch, repos.AIUsage, cfg.AIAgenticEnabled),
-		OpenSession:           inclusionuc.NewOpenSession(repos.Students, repos.ConversationSummaries),
-		BuildPromptContext: inclusionuc.NewBuildPromptContext(
-			repos.Students, repos.TeacherProfiles, repos.Situations, repos.Diagnoses, repos.PPIs,
-			repos.Adaptations, repos.Classrooms, repos.Devices, repos.ConversationSummaries,
-		),
+		GetStudentProfile:        inclusionuc.NewGetStudentProfile(repos.Students),
+		UpsertStudentProfile:     inclusionuc.NewUpsertStudentProfile(repos.Students, repos.StudentProfiles),
+		ListClassroomStudents:    inclusionuc.NewListClassroomStudents(repos.Students),
+		RecommendDevice:          inclusionuc.NewRecommendDevice(repos.AI, repos.Students, repos.Devices, repos.Ramps, repos.Conversations, repos.AIUsage),
+		AssistClassroom:          inclusionuc.NewAssistClassroom(repos.AI, repos.Students, repos.Devices, repos.Conversations, repos.ConversationSummaries, repos.Adaptations, repos.PedagogicalContent, repos.Embedder, repos.RAGSearch, repos.AIUsage, buildPromptContext, cfg.AIAgenticEnabled),
+		OpenSession:              inclusionuc.NewOpenSession(repos.Students, repos.ConversationSummaries),
+		BuildPromptContext:       buildPromptContext,
 		SearchPedagogicalContent: inclusionuc.NewSearchPedagogicalContent(repos.PedagogicalContent),
 		HybridSearchContent:      inclusionuc.NewHybridSearchContent(repos.Embedder, repos.RAGSearch),
 

@@ -169,10 +169,170 @@ func writeClassroomStudents(b *strings.Builder, students []entities.Student) {
 	b.WriteString("\n")
 }
 
+// writeStudentContext agrega el contexto rico que arma el Context Assembler
+// (PromptContext): docente, alumno foco con su perfil, diagnósticos informados, PPI,
+// adaptaciones previas y resúmenes de charlas anteriores. Nil-safe: si no hay
+// contexto (sin alumno foco o el assembler falló) no escribe nada y el prompt queda
+// igual que antes. Ver alizia-comportamiento-flujo-v1.md §6.
+func writeStudentContext(b *strings.Builder, pc *PromptContext) {
+	if pc == nil {
+		return
+	}
+
+	if t := pc.Teacher; t != nil {
+		var parts []string
+		if t.Specialization != nil && *t.Specialization != "" {
+			parts = append(parts, "especialidad "+*t.Specialization)
+		}
+		if len(t.Subjects) > 0 {
+			parts = append(parts, "materias "+strings.Join(t.Subjects, ", "))
+		}
+		if t.YearsExperience != nil {
+			parts = append(parts, fmt.Sprintf("%d años de experiencia", *t.YearsExperience))
+		}
+		if len(parts) > 0 {
+			fmt.Fprintf(b, "DOCENTE: %s.\n\n", strings.Join(parts, "; "))
+		}
+	}
+
+	s := pc.TargetStudent
+	if s == nil {
+		writeMissingData(b, pc.MissingData)
+		return
+	}
+
+	name := s.Name
+	if s.PreferredName != nil && *s.PreferredName != "" {
+		name = *s.PreferredName
+	}
+	fmt.Fprintf(b, "ALUMNO FOCO: %s [ID:%d]", name, s.ID)
+	if s.GradeLevel != nil && *s.GradeLevel != "" {
+		fmt.Fprintf(b, " — %s", *s.GradeLevel)
+	}
+	b.WriteString("\n")
+
+	if p := s.Profile; p != nil {
+		if p.IsTransitory {
+			b.WriteString("- Condición: transitoria\n")
+		} else {
+			b.WriteString("- Condición: permanente\n")
+		}
+		if p.SupportLevel != nil && *p.SupportLevel != "" {
+			fmt.Fprintf(b, "- Nivel de apoyo: %s\n", *p.SupportLevel)
+		}
+		if len(p.Difficulties) > 0 {
+			fmt.Fprintf(b, "- Dificultades observables: %s\n", strings.Join(p.Difficulties, ", "))
+		}
+		if len(p.Strengths) > 0 {
+			fmt.Fprintf(b, "- Fortalezas: %s\n", strings.Join(p.Strengths, ", "))
+		}
+		if len(p.Interests) > 0 {
+			fmt.Fprintf(b, "- Intereses: %s\n", strings.Join(p.Interests, ", "))
+		}
+		if len(p.EffectiveStrategies) > 0 {
+			fmt.Fprintf(b, "- Estrategias que funcionan: %s\n", strings.Join(p.EffectiveStrategies, ", "))
+		}
+		if len(p.IneffectiveStrategies) > 0 {
+			fmt.Fprintf(b, "- Estrategias que NO funcionan: %s\n", strings.Join(p.IneffectiveStrategies, ", "))
+		}
+		if len(p.Triggers) > 0 {
+			fmt.Fprintf(b, "- Disparadores a evitar: %s\n", strings.Join(p.Triggers, ", "))
+		}
+		if p.FreeDescription != nil && *p.FreeDescription != "" {
+			fmt.Fprintf(b, "- Descripción: %s\n", *p.FreeDescription)
+		}
+		if p.EnvironmentNotes != nil && *p.EnvironmentNotes != "" {
+			fmt.Fprintf(b, "- Entorno: %s\n", *p.EnvironmentNotes)
+		}
+		if p.HasTherapeuticCompanion != nil && *p.HasTherapeuticCompanion {
+			b.WriteString("- Tiene acompañante terapéutico (AT) en el aula.\n")
+		}
+	}
+
+	if len(pc.Diagnoses) > 0 {
+		names := make([]string, 0, len(pc.Diagnoses))
+		for i := range pc.Diagnoses {
+			d := &pc.Diagnoses[i]
+			if d.Diagnosis == nil || d.Diagnosis.Name == "" {
+				continue
+			}
+			label := d.Diagnosis.Name
+			if d.Severity != nil && *d.Severity != "" {
+				label += " (" + *d.Severity + ")"
+			}
+			names = append(names, label)
+		}
+		if len(names) > 0 {
+			fmt.Fprintf(b, "- Diagnósticos informados por la escuela (son CONTEXTO; no los afirmes como propios, no los repitas si no suma, partí de lo observable): %s\n", strings.Join(names, ", "))
+		}
+	}
+
+	if ppi := pc.PPI; ppi != nil {
+		b.WriteString("PPI (Proyecto Pedagógico Individual):\n")
+		if len(ppi.Objectives) > 0 {
+			fmt.Fprintf(b, "- Objetivos: %s\n", strings.Join(ppi.Objectives, "; "))
+		}
+		if ppi.CurricularAdaptations != nil && *ppi.CurricularAdaptations != "" {
+			fmt.Fprintf(b, "- Adaptaciones curriculares: %s\n", *ppi.CurricularAdaptations)
+		}
+		if ppi.FollowUp != nil && *ppi.FollowUp != "" {
+			fmt.Fprintf(b, "- Seguimiento: %s\n", *ppi.FollowUp)
+		}
+	}
+
+	if len(pc.PastAdaptations) > 0 {
+		b.WriteString("ADAPTACIONES PREVIAS (no las repitas; construí sobre ellas):\n")
+		for i := range pc.PastAdaptations {
+			a := &pc.PastAdaptations[i]
+			fmt.Fprintf(b, "- %s", a.Title)
+			if a.Subject != "" {
+				fmt.Fprintf(b, " (%s)", a.Subject)
+			}
+			if a.Outcome != nil && *a.Outcome != "" {
+				fmt.Fprintf(b, " — resultado: %s", *a.Outcome)
+			}
+			b.WriteString("\n")
+		}
+	}
+
+	if len(pc.PriorSummaries) > 0 {
+		b.WriteString("CHARLAS ANTERIORES (memoria entre clases):\n")
+		for i := range pc.PriorSummaries {
+			fmt.Fprintf(b, "- %s\n", pc.PriorSummaries[i].Summary)
+		}
+	}
+
+	writeMissingData(b, pc.MissingData)
+	b.WriteString("\n")
+}
+
+// writeMissingData enumera, en lenguaje natural, los datos opcionales que faltan
+// para que Alizia pueda SUGERIR completarlos (nunca exigirlos ni mostrarlos como "N/A").
+func writeMissingData(b *strings.Builder, missing []string) {
+	if len(missing) == 0 {
+		return
+	}
+	labels := map[string]string{
+		missingTeacherProfile: "el perfil del docente",
+		missingStudentProfile: "el perfil del alumno",
+		missingPPI:            "el PPI",
+		missingDiagnoses:      "los diagnósticos",
+	}
+	parts := make([]string, 0, len(missing))
+	for _, m := range missing {
+		if l, ok := labels[m]; ok {
+			parts = append(parts, l)
+		}
+	}
+	if len(parts) > 0 {
+		fmt.Fprintf(b, "DATOS QUE FALTAN (podés sugerir completarlos, sin exigir): %s.\n", strings.Join(parts, ", "))
+	}
+}
+
 // buildAssistSystemPrompt arma el prompt de acompañamiento en tiempo real. agentic
 // indica si las tools del RAG están disponibles; solo entonces se inyecta FUNDAMENTOS
 // (que incluye la cita [CONTENT_ID:X] del corpus).
-func buildAssistSystemPrompt(devices []entities.Device, students []entities.Student, agentic bool) string {
+func buildAssistSystemPrompt(devices []entities.Device, students []entities.Student, pc *PromptContext, agentic bool) string {
 	var b strings.Builder
 
 	b.WriteString(aliziaPersona)
@@ -192,6 +352,7 @@ func buildAssistSystemPrompt(devices []entities.Device, students []entities.Stud
 		b.WriteString("\n")
 	}
 
+	writeStudentContext(&b, pc)
 	writeClassroomStudents(&b, students)
 
 	b.WriteString("DISPOSITIVOS DISPONIBLES:\n")
@@ -211,7 +372,7 @@ func buildAssistSystemPrompt(devices []entities.Device, students []entities.Stud
 
 // buildGuidedAssistPrompt arma el prompt de planificación conversacional. agentic
 // indica si las tools del RAG están disponibles; solo entonces se inyecta FUNDAMENTOS.
-func buildGuidedAssistPrompt(devices []entities.Device, students []entities.Student, agentic bool) string {
+func buildGuidedAssistPrompt(devices []entities.Device, students []entities.Student, pc *PromptContext, agentic bool) string {
 	var b strings.Builder
 
 	b.WriteString(aliziaPersona)
@@ -231,6 +392,7 @@ func buildGuidedAssistPrompt(devices []entities.Device, students []entities.Stud
 		b.WriteString("\n")
 	}
 
+	writeStudentContext(&b, pc)
 	writeClassroomStudents(&b, students)
 
 	b.WriteString("DISPOSITIVOS DISPONIBLES:\n")

@@ -66,11 +66,24 @@ type assistClassroomImpl struct {
 	embedder      providers.Embedder
 	rag           providers.RAGSearchProvider
 	usage         providers.AIUsageProvider
-	agentic       bool
+	// promptCtx arma el contexto tipado del alumno/aula (Context Assembler, HU-2).
+	// Opcional: si es nil o falla, el chat degrada al contexto base.
+	promptCtx BuildPromptContext
+	agentic   bool
 }
 
-func NewAssistClassroom(ai providers.AIClient, students providers.StudentProvider, devices providers.DeviceProvider, conversations providers.ConversationProvider, summaries providers.ConversationSummaryProvider, adaptations providers.AdaptationProvider, content providers.PedagogicalContentProvider, embedder providers.Embedder, rag providers.RAGSearchProvider, usage providers.AIUsageProvider, agentic bool) AssistClassroom {
-	return &assistClassroomImpl{ai: ai, students: students, devices: devices, conversations: conversations, summaries: summaries, adaptations: adaptations, content: content, embedder: embedder, rag: rag, usage: usage, agentic: agentic}
+func NewAssistClassroom(ai providers.AIClient, students providers.StudentProvider, devices providers.DeviceProvider, conversations providers.ConversationProvider, summaries providers.ConversationSummaryProvider, adaptations providers.AdaptationProvider, content providers.PedagogicalContentProvider, embedder providers.Embedder, rag providers.RAGSearchProvider, usage providers.AIUsageProvider, promptCtx BuildPromptContext, agentic bool) AssistClassroom {
+	return &assistClassroomImpl{ai: ai, students: students, devices: devices, conversations: conversations, summaries: summaries, adaptations: adaptations, content: content, embedder: embedder, rag: rag, usage: usage, promptCtx: promptCtx, agentic: agentic}
+}
+
+// chatDimension mapea el request del chat a la dimensión del Context Assembler:
+// con alumno foco cargamos su contexto (perfil, PPI, diagnósticos, historial); sin
+// alumno, solo el contexto estático + docente.
+func chatDimension(studentID *int64) string {
+	if studentID != nil && *studentID > 0 {
+		return DimensionStudent
+	}
+	return ""
 }
 
 // studentsDigest arma un resumen legible de los alumnos del aula para el log verbose.
@@ -96,9 +109,33 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	ctx = observability.WithOrg(ctx, req.OrgID)
 	ctx = observability.WithUser(ctx, req.UserID)
 
-	devices, err := uc.devices.ListDevices(ctx, req.OrgID, nil)
-	if err != nil {
-		return nil, err
+	// Contexto tipado del Context Assembler (HU-2): docente, alumno foco, diagnósticos,
+	// PPI, adaptaciones previas y resúmenes. Opcional y nil-safe: si no está inyectado
+	// o falla, el chat degrada al contexto base (devices + alumnos del aula).
+	var pc *PromptContext
+	if uc.promptCtx != nil && req.UserID > 0 {
+		built, ctxErr := uc.promptCtx.Execute(ctx, BuildContextRequest{
+			OrgID:     req.OrgID,
+			UserID:    req.UserID,
+			Dimension: chatDimension(req.StudentID),
+			StudentID: req.StudentID,
+		})
+		if ctxErr != nil {
+			slog.WarnContext(ctx, "chat.context_build_failed", "error", ctxErr)
+		} else {
+			pc = built
+		}
+	}
+
+	var devices []entities.Device
+	if pc != nil {
+		devices = pc.DeviceCatalog
+	} else {
+		loaded, err := uc.devices.ListDevices(ctx, req.OrgID, nil)
+		if err != nil {
+			return nil, err
+		}
+		devices = loaded
 	}
 
 	allStudents, _ := uc.students.ListByClassroom(ctx, req.OrgID, req.ClassroomID)
@@ -108,14 +145,15 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 		"classroom_id", req.ClassroomID,
 		"students_count", len(allStudents),
 		"devices_count", len(devices),
+		"context_assembled", pc != nil,
 		observability.Text("students", studentsDigest(allStudents)),
 	)
 
 	var systemPrompt string
 	if req.Mode == "guided" {
-		systemPrompt = buildGuidedAssistPrompt(devices, allStudents, uc.agentic)
+		systemPrompt = buildGuidedAssistPrompt(devices, allStudents, pc, uc.agentic)
 	} else {
-		systemPrompt = buildAssistSystemPrompt(devices, allStudents, uc.agentic)
+		systemPrompt = buildAssistSystemPrompt(devices, allStudents, pc, uc.agentic)
 	}
 
 	messages := make([]providers.ChatMessage, 0, len(req.History)+2)
