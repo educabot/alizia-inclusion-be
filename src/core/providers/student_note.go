@@ -9,6 +9,6 @@ import (
 )
 
 type StudentNoteProvider interface {
-	ListByStudent(ctx context.Context, orgID uuid.UUID, studentID int64) ([]entities.StudentNote, error)
+	ListByStudent(ctx context.Context, orgID uuid.UUID, studentID, userID int64) ([]entities.StudentNote, error)
 	Create(ctx context.Context, note *entities.StudentNote) error
 }

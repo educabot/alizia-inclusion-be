@@ -149,9 +149,12 @@ func (c *InclusionContainer) HandleListAdaptations(req web.Request) web.Response
 		studentID = &id
 	}
 
+	// Cada docente ve únicamente los recursos que él creó.
+	teacherID := middleware.UserID(req)
 	result, err := c.ListAdaptations.Execute(req.Context(), inclusion.ListAdaptationsRequest{
 		OrgID:        middleware.OrgID(req),
 		StudentID:    studentID,
+		TeacherID:    &teacherID,
 		CreatedAfter: rangeToCreatedAfter(req.Query("range")),
 	})
 	if err != nil {

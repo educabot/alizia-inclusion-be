@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/educabot/alizia-inclusion-be/src/core/entities"
 	"github.com/educabot/alizia-inclusion-be/src/core/providers"
 	"github.com/educabot/alizia-inclusion-be/src/observability"
 )
@@ -257,6 +258,77 @@ func inclusionTools() []providers.ToolDefinition {
 				"required": []string{"content_id"},
 			},
 		},
+		{
+			Name:        "find_student_by_name",
+			Description: "Busca alumnos por nombre (aproximado) en toda la organización, más allá de la lista de alumnos que conocés. Úsala para reconocer a un alumno ANTES de ofrecer crearlo. Devuelve los que coinciden con su id, aula y dificultades.",
+			Parameters: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"name": map[string]any{
+						"type":        "string",
+						"description": "Nombre o parte del nombre del alumno a buscar.",
+					},
+				},
+				"required": []string{"name"},
+			},
+		},
+		{
+			Name:        "list_classrooms",
+			Description: "Lista las aulas de la organización con su id, nombre, grado y sección. Útil para ubicar el aula de un alumno antes de crearlo.",
+			Parameters: map[string]any{
+				"type":       "object",
+				"properties": map[string]any{},
+			},
+		},
+		{
+			Name:        "create_classroom",
+			Description: "Crea un aula nueva a partir de cómo la nombra el docente ('3ro A', 'tercero B'). Úsala solo si el aula no existe (revisá antes con list_classrooms). Devuelve el aula con su id, que usás como classroom_id en create_student.",
+			Parameters: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"grade": map[string]any{
+						"type":        "string",
+						"description": "El aula tal como la nombra el docente, ej. '3ro A' o 'tercero B'.",
+					},
+				},
+				"required": []string{"grade"},
+			},
+		},
+		{
+			Name:        "create_student",
+			Description: "Da de alta un alumno NUEVO en un aula (nombre + classroom_id + barrera observable opcional). Resolvé antes el aula con list_classrooms / create_classroom. Úsala SOLO después de que el docente confirme explícitamente que quiere guardarlo; NUNCA sin esa confirmación, ni para alumnos que ya reconociste con find_student_by_name. Es idempotente: si el alumno ya existe en el aula, devuelve el existente. Devuelve el alumno con su id, que después usás como [STUDENT_ID:X] y para enlazar la adaptación.",
+			Parameters: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"name": map[string]any{
+						"type":        "string",
+						"description": "Nombre completo del alumno, tal como lo dio el docente.",
+					},
+					"classroom_id": map[string]any{
+						"type":        "integer",
+						"description": "ID del aula donde va el alumno (de list_classrooms o create_classroom).",
+					},
+					"preferred_name": map[string]any{
+						"type":        "string",
+						"description": "Opcional: cómo se le llama habitualmente.",
+					},
+					"difficulties": map[string]any{
+						"type":        "array",
+						"items":       map[string]any{"type": "string"},
+						"description": "Opcional: barreras observables en el aula (no diagnósticos), ej. 'le cuesta sostener la atención'.",
+					},
+					"is_transitory": map[string]any{
+						"type":        "boolean",
+						"description": "Opcional: true si la condición es transitoria.",
+					},
+					"free_description": map[string]any{
+						"type":        "string",
+						"description": "Opcional: descripción libre del contexto del alumno.",
+					},
+				},
+				"required": []string{"name", "classroom_id"},
+			},
+		},
 	}
 }
 
@@ -265,12 +337,17 @@ func inclusionTools() []providers.ToolDefinition {
 // error manejable en vez de panicar.
 type inclusionDispatcher struct {
 	students    providers.StudentProvider
+	profiles    providers.StudentProfileProvider
+	classrooms  providers.ClassroomProvider
 	devices     providers.DeviceProvider
 	summaries   providers.ConversationSummaryProvider
 	adaptations providers.AdaptationProvider
 	content     providers.PedagogicalContentProvider
 	embedder    providers.Embedder
 	rag         providers.RAGSearchProvider
+	// userID es el docente del turno: orgID y userID se inyectan del request, nunca
+	// los pone la LLM. Se usa para que las adaptaciones que ve sean solo las suyas.
+	userID int64
 }
 
 // defaultContentSearchLimit acota cuántos chunks devuelve el RAG por búsqueda.
@@ -371,7 +448,12 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 		if err := json.Unmarshal([]byte(call.Arguments), &args); err != nil {
 			return "", fmt.Errorf("invalid arguments for get_past_adaptations: %w", err)
 		}
-		adaptations, err := d.adaptations.List(ctx, orgID, &args.StudentID, nil)
+		// Solo las adaptaciones del propio docente (recursos privados).
+		filter := providers.AdaptationFilter{OrgID: orgID, StudentID: &args.StudentID}
+		if d.userID > 0 {
+			filter.TeacherID = &d.userID
+		}
+		adaptations, err := d.adaptations.List(ctx, filter)
 		if err != nil {
 			return "", err
 		}
@@ -424,6 +506,60 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 			return "", err
 		}
 		return marshalToolResult(content)
+
+	case "create_student":
+		var args struct {
+			Name            string   `json:"name"`
+			ClassroomID     int64    `json:"classroom_id"`
+			PreferredName   string   `json:"preferred_name"`
+			IsTransitory    bool     `json:"is_transitory"`
+			Difficulties    []string `json:"difficulties"`
+			FreeDescription string   `json:"free_description"`
+		}
+		if err := json.Unmarshal([]byte(call.Arguments), &args); err != nil {
+			return "", fmt.Errorf("invalid arguments for create_student: %w", err)
+		}
+		name := strings.TrimSpace(args.Name)
+		if name == "" {
+			return "", fmt.Errorf("create_student: el nombre es obligatorio")
+		}
+		if args.ClassroomID <= 0 {
+			return "", fmt.Errorf("create_student: falta el aula (classroom_id); resolvela con list_classrooms o create_classroom")
+		}
+		// Idempotente: si ya existe ese alumno (mismo nombre normalizado) en el aula,
+		// lo devolvemos en vez de duplicarlo.
+		if existing, err := d.findStudentInClassroom(ctx, orgID, args.ClassroomID, name); err != nil {
+			return "", err
+		} else if existing != nil {
+			return marshalToolResult(existing)
+		}
+		student := &entities.Student{
+			OrganizationID: orgID,
+			ClassroomID:    args.ClassroomID,
+			Name:           name,
+		}
+		if pn := strings.TrimSpace(args.PreferredName); pn != "" {
+			student.PreferredName = &pn
+		}
+		if err := d.students.Create(ctx, student); err != nil {
+			return "", err
+		}
+		// Perfil opcional: solo si el docente aportó barrera observable o contexto.
+		if d.profiles != nil && (len(args.Difficulties) > 0 || strings.TrimSpace(args.FreeDescription) != "") {
+			profile := &entities.StudentProfile{
+				StudentID:    student.ID,
+				IsTransitory: args.IsTransitory,
+				Difficulties: args.Difficulties,
+			}
+			if fd := strings.TrimSpace(args.FreeDescription); fd != "" {
+				profile.FreeDescription = &fd
+			}
+			if err := d.profiles.Upsert(ctx, profile); err != nil {
+				return "", err
+			}
+			student.Profile = profile
+		}
+		return marshalToolResult(student)
 
 	case "search_content_hibrido":
 		if d.rag == nil || d.embedder == nil {
@@ -479,9 +615,139 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 		}
 		return marshalToolResult(map[string]any{"results": out})
 
+	case "find_student_by_name":
+		var args struct {
+			Name string `json:"name"`
+		}
+		if err := json.Unmarshal([]byte(call.Arguments), &args); err != nil {
+			return "", fmt.Errorf("invalid arguments for find_student_by_name: %w", err)
+		}
+		query := normalizeName(args.Name)
+		if query == "" {
+			return "", fmt.Errorf("find_student_by_name: el nombre es obligatorio")
+		}
+		students, err := d.students.List(ctx, orgID)
+		if err != nil {
+			return "", err
+		}
+		type studentMatch struct {
+			ID           int64    `json:"id"`
+			Name         string   `json:"name"`
+			ClassroomID  int64    `json:"classroom_id"`
+			GradeLevel   string   `json:"grade_level,omitempty"`
+			Difficulties []string `json:"difficulties,omitempty"`
+		}
+		var matches []studentMatch
+		for i := range students {
+			s := &students[i]
+			norm := normalizeName(s.Name)
+			if !strings.Contains(norm, query) {
+				continue
+			}
+			m := studentMatch{ID: s.ID, Name: s.Name, ClassroomID: s.ClassroomID}
+			if s.GradeLevel != nil {
+				m.GradeLevel = *s.GradeLevel
+			}
+			if s.Profile != nil {
+				m.Difficulties = s.Profile.Difficulties
+			}
+			matches = append(matches, m)
+		}
+		return marshalToolResult(map[string]any{"students": matches})
+
+	case "list_classrooms":
+		if d.classrooms == nil {
+			return "", fmt.Errorf("list_classrooms no disponible")
+		}
+		classrooms, err := d.classrooms.List(ctx, orgID)
+		if err != nil {
+			return "", err
+		}
+		type classroomLite struct {
+			ID      int64  `json:"id"`
+			Name    string `json:"name"`
+			Grade   string `json:"grade,omitempty"`
+			Section string `json:"section,omitempty"`
+		}
+		out := make([]classroomLite, len(classrooms))
+		for i := range classrooms {
+			lite := classroomLite{ID: classrooms[i].ID, Name: classrooms[i].Name}
+			if classrooms[i].Grade != nil {
+				lite.Grade = *classrooms[i].Grade
+			}
+			if classrooms[i].Section != nil {
+				lite.Section = *classrooms[i].Section
+			}
+			out[i] = lite
+		}
+		return marshalToolResult(map[string]any{"classrooms": out})
+
+	case "create_classroom":
+		if d.classrooms == nil {
+			return "", fmt.Errorf("create_classroom no disponible")
+		}
+		var args struct {
+			Grade string `json:"grade"`
+		}
+		if err := json.Unmarshal([]byte(call.Arguments), &args); err != nil {
+			return "", fmt.Errorf("invalid arguments for create_classroom: %w", err)
+		}
+		name, grade, section := normalizeGrade(args.Grade)
+		if name == "" {
+			return "", fmt.Errorf("create_classroom: no entendí el grado (ej. '3ro A' o 'tercero B')")
+		}
+		// Idempotente: si ya existe un aula con ese nombre, la devolvemos.
+		if existing, err := d.findClassroomByName(ctx, orgID, name); err != nil {
+			return "", err
+		} else if existing != nil {
+			return marshalToolResult(existing)
+		}
+		classroom := &entities.Classroom{OrganizationID: orgID, Name: name}
+		if grade != "" {
+			classroom.Grade = &grade
+		}
+		if section != "" {
+			classroom.Section = &section
+		}
+		if err := d.classrooms.Create(ctx, classroom); err != nil {
+			return "", err
+		}
+		return marshalToolResult(classroom)
+
 	default:
 		return "", fmt.Errorf("unknown tool: %s", call.Name)
 	}
+}
+
+// findStudentInClassroom busca un alumno por nombre normalizado dentro de un aula.
+// Devuelve nil si no existe (para que create_student lo dé de alta).
+func (d inclusionDispatcher) findStudentInClassroom(ctx context.Context, orgID uuid.UUID, classroomID int64, name string) (*entities.Student, error) {
+	students, err := d.students.ListByClassroom(ctx, orgID, classroomID)
+	if err != nil {
+		return nil, err
+	}
+	target := normalizeName(name)
+	for i := range students {
+		if normalizeName(students[i].Name) == target {
+			return &students[i], nil
+		}
+	}
+	return nil, nil
+}
+
+// findClassroomByName busca un aula por nombre normalizado. Devuelve nil si no existe.
+func (d inclusionDispatcher) findClassroomByName(ctx context.Context, orgID uuid.UUID, name string) (*entities.Classroom, error) {
+	classrooms, err := d.classrooms.List(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
+	target := normalizeName(name)
+	for i := range classrooms {
+		if normalizeName(classrooms[i].Name) == target {
+			return &classrooms[i], nil
+		}
+	}
+	return nil, nil
 }
 
 // snippet normaliza espacios y recorta a maxRunes para no inflar el contexto de la LLM.

@@ -55,22 +55,30 @@ type AssistClassroom interface {
 	Execute(ctx context.Context, req AssistClassroomRequest) (*AssistClassroomResponse, error)
 }
 
-type assistClassroomImpl struct {
-	ai            providers.AIClient
-	students      providers.StudentProvider
-	devices       providers.DeviceProvider
-	conversations providers.ConversationProvider
-	summaries     providers.ConversationSummaryProvider
-	adaptations   providers.AdaptationProvider
-	content       providers.PedagogicalContentProvider
-	embedder      providers.Embedder
-	rag           providers.RAGSearchProvider
-	usage         providers.AIUsageProvider
-	agentic       bool
+// AssistClassroomDeps agrupa las dependencias del asistente de aula. Usar un struct
+// (en vez de ~12 parámetros posicionales) mantiene legible el wiring y el constructor.
+type AssistClassroomDeps struct {
+	AI            providers.AIClient
+	Students      providers.StudentProvider
+	Profiles      providers.StudentProfileProvider
+	Classrooms    providers.ClassroomProvider
+	Devices       providers.DeviceProvider
+	Conversations providers.ConversationProvider
+	Summaries     providers.ConversationSummaryProvider
+	Adaptations   providers.AdaptationProvider
+	Content       providers.PedagogicalContentProvider
+	Embedder      providers.Embedder
+	RAG           providers.RAGSearchProvider
+	Usage         providers.AIUsageProvider
+	Agentic       bool
 }
 
-func NewAssistClassroom(ai providers.AIClient, students providers.StudentProvider, devices providers.DeviceProvider, conversations providers.ConversationProvider, summaries providers.ConversationSummaryProvider, adaptations providers.AdaptationProvider, content providers.PedagogicalContentProvider, embedder providers.Embedder, rag providers.RAGSearchProvider, usage providers.AIUsageProvider, agentic bool) AssistClassroom {
-	return &assistClassroomImpl{ai: ai, students: students, devices: devices, conversations: conversations, summaries: summaries, adaptations: adaptations, content: content, embedder: embedder, rag: rag, usage: usage, agentic: agentic}
+type assistClassroomImpl struct {
+	deps AssistClassroomDeps
+}
+
+func NewAssistClassroom(deps AssistClassroomDeps) AssistClassroom {
+	return &assistClassroomImpl{deps: deps}
 }
 
 // studentsDigest arma un resumen legible de los alumnos del aula para el log verbose.
@@ -96,12 +104,14 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	ctx = observability.WithOrg(ctx, req.OrgID)
 	ctx = observability.WithUser(ctx, req.UserID)
 
-	devices, err := uc.devices.ListDevices(ctx, req.OrgID, nil)
+	devices, err := uc.deps.Devices.ListDevices(ctx, req.OrgID, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	allStudents, _ := uc.students.ListByClassroom(ctx, req.OrgID, req.ClassroomID)
+	// Todos los alumnos que el docente conoce en la org (no solo los del aula del turno):
+	// así Alizia puede reconocer a un alumno aunque esté en otra aula.
+	allStudents, _ := uc.deps.Students.List(ctx, req.OrgID)
 
 	slog.InfoContext(ctx, "chat.context_loaded",
 		"mode", req.Mode,
@@ -113,9 +123,9 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 
 	var systemPrompt string
 	if req.Mode == "guided" {
-		systemPrompt = buildGuidedAssistPrompt(devices, allStudents, uc.agentic)
+		systemPrompt = buildGuidedAssistPrompt(devices, allStudents, uc.deps.Agentic)
 	} else {
-		systemPrompt = buildAssistSystemPrompt(devices, allStudents, uc.agentic)
+		systemPrompt = buildAssistSystemPrompt(devices, allStudents, uc.deps.Agentic)
 	}
 
 	messages := make([]providers.ChatMessage, 0, len(req.History)+2)
@@ -126,24 +136,35 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 
 	slog.InfoContext(ctx, "chat.prompt_built",
 		"mode", req.Mode,
-		"agentic", uc.agentic,
+		"agentic", uc.deps.Agentic,
 		"history_len", len(req.History),
 		observability.Text("system_prompt", systemPrompt),
 		observability.Text("user_message", req.Message),
 	)
 
 	var tools []providers.ToolDefinition
-	if uc.agentic {
+	if uc.deps.Agentic {
 		tools = inclusionTools()
 	}
-	dispatcher := inclusionDispatcher{students: uc.students, devices: uc.devices, summaries: uc.summaries, adaptations: uc.adaptations, content: uc.content, embedder: uc.embedder, rag: uc.rag}
+	dispatcher := inclusionDispatcher{
+		students:    uc.deps.Students,
+		profiles:    uc.deps.Profiles,
+		classrooms:  uc.deps.Classrooms,
+		devices:     uc.deps.Devices,
+		summaries:   uc.deps.Summaries,
+		adaptations: uc.deps.Adaptations,
+		content:     uc.deps.Content,
+		embedder:    uc.deps.Embedder,
+		rag:         uc.deps.RAG,
+		userID:      req.UserID,
+	}
 
-	resp, trace, err := runAgenticChat(ctx, uc.ai, messages, tools, dispatcher, req.OrgID, maxAgenticIterations)
+	resp, trace, err := runAgenticChat(ctx, uc.deps.AI, messages, tools, dispatcher, req.OrgID, maxAgenticIterations)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", providers.ErrServiceUnavailable, err)
 	}
 
-	recordAIUsage(ctx, uc.usage, req.OrgID, req.UserID, "assist", resp.Usage)
+	recordAIUsage(ctx, uc.deps.Usage, req.OrgID, req.UserID, "assist", resp.Usage)
 
 	// Trazabilidad: de qué fuentes (valija / alumno / RAG) se sacó info este turno.
 	sources := summarizeSources(trace)
@@ -205,7 +226,7 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 }
 
 func (uc *assistClassroomImpl) persistTurn(ctx context.Context, req AssistClassroomRequest, assistantContent string, studentID, deviceID *int64, adaptation *GeneratedAdaptation) (int64, error) {
-	if uc.conversations == nil || req.UserID == 0 {
+	if uc.deps.Conversations == nil || req.UserID == 0 {
 		return req.ConversationID, nil
 	}
 	mode := req.Mode
@@ -222,7 +243,7 @@ func (uc *assistClassroomImpl) persistTurn(ctx context.Context, req AssistClassr
 	if adaptation != nil {
 		metadata["adaptation"] = adaptation
 	}
-	return uc.conversations.AppendTurn(ctx, providers.AppendTurnParams{
+	return uc.deps.Conversations.AppendTurn(ctx, providers.AppendTurnParams{
 		ConversationID:   req.ConversationID,
 		OrgID:            req.OrgID,
 		UserID:           req.UserID,

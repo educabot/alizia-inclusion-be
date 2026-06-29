@@ -15,8 +15,18 @@ type DeviceUsageStat struct {
 	Count      int
 }
 
+// AdaptationFilter agrupa los filtros opcionales del listado de adaptaciones.
+// OrgID siempre es obligatorio; el resto se aplica solo cuando viene seteado.
+// TeacherID se usa para que cada docente vea únicamente los recursos que creó.
+type AdaptationFilter struct {
+	OrgID        uuid.UUID
+	StudentID    *int64
+	TeacherID    *int64
+	CreatedAfter *time.Time
+}
+
 type AdaptationProvider interface {
-	List(ctx context.Context, orgID uuid.UUID, studentID *int64, createdAfter *time.Time) ([]entities.Adaptation, error)
+	List(ctx context.Context, filter AdaptationFilter) ([]entities.Adaptation, error)
 	Get(ctx context.Context, orgID uuid.UUID, id int64) (*entities.Adaptation, error)
 	Create(ctx context.Context, adaptation *entities.Adaptation) error
 	Update(ctx context.Context, adaptation *entities.Adaptation) error
