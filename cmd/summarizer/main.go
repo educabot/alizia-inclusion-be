@@ -30,11 +30,11 @@ func main() {
 		slog.Error("summarizer: database connection failed", "error", err)
 		os.Exit(1)
 	}
-	defer func() {
+	closeDB := func() {
 		if sqlDB, dErr := db.DB(); dErr == nil {
 			_ = sqlDB.Close()
 		}
-	}()
+	}
 
 	uc := inclusionuc.NewSummarizeConversations(
 		inclusionr.NewConversationRepo(db),
@@ -46,14 +46,16 @@ func main() {
 	)
 
 	ctx, cancel := context.WithTimeout(context.Background(), runTimeout)
-	defer cancel()
 
 	res, err := uc.Execute(ctx)
+	cancel()
 	if err != nil {
 		slog.Error("summarizer: run failed", "error", err)
+		closeDB()
 		os.Exit(1)
 	}
 	slog.Info("summarizer: run complete", "processed", res.Processed, "failed", res.Failed)
+	closeDB()
 }
 
 // buildAIClient replica el armado del cliente de IA del server web (cmd): Azure

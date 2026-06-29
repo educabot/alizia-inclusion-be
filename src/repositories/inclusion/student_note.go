@@ -18,10 +18,10 @@ func NewStudentNoteRepo(db *gorm.DB) providers.StudentNoteProvider {
 	return &studentNoteRepo{db: db}
 }
 
-func (r *studentNoteRepo) ListByStudent(ctx context.Context, orgID uuid.UUID, studentID int64) ([]entities.StudentNote, error) {
+func (r *studentNoteRepo) ListByStudent(ctx context.Context, orgID uuid.UUID, studentID, userID int64) ([]entities.StudentNote, error) {
 	var notes []entities.StudentNote
 	err := r.db.WithContext(ctx).
-		Where("organization_id = ? AND student_id = ?", orgID, studentID).
+		Where("organization_id = ? AND student_id = ? AND user_id = ?", orgID, studentID, userID).
 		Order("created_at DESC").
 		Find(&notes).Error
 	if err != nil {

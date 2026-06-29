@@ -56,6 +56,7 @@ func (c *InclusionContainer) HandleListStudentNotes(req web.Request) web.Respons
 	result, err := c.ListStudentNotes.Execute(req.Context(), inclusion.ListStudentNotesRequest{
 		OrgID:     middleware.OrgID(req),
 		StudentID: studentID,
+		UserID:    middleware.UserID(req),
 	})
 	if err != nil {
 		return rest.HandleError(err)
@@ -77,6 +78,7 @@ func (c *InclusionContainer) HandleCreateStudentNote(req web.Request) web.Respon
 	result, err := c.CreateStudentNote.Execute(req.Context(), inclusion.CreateStudentNoteRequest{
 		OrgID:     middleware.OrgID(req),
 		StudentID: studentID,
+		UserID:    middleware.UserID(req),
 		Content:   body.Content,
 		Type:      body.Type,
 		Internal:  body.Internal,

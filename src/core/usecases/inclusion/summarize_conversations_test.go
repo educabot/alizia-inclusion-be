@@ -47,9 +47,15 @@ func TestSummarizeConversations_SummarizesPending(t *testing.T) {
 	var capturedSummary entities.ConversationSummary
 	summaries.On("Upsert", ctx, mock.AnythingOfType("entities.ConversationSummary"), mock.Anything, mock.Anything).
 		Run(func(args mock.Arguments) {
-			capturedSummary = args.Get(1).(entities.ConversationSummary)
-			capturedStudents = args.Get(2).([]int64)
-			capturedDevices = args.Get(3).([]int64)
+			s, ok := args.Get(1).(entities.ConversationSummary)
+			require.True(t, ok)
+			capturedSummary = s
+			sts, ok := args.Get(2).([]int64)
+			require.True(t, ok)
+			capturedStudents = sts
+			devs, ok := args.Get(3).([]int64)
+			require.True(t, ok)
+			capturedDevices = devs
 		}).Return(nil)
 
 	uc := inclusion.NewSummarizeConversations(conversations, summaries, ai, nil, 20, 50)

@@ -159,6 +159,197 @@ func TestInclusionDispatcher_GetStudentReturnsStudentPayload(t *testing.T) {
 	students.AssertExpectations(t)
 }
 
+func TestInclusionDispatcher_CreateStudentCreatesInClassroomWithProfile(t *testing.T) {
+	ctx := context.Background()
+	orgID := uuid.New()
+	students := new(mockproviders.MockStudentProvider)
+	profiles := new(mockproviders.MockStudentProfileProvider)
+
+	// El aula viene en los argumentos del modelo (classroom_id). Sin alumnos previos
+	// en el aula → no es duplicado → da de alta.
+	students.On("ListByClassroom", ctx, orgID, int64(9)).Return([]entities.Student{}, nil)
+	students.On("Create", ctx, mock.AnythingOfType("*entities.Student")).
+		Return(nil).
+		Run(func(args mock.Arguments) {
+			s, ok := args.Get(1).(*entities.Student)
+			require.True(t, ok)
+			s.ID = 42
+		})
+	profiles.On("Upsert", ctx, mock.AnythingOfType("*entities.StudentProfile")).Return(nil)
+
+	d := inclusionDispatcher{students: students, profiles: profiles}
+
+	result, err := d.Dispatch(ctx, orgID, providers.ToolCall{
+		Name:      "create_student",
+		Arguments: `{"name":"Lucas Pérez","classroom_id":9,"difficulties":["le cuesta sostener la atención"]}`,
+	})
+
+	require.NoError(t, err)
+	var got entities.Student
+	require.NoError(t, json.Unmarshal([]byte(result), &got))
+	assert.Equal(t, int64(42), got.ID)
+	assert.Equal(t, int64(9), got.ClassroomID)
+	assert.Equal(t, "Lucas Pérez", got.Name)
+	require.NotNil(t, got.Profile)
+	assert.Equal(t, []string{"le cuesta sostener la atención"}, []string(got.Profile.Difficulties))
+	students.AssertExpectations(t)
+	profiles.AssertExpectations(t)
+}
+
+// Idempotencia: si ya existe un alumno con el mismo nombre (normalizado) en el aula,
+// create_student devuelve el existente sin volver a crearlo.
+func TestInclusionDispatcher_CreateStudentIsIdempotentWithinClassroom(t *testing.T) {
+	ctx := context.Background()
+	orgID := uuid.New()
+	students := new(mockproviders.MockStudentProvider)
+
+	students.On("ListByClassroom", ctx, orgID, int64(9)).
+		Return([]entities.Student{{ID: 7, Name: "Lucas Pérez", ClassroomID: 9}}, nil)
+
+	d := inclusionDispatcher{students: students}
+
+	result, err := d.Dispatch(ctx, orgID, providers.ToolCall{
+		Name:      "create_student",
+		Arguments: `{"name":"  lucas perez  ","classroom_id":9}`,
+	})
+
+	require.NoError(t, err)
+	var got entities.Student
+	require.NoError(t, json.Unmarshal([]byte(result), &got))
+	assert.Equal(t, int64(7), got.ID)
+	students.AssertNotCalled(t, "Create", mock.Anything, mock.Anything)
+}
+
+func TestInclusionDispatcher_CreateStudentRequiresClassroom(t *testing.T) {
+	d := inclusionDispatcher{}
+
+	_, err := d.Dispatch(context.Background(), uuid.New(), providers.ToolCall{
+		Name:      "create_student",
+		Arguments: `{"name":"Lucas"}`,
+	})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "aula")
+}
+
+func TestInclusionDispatcher_CreateStudentRejectsEmptyName(t *testing.T) {
+	students := new(mockproviders.MockStudentProvider)
+	d := inclusionDispatcher{students: students}
+
+	_, err := d.Dispatch(context.Background(), uuid.New(), providers.ToolCall{
+		Name:      "create_student",
+		Arguments: `{"name":"   ","classroom_id":1}`,
+	})
+
+	require.Error(t, err)
+	students.AssertNotCalled(t, "Create", mock.Anything, mock.Anything)
+}
+
+func TestInclusionDispatcher_FindStudentByNameMatchesNormalized(t *testing.T) {
+	ctx := context.Background()
+	orgID := uuid.New()
+	students := new(mockproviders.MockStudentProvider)
+	students.On("List", ctx, orgID).Return([]entities.Student{
+		{ID: 1, Name: "Lucas Pérez", ClassroomID: 9},
+		{ID: 2, Name: "Martina Gómez", ClassroomID: 9},
+	}, nil)
+	d := inclusionDispatcher{students: students}
+
+	result, err := d.Dispatch(ctx, orgID, providers.ToolCall{
+		Name:      "find_student_by_name",
+		Arguments: `{"name":"lucas"}`,
+	})
+
+	require.NoError(t, err)
+	var got struct {
+		Students []struct {
+			ID   int64  `json:"id"`
+			Name string `json:"name"`
+		} `json:"students"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(result), &got))
+	require.Len(t, got.Students, 1)
+	assert.Equal(t, int64(1), got.Students[0].ID)
+}
+
+func TestInclusionDispatcher_ListClassrooms(t *testing.T) {
+	ctx := context.Background()
+	orgID := uuid.New()
+	grade := "3ro"
+	classrooms := new(mockproviders.MockClassroomProvider)
+	classrooms.On("List", ctx, orgID).Return([]entities.Classroom{
+		{ID: 5, Name: "3ro A", Grade: &grade},
+	}, nil)
+	d := inclusionDispatcher{classrooms: classrooms}
+
+	result, err := d.Dispatch(ctx, orgID, providers.ToolCall{Name: "list_classrooms", Arguments: `{}`})
+
+	require.NoError(t, err)
+	assert.Contains(t, result, "3ro A")
+}
+
+func TestInclusionDispatcher_CreateClassroomNormalizesGrade(t *testing.T) {
+	ctx := context.Background()
+	orgID := uuid.New()
+	classrooms := new(mockproviders.MockClassroomProvider)
+	// No existe aún → la crea.
+	classrooms.On("List", ctx, orgID).Return([]entities.Classroom{}, nil)
+	classrooms.On("Create", ctx, mock.AnythingOfType("*entities.Classroom")).
+		Return(nil).
+		Run(func(args mock.Arguments) {
+			c, ok := args.Get(1).(*entities.Classroom)
+			require.True(t, ok)
+			c.ID = 11
+			assert.Equal(t, "3ro B", c.Name)
+			require.NotNil(t, c.Grade)
+			assert.Equal(t, "3ro", *c.Grade)
+			require.NotNil(t, c.Section)
+			assert.Equal(t, "B", *c.Section)
+		})
+	d := inclusionDispatcher{classrooms: classrooms}
+
+	result, err := d.Dispatch(ctx, orgID, providers.ToolCall{
+		Name:      "create_classroom",
+		Arguments: `{"grade":"tercero B"}`,
+	})
+
+	require.NoError(t, err)
+	assert.Contains(t, result, "3ro B")
+	classrooms.AssertExpectations(t)
+}
+
+func TestInclusionDispatcher_CreateClassroomIsIdempotent(t *testing.T) {
+	ctx := context.Background()
+	orgID := uuid.New()
+	classrooms := new(mockproviders.MockClassroomProvider)
+	classrooms.On("List", ctx, orgID).Return([]entities.Classroom{{ID: 3, Name: "3ro A"}}, nil)
+	d := inclusionDispatcher{classrooms: classrooms}
+
+	result, err := d.Dispatch(ctx, orgID, providers.ToolCall{
+		Name:      "create_classroom",
+		Arguments: `{"grade":"3ro A"}`,
+	})
+
+	require.NoError(t, err)
+	assert.Contains(t, result, `"id":3`)
+	classrooms.AssertNotCalled(t, "Create", mock.Anything, mock.Anything)
+}
+
+func TestInclusionTools_ExposeCreateStudent(t *testing.T) {
+	var found bool
+	for _, tool := range inclusionTools() {
+		if tool.Name != "create_student" {
+			continue
+		}
+		found = true
+		params, ok := tool.Parameters.(map[string]any)
+		require.True(t, ok)
+		req, _ := params["required"].([]string)
+		assert.Contains(t, req, "name")
+	}
+	assert.True(t, found, "create_student debe estar expuesta como tool")
+}
+
 func TestInclusionDispatcher_RejectsUnknownTool(t *testing.T) {
 	d := inclusionDispatcher{}
 

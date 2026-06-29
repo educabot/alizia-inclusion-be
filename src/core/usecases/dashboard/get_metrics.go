@@ -68,7 +68,8 @@ func (uc *getMetricsImpl) Execute(ctx context.Context, req GetMetricsRequest) (*
 		}
 	}
 
-	adaptations, err := uc.adaptations.List(ctx, req.OrgID, nil, nil)
+	// Métricas de toda la organización: sin filtro por docente.
+	adaptations, err := uc.adaptations.List(ctx, providers.AdaptationFilter{OrgID: req.OrgID})
 	if err != nil {
 		return nil, err
 	}

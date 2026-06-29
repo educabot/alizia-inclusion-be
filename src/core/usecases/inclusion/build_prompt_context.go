@@ -220,7 +220,13 @@ func (uc *buildPromptContextImpl) loadStudentDimension(ctx context.Context, req 
 		return err
 	}
 
-	adaptations, err := uc.adaptations.List(ctx, req.OrgID, req.StudentID, nil)
+	// Contexto del propio docente: solo sus adaptaciones.
+	teacherID := req.UserID
+	adaptations, err := uc.adaptations.List(ctx, providers.AdaptationFilter{
+		OrgID:     req.OrgID,
+		StudentID: req.StudentID,
+		TeacherID: &teacherID,
+	})
 	if err != nil {
 		return err
 	}
