@@ -158,40 +158,45 @@ func Test_extractAdaptationJSON_ReturnsNilForMalformedJSON(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-func Test_buildAssistSystemPrompt_ContainsQuestioningCriteria(t *testing.T) {
-	// Arrange
+func Test_buildAssistSystemPrompt_ContainsRepreguntaGate(t *testing.T) {
 	devices := []entities.Device{{ID: 1, Name: "Organizador visual"}}
 
-	// Act: el bloque de preguntas se inyecta siempre (no depende de agentic).
-	prompt := buildAssistSystemPrompt(devices, nil, false)
+	prompt := buildAssistSystemPrompt(devices, nil, nil, false)
 
-	// Assert: están los criterios definidos con pedagogía (Mercedes).
+	assert.Contains(t, prompt, "ANTES DE PROPONER")
 	assert.Contains(t, prompt, "CÓMO PREGUNTÁS")
-	assert.Contains(t, prompt, "2-3 preguntas base en el MISMO turno")
 	assert.Contains(t, prompt, "HASTA 4 opciones")
-	assert.Contains(t, prompt, `"Otro"`, "siempre debe ofrecer la opción Otro de texto libre")
+	assert.Contains(t, prompt, `"Otro"`)
 	assert.Contains(t, prompt, "Abierta")
 	assert.Contains(t, prompt, "De opción única")
 	assert.Contains(t, prompt, "De opción múltiple")
 }
 
 func Test_buildAssistSystemPrompt_ContainsFirstProposalAndWarmClose(t *testing.T) {
-	prompt := buildAssistSystemPrompt(nil, nil, false)
+	prompt := buildAssistSystemPrompt(nil, nil, nil, false)
 
 	assert.Contains(t, prompt, "PROPONÉ, NO INTERROGUES")
 	assert.Contains(t, prompt, "PRIMERA propuesta concreta")
 	assert.Contains(t, prompt, "¿Continuamos?")
 }
 
-func Test_buildAssistSystemPrompt_AgenticDoesNotCiteSources(t *testing.T) {
-	// Act: con agentic se inyecta FUNDAMENTOS (RAG).
-	prompt := buildAssistSystemPrompt(nil, nil, true)
+func Test_buildAssistSystemPrompt_ContainsStepsFormat(t *testing.T) {
+	prompt := buildAssistSystemPrompt(nil, nil, nil, false)
 
-	// Assert: ya no instruye citar la fuente con el marker de contenido,
-	// pero sí usar el RAG para repreguntar mejor.
-	assert.NotContains(t, prompt, "[CONTENT_ID:")
-	assert.Contains(t, prompt, "SIN citar la fuente")
-	assert.Contains(t, prompt, "ANTES DE REPREGUNTAR")
+	assert.Contains(t, prompt, "FORMATO DE RESPUESTA CON PASOS")
+	assert.Contains(t, prompt, "[STEPS]")
+	assert.Contains(t, prompt, "[/STEPS]")
+	assert.Contains(t, prompt, "LINEAMIENTOS")
+}
+
+func Test_buildAssistSystemPrompt_AgenticInjectsFundamentos(t *testing.T) {
+	promptSinAgentic := buildAssistSystemPrompt(nil, nil, nil, false)
+	promptConAgentic := buildAssistSystemPrompt(nil, nil, nil, true)
+
+	// search_content_hibrido solo existe en fundamentosRAG (agentic=true)
+	assert.NotContains(t, promptSinAgentic, "search_content_hibrido")
+	assert.Contains(t, promptConAgentic, "search_content_hibrido")
+	assert.Contains(t, promptConAgentic, "[CONTENT_ID:")
 }
 
 func Test_aliziaPersona_ReinforcesNoDiagnosis(t *testing.T) {
