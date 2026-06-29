@@ -2,7 +2,6 @@ package inclusion
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -56,15 +55,31 @@ func (r *ragSearchRepo) HybridSearch(ctx context.Context, spec providers.HybridS
 	}
 
 	var rows []ragChunkRow
-	err := r.db.WithContext(ctx).Raw(hybridSearchSQL,
-		sql.Named("qvec", pgVector(embedding)),
-		sql.Named("content_query", webSearchQuery(spec.Terms)),
-		sql.Named("summary_query", strings.Join(spec.Terms, " ")),
-		sql.Named("terms", pq.StringArray(spec.Terms)),
-		sql.Named("resource_id", resourceID),
-		sql.Named("candidate_limit", candidateLimit),
-		sql.Named("result_limit", limit),
-		sql.Named("result_offset", offset),
+	// lib/pq no soporta @name. GORM convierte ? → $N para PostgreSQL, por eso usamos ?
+	// (si usamos $N directamente GORM cuenta 0 bindvars y manda 0 args → error).
+	// @content_query y @summary_query aparecen 2 veces cada uno en el CTE → 9 args total.
+	querySQL := hybridSearchSQL
+	querySQL = strings.ReplaceAll(querySQL, "__QVEC__", pgVector(embedding))
+	querySQL = strings.ReplaceAll(querySQL, "@content_query", "?")
+	querySQL = strings.ReplaceAll(querySQL, "@summary_query", "?")
+	querySQL = strings.ReplaceAll(querySQL, "@terms", "?")
+	querySQL = strings.ReplaceAll(querySQL, "@resource_id", "?")
+	querySQL = strings.ReplaceAll(querySQL, "@candidate_limit", "?")
+	querySQL = strings.ReplaceAll(querySQL, "@result_limit", "?")
+	querySQL = strings.ReplaceAll(querySQL, "@result_offset", "?")
+
+	contentQuery := webSearchQuery(spec.Terms)
+	summaryQuery := strings.Join(spec.Terms, " ")
+	err := r.db.WithContext(ctx).Raw(querySQL,
+		contentQuery,               // ? content_query (valor)
+		contentQuery,               // ? content_query (websearch_to_tsquery)
+		summaryQuery,               // ? summary_query (valor)
+		summaryQuery,               // ? summary_query (websearch_to_tsquery)
+		pq.StringArray(spec.Terms), // ? terms
+		resourceID,                 // ? resource_id
+		candidateLimit,             // ? candidate_limit
+		limit,                      // ? result_limit
+		offset,                     // ? result_offset
 	).Scan(&rows).Error
 	if err != nil {
 		return nil, err
@@ -130,12 +145,14 @@ func webSearchQuery(terms []string) string {
 	return strings.Join(parts, " OR ")
 }
 
-// hybridSearchSQL: ranking híbrido sobre rag_chunks/rag_resources. Usa parámetros
-// nombrados (@name) porque content_query/summary_query se referencian dos veces.
+// hybridSearchSQL: ranking híbrido sobre rag_chunks/rag_resources.
+// Parámetros: $1=content_query $2=summary_query $3=terms $4=resource_id
+//             $5=candidate_limit $6=result_limit $7=result_offset
+// El vector se inyecta inline vía strings.ReplaceAll(__QVEC__) antes de ejecutar.
 const hybridSearchSQL = `
 WITH params AS (
   SELECT
-    @qvec::vector AS qvec,
+    '__QVEC__'::vector AS qvec,
     @content_query::text AS content_query,
     websearch_to_tsquery('pg_catalog.simple'::regconfig, @content_query::text) AS content_tsq,
     @summary_query::text AS summary_query,

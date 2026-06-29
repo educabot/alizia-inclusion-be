@@ -60,12 +60,12 @@ const repreguntaGate = `ANTES DE PROPONER:
 // agéntico está activo (AI_AGENTIC_ENABLED=true): si no, las tools search_content/
 // get_content no existen y no hay que instruir su uso. Ver flujo §4.
 const fundamentosRAG = `FUNDAMENTOS (material pedagógico real):
-- Ante un concepto pedagógico, una discapacidad/barrera específica, un marco o una normativa, usá la tool search_content ANTES de afirmar de fondo. No la uses para charla trivial.
-- Si el docente pide bibliografía, fuentes, evidencia, referencias o "en qué te basás", DEBÉS llamar search_content (o search_content_hibrido) y responder con lo que devuelva. Nunca contestes que buscaste si no llamaste la tool en este turno.
-- Reescribí la consulta a palabras clave, expandiendo con sinónimos y el nombre de la discapacidad/barrera (ej.: "le cuesta concentrarse" -> "atención autorregulación TDAH funciones ejecutivas").
+- Ante cualquier pregunta sobre una discapacidad, barrera, estrategia pedagógica, marco o normativa, DEBÉS llamar search_content_hibrido ANTES de responder. No la uses para charla trivial.
+- Si el docente pide bibliografía, fuentes, evidencia, referencias o "en qué te basás", DEBÉS llamar search_content_hibrido y responder con lo que devuelva. Nunca contestes que buscaste si no llamaste la tool en este turno.
+- Pasá la pregunta del docente completa en semantic_question y las palabras clave en terms (temas + nombre de la discapacidad/barrera).
 - Fundamentá tu respuesta con lo que devuelve, integrándolo de forma natural (no hace falta citar el título del documento). Si el preview es pertinente y necesitás más, usá get_content.
 - Si la búsqueda vuelve vacía, no inventes: respondé con los lineamientos base aclarando que no hay material cargado sobre ese punto.
-- Los materiales de la valija ya están en el catálogo de este prompt; no los busques por search_content.
+- Los materiales de la valija ya están en el catálogo de este prompt; no los busques por search_content_hibrido.
 - Si te apoyás en material del corpus, citá la fuente con [CONTENT_ID:X], usando el id del recurso (resource_id) que devolvió la búsqueda. El sistema lo convierte en un chip; no menciones el id de otra forma.
 `
 

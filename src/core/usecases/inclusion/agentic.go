@@ -204,13 +204,13 @@ func inclusionTools() []providers.ToolDefinition {
 		},
 		{
 			Name:        "search_content",
-			Description: "Busca material pedagógico real (libros / papers / guías) sobre un tema de inclusión. Reescribí la pregunta del docente a palabras clave (temas y discapacidades, ej. 'TEA autismo autorregulación') antes de llamar. Devuelve los fragmentos más relevantes con un preview. Si vuelve vacío, no inventes: respondé con los lineamientos base aclarando que no hay material cargado.",
+			Description: "Busca contenido pedagógico por texto en la base de materiales del corpus (búsqueda full-text clásica). Usá search_content_hibrido cuando quieras resultados por similitud semántica; usá search_content para búsquedas exactas por término.",
 			Parameters: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"query": map[string]any{
 						"type":        "string",
-						"description": "Palabras clave del tema a buscar (temas + nombres de discapacidades).",
+						"description": "Términos de búsqueda a buscar en el contenido pedagógico.",
 					},
 				},
 				"required": []string{"query"},
@@ -245,7 +245,7 @@ func inclusionTools() []providers.ToolDefinition {
 		},
 		{
 			Name:        "get_content",
-			Description: "Trae el contenido pedagógico completo de un documento por su id (obtenido de search_content), con todos sus fragmentos.",
+			Description: "Trae el contenido pedagógico completo de un documento por su id (obtenido de search_content_hibrido), con todos sus fragmentos.",
 			Parameters: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -446,6 +446,7 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 		if err != nil {
 			return "", err
 		}
+		slog.InfoContext(ctx, "rag.embed_ok", "question", args.SemanticQuestion, "dims", len(embedding), "terms", args.Terms)
 		hits, err := d.rag.HybridSearch(ctx, providers.HybridSearchSpec{
 			ResourceID:       args.ResourceID,
 			SemanticQuestion: args.SemanticQuestion,
