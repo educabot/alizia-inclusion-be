@@ -238,6 +238,9 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	studentID := extractStudentID(resp.Content)
 	deviceID := extractDeviceID(resp.Content)
 	adaptation := extractAdaptationJSON(resp.Content)
+	if adaptation != nil && studentID != nil {
+		adaptation.StudentID = studentID
+	}
 	// Contenido pedagógico citado este turno: el FE lo usa para resolver los chips
 	// [CONTENT_ID:X]. Sale del back (lo que trajo el RAG), no de ids del modelo.
 	referenced := contentRefsFromTrace(trace)
