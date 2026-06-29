@@ -25,5 +25,6 @@ type Device struct {
 	IsActive           bool             `json:"is_active" gorm:"default:true"`
 	Ramp               *Ramp            `json:"ramp,omitempty" gorm:"foreignKey:RampID"`
 	Resources          []DeviceResource `json:"downloads,omitempty" gorm:"foreignKey:DeviceID"`
+	Videos             []DeviceVideo    `json:"videos,omitempty" gorm:"foreignKey:DeviceID"`
 	TimeTrackedEntity
 }

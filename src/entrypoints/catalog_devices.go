@@ -20,6 +20,13 @@ type deviceDownloadResponse struct {
 	CreatedAt string `json:"created_at"`
 }
 
+type deviceVideoResponse struct {
+	ID        int64   `json:"id"`
+	Title     *string `json:"title,omitempty"`
+	URL       string  `json:"url"`
+	SortOrder int     `json:"sort_order"`
+}
+
 type deviceResponse struct {
 	ID                 int64                    `json:"id"`
 	RampID             int64                    `json:"ramp_id"`
@@ -38,6 +45,7 @@ type deviceResponse struct {
 	SortOrder          int                      `json:"sort_order"`
 	RampName           string                   `json:"ramp_name,omitempty"`
 	Downloads          []deviceDownloadResponse `json:"downloads,omitempty"`
+	Videos             []deviceVideoResponse    `json:"videos,omitempty"`
 }
 
 func mapDevice(d entities.Device) deviceResponse {
@@ -68,6 +76,14 @@ func mapDevice(d entities.Device) deviceResponse {
 			FileURL:   r.FileURL,
 			FileType:  r.FileType,
 			CreatedAt: r.CreatedAt.Format(time.RFC3339),
+		})
+	}
+	for _, v := range d.Videos {
+		resp.Videos = append(resp.Videos, deviceVideoResponse{
+			ID:        v.ID,
+			Title:     v.Title,
+			URL:       v.URL,
+			SortOrder: v.SortOrder,
 		})
 	}
 	return resp
