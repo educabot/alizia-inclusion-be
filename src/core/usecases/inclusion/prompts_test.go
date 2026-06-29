@@ -158,6 +158,52 @@ func Test_extractAdaptationJSON_ReturnsNilForMalformedJSON(t *testing.T) {
 	assert.Nil(t, result)
 }
 
+func Test_buildAssistSystemPrompt_ContainsRepreguntaGate(t *testing.T) {
+	devices := []entities.Device{{ID: 1, Name: "Organizador visual"}}
+
+	prompt := buildAssistSystemPrompt(devices, nil, nil, false)
+
+	assert.Contains(t, prompt, "ANTES DE PROPONER")
+	assert.Contains(t, prompt, "CÓMO PREGUNTÁS")
+	assert.Contains(t, prompt, "HASTA 4 opciones")
+	assert.Contains(t, prompt, `"Otro"`)
+	assert.Contains(t, prompt, "Abierta")
+	assert.Contains(t, prompt, "De opción única")
+	assert.Contains(t, prompt, "De opción múltiple")
+}
+
+func Test_buildAssistSystemPrompt_ContainsFirstProposalAndWarmClose(t *testing.T) {
+	prompt := buildAssistSystemPrompt(nil, nil, nil, false)
+
+	assert.Contains(t, prompt, "PROPONÉ, NO INTERROGUES")
+	assert.Contains(t, prompt, "PRIMERA propuesta concreta")
+	assert.Contains(t, prompt, "¿Continuamos?")
+}
+
+func Test_buildAssistSystemPrompt_ContainsStepsFormat(t *testing.T) {
+	prompt := buildAssistSystemPrompt(nil, nil, nil, false)
+
+	assert.Contains(t, prompt, "FORMATO DE RESPUESTA CON PASOS")
+	assert.Contains(t, prompt, "[STEPS]")
+	assert.Contains(t, prompt, "[/STEPS]")
+	assert.Contains(t, prompt, "LINEAMIENTOS")
+}
+
+func Test_buildAssistSystemPrompt_AgenticInjectsFundamentos(t *testing.T) {
+	promptSinAgentic := buildAssistSystemPrompt(nil, nil, nil, false)
+	promptConAgentic := buildAssistSystemPrompt(nil, nil, nil, true)
+
+	// search_content_hibrido solo existe en fundamentosRAG (agentic=true)
+	assert.NotContains(t, promptSinAgentic, "search_content_hibrido")
+	assert.Contains(t, promptConAgentic, "search_content_hibrido")
+	assert.Contains(t, promptConAgentic, "[CONTENT_ID:")
+}
+
+func Test_aliziaPersona_ReinforcesNoDiagnosis(t *testing.T) {
+	assert.Contains(t, aliziaPersona, "No diagnosticás ni insinuás un diagnóstico")
+	assert.Contains(t, aliziaPersona, "No abrís con empatía en abstracto ni con soluciones genéricas")
+}
+
 func Test_buildRecommendSystemPrompt_ContainsDeviceInfo(t *testing.T) {
 	devices := []entities.Device{
 		{ID: 1, Name: "Timer Visual", NeedsDescription: ptr("Para alumnos con distraccion")},

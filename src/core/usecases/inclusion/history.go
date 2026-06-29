@@ -4,7 +4,13 @@ import "github.com/educabot/alizia-inclusion-be/src/core/providers"
 
 // defaultMaxHistoryTokens bounds the estimated token budget for an AI request.
 // It leaves headroom under typical context windows for the model's completion.
-const defaultMaxHistoryTokens = 3000
+//
+// El system prompt de inclusión (persona + comportamiento/flujo + catálogo + tools)
+// ronda los ~2.9k tokens, así que un tope de 3000 dejaba prácticamente sin lugar al
+// historial: el flujo de repreguntar/afinar pierde memoria del alumno entre turnos.
+// Los modelos actuales (gpt-5.x) tienen ventana amplia; 16000 mantiene varios turnos
+// de conversación con holgura para la respuesta.
+const defaultMaxHistoryTokens = 16000
 
 // estimateTokens approximates the token count of a string using the common
 // heuristic of ~4 characters per token. It is intentionally cheap and rough —
