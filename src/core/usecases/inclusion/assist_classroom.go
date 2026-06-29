@@ -168,6 +168,20 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	// chips (nombre/título), nunca como id crudo.
 	cleaned := stripAdaptationBlock(resp.Content)
 
+	// Guardrail duro de off-ramp: si el modelo cruzó el límite clínico (afirmar un
+	// diagnóstico o dar una indicación clínica), reemplazamos la respuesta por una
+	// derivación segura y descartamos la adaptación y las fuentes citadas (que ya no
+	// aparecen en el texto). El prompt es la primera línea; esto es la red. Ver §5.
+	if tripped, reason := crossedClinicalLine(cleaned); tripped {
+		slog.WarnContext(ctx, "chat.guardrail_tripped",
+			"reason", reason,
+			observability.Text("original_response", cleaned),
+		)
+		cleaned = offRampMessage
+		adaptation = nil
+		referenced = nil
+	}
+
 	convID, persistErr := uc.persistTurn(ctx, req, cleaned, studentID, deviceID, adaptation)
 	if persistErr != nil {
 		slog.WarnContext(ctx, "assist_classroom: persist turn failed", "error", persistErr, "user_id", req.UserID, "mode", req.Mode)
