@@ -63,6 +63,9 @@ type AssistClassroomResponse struct {
 	RecommendedDevice *int64               `json:"recommended_device,omitempty"`
 	Adaptation        *GeneratedAdaptation `json:"adaptation,omitempty"`
 	ReferencedContent []ContentRef         `json:"referenced_content,omitempty"`
+	// Questions son las preguntas estructuradas (cajitas) que Alizia le hace al docente
+	// este turno (marker [QUESTIONS_JSON]). El FE las renderiza como un Sheet con stepper.
+	Questions []Question `json:"questions,omitempty"`
 }
 
 type AssistClassroom interface {
@@ -238,6 +241,9 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	studentID := extractStudentID(resp.Content)
 	deviceID := extractDeviceID(resp.Content)
 	adaptation := extractAdaptationJSON(resp.Content)
+	// Preguntas estructuradas (cajitas) que Alizia emite este turno. El bloque se quita
+	// del texto visible en stripAdaptationBlock; el FE las renderiza desde este campo.
+	questions := extractQuestions(resp.Content)
 	// Contenido pedagógico citado este turno: el FE lo usa para resolver los chips
 	// [CONTENT_ID:X]. Sale del back (lo que trajo el RAG), no de ids del modelo.
 	referenced := contentRefsFromTrace(trace)
@@ -258,6 +264,7 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 		cleaned = offRampMessage
 		adaptation = nil
 		referenced = nil
+		questions = nil
 	}
 
 	convID, persistErr := uc.persistTurn(ctx, req, cleaned, studentID, deviceID, adaptation)
@@ -281,6 +288,7 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 		"identified_student", idStudent,
 		"recommended_device", idDevice,
 		"has_adaptation", adaptation != nil,
+		"questions_count", len(questions),
 		"referenced_count", len(referenced),
 		"total_tokens", totalTokens,
 		observability.Text("response", cleaned),
@@ -293,6 +301,7 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 		RecommendedDevice: deviceID,
 		Adaptation:        adaptation,
 		ReferencedContent: referenced,
+		Questions:         questions,
 	}, nil
 }
 

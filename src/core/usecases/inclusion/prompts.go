@@ -20,6 +20,26 @@ type GeneratedAdaptation struct {
 	Steps       []entities.AdaptationStep `json:"steps,omitempty"`
 }
 
+// Question es una pregunta estructurada que Alizia le hace al docente para que el FE
+// la renderice como "cajita" interactiva (no como texto plano). Tres tipos:
+//   - "open":     texto libre, sin opciones (ej.: "¿Qué edad tiene?").
+//   - "single":   el docente elige UNA opción.
+//   - "multiple": el docente elige varias.
+//
+// En "single"/"multiple" el FE SIEMPRE ofrece además un input de texto libre ("Otro"),
+// así que las opciones son una ayuda, no una jaula: no hace falta incluir "Otro" en Options.
+type Question struct {
+	ID      string   `json:"id"`
+	Text    string   `json:"text"`
+	Type    string   `json:"type"`
+	Options []string `json:"options,omitempty"`
+}
+
+// questionSet es el contenedor que viaja dentro del marker [QUESTIONS_JSON:{...}].
+type questionSet struct {
+	Questions []Question `json:"questions"`
+}
+
 // aliziaPersona es la identidad ÚNICA (capa 1, cacheable) que encabeza todo system
 // prompt. Una sola voz: misma identidad, tono y límites recomiende, asista o guíe.
 // Lo que cambia por momento (cadencia, repregunta, RAG) es comportamiento, no esto.
@@ -60,9 +80,9 @@ const repreguntaGate = `ANTES DE PROPONER:
 
 // preguntasGate fija CÓMO repregunta Alizia cuando falta contexto: pocas preguntas
 // estratégicas, de lo general a lo fino, en tres formatos (abierta / opción única /
-// opción múltiple) con "Otro" siempre disponible. Criterio definido con pedagogía
-// (Mercedes). La tool real de preguntas (cajitas en el FE) llega en otra ronda; por
-// ahora Alizia las emite como markdown. Ver alizia-comportamiento-flujo-v2.md §2.
+// opción múltiple). Las preguntas se emiten como bloque estructurado [QUESTIONS_JSON]
+// que el FE renderiza como "cajitas" (el formato exacto vive en los builders). Criterio
+// definido con pedagogía (Mercedes). Ver alizia-comportamiento-flujo-v2.md §2.
 const preguntasGate = `CÓMO PREGUNTÁS (cuando falta contexto):
 - En tu PRIMER mensaje sobre un alumno o situación nueva, hacé las 2-3 preguntas base en el MISMO turno (no de a una): la edad o grado, en qué momento se le dificulta más y qué tipo de conducta o dificultad observás. Son las que más afinan la propuesta y van "de atrás para adelante" (de lo general a lo fino).
 - Esa batería va UNA sola vez. Si ya venís conversando sobre el mismo alumno, NO la repitas ni preguntes algo que ya está en la conversación: seguí desde lo que ya sabés. Cuando profundices, hacé preguntas NUEVAS y más finas (ej.: si ya sabés que es de organización, preguntá en qué situaciones puntuales se desorganiza), no las mismas de la apertura.
@@ -70,8 +90,8 @@ const preguntasGate = `CÓMO PREGUNTÁS (cuando falta contexto):
   - Abierta: cuando no tiene sentido ofrecer opciones (ej.: "¿Qué edad o grado tiene?" -> que lo escriba; no inventes opciones).
   - De opción única: el docente elige UNA.
   - De opción múltiple: el docente elige TODAS las que apliquen.
-- En las preguntas con opciones ofrecé HASTA 4 opciones y SIEMPRE sumá "Otro" para que el docente escriba lo suyo: tus opciones son una ayuda, no una jaula.
-- Las opciones tienen que ser específicas y pertinentes a lo que el docente contó (que "le lean la mente"), no obvias ni de relleno. Si no manejás el tema de fondo, buscá primero (ver FUNDAMENTOS) para que las opciones sean buenas.
+- En las preguntas con opciones ofrecé HASTA 4 opciones, específicas y pertinentes a lo que el docente contó (que "le lean la mente"), no obvias ni de relleno. NO agregues una opción "Otro": el docente SIEMPRE puede escribir su propia respuesta a mano (la interfaz se la ofrece sola), así que tus opciones son una ayuda, no una jaula. Si no manejás el tema de fondo, buscá primero (ver FUNDAMENTOS) para que las opciones sean buenas.
+- Emití las preguntas como BLOQUE ESTRUCTURADO (ver PREGUNTAS AL DOCENTE, formato al final), no como texto: el cuerpo del mensaje es solo una intro breve y las cajitas las arma el bloque.
 - No repreguntes algo que el docente ya respondió, aunque lo haya dicho en una sola línea (ej.: "8 años, todas, activa" ya contesta edad, momento y tipo): tomalo y avanzá a proponer.
 `
 
@@ -114,6 +134,19 @@ const alumnoFlow = `CUANDO EL DOCENTE TE TRAE UN ALUMNO:
   2. Llamá create_student con name + classroom_id (+ la barrera observable como difficulties). Es idempotente: si ya existía, te devuelve el alumno sin duplicar.
 - Nunca llames create_student sin confirmación explícita, ni para un alumno que ya reconociste. Con el id que devuelve, usá [STUDENT_ID:X] y enlazá la adaptación a ese alumno.
 `
+
+// writeQuestionsFormat imprime el contrato del bloque estructurado de preguntas
+// [QUESTIONS_JSON:{...}], que el FE renderiza como "cajitas" interactivas (stepper
+// "X de N"). El docente responde todas juntas y vuelven como un solo mensaje.
+func writeQuestionsFormat(b *strings.Builder) {
+	b.WriteString("\nPREGUNTAS AL DOCENTE (bloque estructurado):\n")
+	b.WriteString("- Cuando repreguntes (ver CÓMO PREGUNTÁS), NO escribas las preguntas como texto ni como lista: emitilas como un bloque estructurado al final del mensaje. El cuerpo del mensaje es solo tu intro breve (1-2 oraciones, ej.: \"Para ayudarte con María, necesito entender un poco más:\").\n")
+	b.WriteString("- Formato exacto, al final del mensaje:\n")
+	b.WriteString("[QUESTIONS_JSON:{\"questions\":[{\"id\":\"edad\",\"text\":\"¿Qué edad o grado tiene?\",\"type\":\"open\"},{\"id\":\"momento\",\"text\":\"¿En qué momento se le dificulta más?\",\"type\":\"single\",\"options\":[\"Trabajo en autonomía\",\"Trabajo grupal\",\"Presentar la actividad\"]},{\"id\":\"dificultad\",\"text\":\"¿Qué tipo de dificultad observás?\",\"type\":\"multiple\",\"options\":[\"opción 1\",\"opción 2\"]}]}]\n")
+	b.WriteString("- type: \"open\" (texto libre, sin opciones), \"single\" (elige UNA), \"multiple\" (elige varias). id = clave corta y estable por pregunta.\n")
+	b.WriteString("- En \"single\"/\"multiple\" poné HASTA 4 opciones; NO incluyas \"Otro\" (el docente siempre puede escribir su respuesta, la interfaz se lo ofrece). En \"open\" no pongas opciones.\n")
+	b.WriteString("- Emití el bloque SOLO cuando estés repreguntando. No lo mezcles con una propuesta ni con el bloque ADAPTATION_JSON en el mismo turno.\n")
+}
 
 // writeDeviceCatalog imprime el catálogo de dispositivos en formato estable.
 func writeDeviceCatalog(b *strings.Builder, devices []entities.Device, withDetail bool) {
@@ -433,6 +466,8 @@ func buildAssistSystemPrompt(devices []entities.Device, students []entities.Stud
 	b.WriteString("DISPOSITIVOS DISPONIBLES:\n")
 	writeDeviceCatalog(&b, devices, false)
 
+	writeQuestionsFormat(&b)
+
 	b.WriteString("\nGUARDAR COMO RECURSO (bloque estructurado):\n")
 	b.WriteString("- Cuando propongas una adaptación concreta, ofrecé guardarla y preguntá si quiere (ej. \"¿Querés que la guarde como recurso?\"). NO incluyas el bloque en ese turno.\n")
 	b.WriteString("- Incluí el BLOQUE solo en el turno POSTERIOR, después de que el docente confirme que sí. Nunca en el primer mensaje, ni junto con la pregunta de confirmación, ni en respuestas a consultas o preguntas de aclaración.\n")
@@ -488,6 +523,8 @@ func buildGuidedAssistPrompt(devices []entities.Device, students []entities.Stud
 	b.WriteString("DISPOSITIVOS DISPONIBLES:\n")
 	writeDeviceCatalog(&b, devices, false)
 
+	writeQuestionsFormat(&b)
+
 	b.WriteString("\nCuando generes la adaptación final, incluí [STUDENT_ID:X], [DEVICE_ID:X] si aplica, y:\n")
 	b.WriteString("[ADAPTATION_JSON:{\"title\":\"título\",\"type\":\"tipo\",\"strategy\":\"resumen\",\"ramp_id\":N,\"device_ids\":[1],\"device_names\":[\"nombre\"],\"steps\":[{\"orden\":1,\"texto\":\"primer paso\"}]}]\n")
 	b.WriteString("ramp_id = categoría/necesidad. steps = el PASO A PASO de la guía (lo más importante del recurso). Tipos válidos: actividad_adaptada, material_nuevo, estrategia_aula, situacion_emergente. Sin material físico, usá estrategia_aula con device_ids vacío.\n")
@@ -509,6 +546,7 @@ No incluyas marcadores [STUDENT_ID]/[DEVICE_ID] ni IDs crudos.`
 var deviceIDRegex = regexp.MustCompile(`\[DEVICE_ID:(\d+)\]`)
 var studentIDRegex = regexp.MustCompile(`\[STUDENT_ID:(\d+)\]`)
 var adaptationJSONRegex = regexp.MustCompile(`\[ADAPTATION_JSON:(\{.+\})\]`)
+var questionsJSONRegex = regexp.MustCompile(`\[QUESTIONS_JSON:(\{.+\})\]`)
 
 func extractDeviceID(content string) *int64 {
 	matches := deviceIDRegex.FindStringSubmatch(content)
@@ -546,6 +584,39 @@ func extractAdaptationJSON(content string) *GeneratedAdaptation {
 	return &adaptation
 }
 
+// validQuestionTypes son los tipos que el FE sabe renderizar. Una pregunta con un
+// tipo desconocido se descarta para no romper el render de las cajitas.
+var validQuestionTypes = map[string]bool{"open": true, "single": true, "multiple": true}
+
+// extractQuestions saca las preguntas estructuradas del marker [QUESTIONS_JSON:{...}].
+// Devuelve nil si no hay marker, si el JSON es inválido o si no queda ninguna pregunta
+// válida tras filtrar (tipo desconocido o sin texto). Las de opción sin opciones se
+// dejan pasar: el FE igual ofrece el input de texto libre.
+func extractQuestions(content string) []Question {
+	matches := questionsJSONRegex.FindStringSubmatch(content)
+	if len(matches) < 2 {
+		return nil
+	}
+	var set questionSet
+	if err := json.Unmarshal([]byte(matches[1]), &set); err != nil {
+		return nil
+	}
+	out := make([]Question, 0, len(set.Questions))
+	for _, q := range set.Questions {
+		if q.Text == "" || !validQuestionTypes[q.Type] {
+			continue
+		}
+		if q.Type == "open" {
+			q.Options = nil
+		}
+		out = append(out, q)
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
 var (
 	multiSpaceRegex       = regexp.MustCompile(`[ \t]{2,}`)
 	spaceBeforePunctRegex = regexp.MustCompile(`[ \t]+([,.;:!?)])`)
@@ -560,17 +631,19 @@ func stripInternalMarkers(content string) string {
 	content = studentIDRegex.ReplaceAllString(content, "")
 	content = deviceIDRegex.ReplaceAllString(content, "")
 	content = adaptationJSONRegex.ReplaceAllString(content, "")
+	content = questionsJSONRegex.ReplaceAllString(content, "")
 	content = multiSpaceRegex.ReplaceAllString(content, " ")
 	content = spaceBeforePunctRegex.ReplaceAllString(content, "$1")
 	return strings.TrimSpace(content)
 }
 
-// stripAdaptationBlock quita SOLO el bloque [ADAPTATION_JSON:{...}] (ya extraído a un
-// campo estructurado). Lo usa el assist: a diferencia de stripInternalMarkers, deja
-// pasar [STUDENT_ID:X]/[DEVICE_ID:X]/[CONTENT_ID:X] porque el FE los renderiza como
-// chips (nombre del alumno, material o título del contenido), nunca como id crudo.
+// stripAdaptationBlock quita los bloques estructurados [ADAPTATION_JSON:{...}] y
+// [QUESTIONS_JSON:{...}] (ya extraídos a campos propios). Lo usa el assist: a diferencia
+// de stripInternalMarkers, deja pasar [STUDENT_ID:X]/[DEVICE_ID:X]/[CONTENT_ID:X] porque
+// el FE los renderiza como chips (nombre del alumno, material o título), nunca como id crudo.
 func stripAdaptationBlock(content string) string {
 	content = adaptationJSONRegex.ReplaceAllString(content, "")
+	content = questionsJSONRegex.ReplaceAllString(content, "")
 	content = multiSpaceRegex.ReplaceAllString(content, " ")
 	content = spaceBeforePunctRegex.ReplaceAllString(content, "$1")
 	return strings.TrimSpace(content)
