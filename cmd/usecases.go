@@ -86,8 +86,8 @@ func NewUseCases(repos *Repositories, cfg *config.Config) *UseCases {
 			PromptCtx:     buildPromptContext,
 			Agentic:       cfg.AIAgenticEnabled,
 		}),
-		OpenSession:        inclusionuc.NewOpenSession(repos.Students, repos.ConversationSummaries),
-		BuildPromptContext: buildPromptContext,
+		OpenSession:              inclusionuc.NewOpenSession(repos.Students, repos.ConversationSummaries),
+		BuildPromptContext:       buildPromptContext,
 		SearchPedagogicalContent: inclusionuc.NewSearchPedagogicalContent(repos.PedagogicalContent),
 		HybridSearchContent:      inclusionuc.NewHybridSearchContent(repos.Embedder, repos.RAGSearch),
 

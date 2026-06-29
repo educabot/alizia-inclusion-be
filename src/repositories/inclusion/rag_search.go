@@ -147,7 +147,9 @@ func webSearchQuery(terms []string) string {
 
 // hybridSearchSQL: ranking híbrido sobre rag_chunks/rag_resources.
 // Parámetros: $1=content_query $2=summary_query $3=terms $4=resource_id
-//             $5=candidate_limit $6=result_limit $7=result_offset
+//
+//	$5=candidate_limit $6=result_limit $7=result_offset
+//
 // El vector se inyecta inline vía strings.ReplaceAll(__QVEC__) antes de ejecutar.
 const hybridSearchSQL = `
 WITH params AS (
