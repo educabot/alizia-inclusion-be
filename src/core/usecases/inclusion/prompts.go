@@ -69,6 +69,20 @@ const fundamentosRAG = `FUNDAMENTOS (material pedagógico real):
 - Si te apoyás en material del corpus, citá la fuente con [CONTENT_ID:X], usando el id del recurso (resource_id) que devolvió la búsqueda. El sistema lo convierte en un chip; no menciones el id de otra forma.
 `
 
+// alumnoFlow guía el Caso 2 ("tengo un alumno con tal barrera/diagnóstico"):
+// reconocer primero, traer contexto si ya lo conoce, y ofrecer crearlo sin forzar
+// si no. La creación real la hace la tool create_student, SOLO tras confirmación.
+// Depende de las tools agénticas: se inyecta únicamente cuando agentic=true.
+const alumnoFlow = `CUANDO EL DOCENTE TE TRAE UN ALUMNO:
+- Primero fijate si YA lo conocés: mirá la lista de "alumnos que conocés" (más abajo). Si no aparece pero el docente da un nombre, buscalo con find_student_by_name antes de asumir que es nuevo. Si lo encontrás, traé su contexto con get_student (y get_student_history / get_past_adaptations) ANTES de proponer, para construir sobre lo que ya se sabe y no repetir lo probado.
+- Si no lo conocés y falta la barrera observable concreta, hacé UNA pregunta para entenderla (no pidas el diagnóstico).
+- No exijas el nombre para ayudar: podés proponer igual. Pero ofrecelo sin presionar, ej.: "si me decís el nombre y el aula lo creamos y queda guardado para la próxima". Podés sugerirlo también más tarde.
+- SOLO cuando el docente confirme que sí, dalo de alta:
+  1. Resolvé el aula: pedila en formato "3ro A" / "tercero B" si no la sabés. Buscala con list_classrooms; si no existe, creala con create_classroom (pasá el grado tal como lo dijo el docente) y usá el id que devuelve.
+  2. Llamá create_student con name + classroom_id (+ la barrera observable como difficulties). Es idempotente: si ya existía, te devuelve el alumno sin duplicar.
+- Nunca llames create_student sin confirmación explícita, ni para un alumno que ya reconociste. Con el id que devuelve, usá [STUDENT_ID:X] y enlazá la adaptación a ese alumno.
+`
+
 // writeDeviceCatalog imprime el catálogo de dispositivos en formato estable.
 func writeDeviceCatalog(b *strings.Builder, devices []entities.Device, withDetail bool) {
 	for i := range devices {
@@ -152,19 +166,34 @@ func buildRecommendUserPrompt(student *entities.Student, req RecommendDeviceRequ
 	return b.String()
 }
 
-// writeClassroomStudents imprime los alumnos del aula con sus dificultades.
-func writeClassroomStudents(b *strings.Builder, students []entities.Student) {
+// maxKnownStudentsInPrompt acota cuántos alumnos se listan en el prompt. Si el
+// docente conoce más, la lista se trunca y se le indica usar find_student_by_name.
+const maxKnownStudentsInPrompt = 60
+
+// writeKnownStudents imprime los alumnos que el docente conoce (de toda la org, no
+// solo de un aula) con sus dificultades, hasta un tope. Si se supera, nota de que
+// use find_student_by_name para encontrar al resto.
+func writeKnownStudents(b *strings.Builder, students []entities.Student) {
 	if len(students) == 0 {
 		return
 	}
-	b.WriteString("ALUMNOS DEL AULA:\n")
-	for i := range students {
-		s := &students[i]
+	b.WriteString("ALUMNOS QUE CONOCÉS:\n")
+	shown := students
+	truncated := false
+	if len(shown) > maxKnownStudentsInPrompt {
+		shown = shown[:maxKnownStudentsInPrompt]
+		truncated = true
+	}
+	for i := range shown {
+		s := &shown[i]
 		fmt.Fprintf(b, "- [ID:%d] %s", s.ID, s.Name)
-		if s.Profile != nil {
+		if s.Profile != nil && len(s.Profile.Difficulties) > 0 {
 			fmt.Fprintf(b, " — Dificultades: %s", strings.Join(s.Profile.Difficulties, ", "))
 		}
 		b.WriteString("\n")
+	}
+	if truncated {
+		fmt.Fprintf(b, "(y más; si no ves al alumno acá, buscalo con find_student_by_name)\n")
 	}
 	b.WriteString("\n")
 }
@@ -188,11 +217,13 @@ func buildAssistSystemPrompt(devices []entities.Device, students []entities.Stud
 	b.WriteString("\n")
 
 	if agentic {
+		b.WriteString(alumnoFlow)
+		b.WriteString("\n")
 		b.WriteString(fundamentosRAG)
 		b.WriteString("\n")
 	}
 
-	writeClassroomStudents(&b, students)
+	writeKnownStudents(&b, students)
 
 	b.WriteString("DISPOSITIVOS DISPONIBLES:\n")
 	writeDeviceCatalog(&b, devices, false)
@@ -227,11 +258,13 @@ func buildGuidedAssistPrompt(devices []entities.Device, students []entities.Stud
 	b.WriteString("\n")
 
 	if agentic {
+		b.WriteString(alumnoFlow)
+		b.WriteString("\n")
 		b.WriteString(fundamentosRAG)
 		b.WriteString("\n")
 	}
 
-	writeClassroomStudents(&b, students)
+	writeKnownStudents(&b, students)
 
 	b.WriteString("DISPOSITIVOS DISPONIBLES:\n")
 	writeDeviceCatalog(&b, devices, false)

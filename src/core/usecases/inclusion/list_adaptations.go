@@ -13,6 +13,7 @@ import (
 type ListAdaptationsRequest struct {
 	OrgID        uuid.UUID
 	StudentID    *int64
+	TeacherID    *int64
 	CreatedAfter *time.Time
 }
 
@@ -39,5 +40,10 @@ func (uc *listAdaptationsImpl) Execute(ctx context.Context, req ListAdaptationsR
 	if err := req.Validate(); err != nil {
 		return nil, err
 	}
-	return uc.adaptations.List(ctx, req.OrgID, req.StudentID, req.CreatedAfter)
+	return uc.adaptations.List(ctx, providers.AdaptationFilter{
+		OrgID:        req.OrgID,
+		StudentID:    req.StudentID,
+		TeacherID:    req.TeacherID,
+		CreatedAfter: req.CreatedAfter,
+	})
 }

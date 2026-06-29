@@ -13,8 +13,8 @@ type MockStudentNoteProvider struct {
 	mock.Mock
 }
 
-func (m *MockStudentNoteProvider) ListByStudent(ctx context.Context, orgID uuid.UUID, studentID int64) ([]entities.StudentNote, error) {
-	args := m.Called(ctx, orgID, studentID)
+func (m *MockStudentNoteProvider) ListByStudent(ctx context.Context, orgID uuid.UUID, studentID, userID int64) ([]entities.StudentNote, error) {
+	args := m.Called(ctx, orgID, studentID, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

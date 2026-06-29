@@ -31,6 +31,7 @@ func TestCreateStudentNote_CreatesWithDefaults(t *testing.T) {
 	result, err := inclusion.NewCreateStudentNote(notes).Execute(ctx, inclusion.CreateStudentNoteRequest{
 		OrgID:     testutil.TestOrgID,
 		StudentID: 5,
+		UserID:    7,
 		Content:   "le tiembla la mano al escribir",
 	})
 
@@ -39,6 +40,7 @@ func TestCreateStudentNote_CreatesWithDefaults(t *testing.T) {
 	assert.Equal(t, "seguimiento", captured.Type) // default
 	assert.True(t, captured.Internal)             // default
 	assert.Equal(t, int64(5), captured.StudentID)
+	assert.Equal(t, int64(7), captured.UserID) // dueño de la nota
 	notes.AssertExpectations(t)
 }
 
@@ -68,11 +70,12 @@ func TestListStudentNotes_ReturnsNotes(t *testing.T) {
 	notes := new(mockproviders.MockStudentNoteProvider)
 	ctx := context.Background()
 	want := []entities.StudentNote{{ID: 1, StudentID: 5, Content: "n1"}}
-	notes.On("ListByStudent", ctx, testutil.TestOrgID, int64(5)).Return(want, nil)
+	notes.On("ListByStudent", ctx, testutil.TestOrgID, int64(5), int64(7)).Return(want, nil)
 
 	got, err := inclusion.NewListStudentNotes(notes).Execute(ctx, inclusion.ListStudentNotesRequest{
 		OrgID:     testutil.TestOrgID,
 		StudentID: 5,
+		UserID:    7,
 	})
 	require.NoError(t, err)
 	assert.Equal(t, want, got)

@@ -20,6 +20,7 @@ var validNoteTypes = map[string]struct{}{
 type CreateStudentNoteRequest struct {
 	OrgID     uuid.UUID
 	StudentID int64
+	UserID    int64
 	Content   string
 	Type      string
 	// Internal controla si la nota es visible en el front. Las notas internas
@@ -33,6 +34,9 @@ func (r CreateStudentNoteRequest) Validate() error {
 	}
 	if r.StudentID <= 0 {
 		return errStudentIDRequired
+	}
+	if r.UserID <= 0 {
+		return errUserIDRequired
 	}
 	if r.Content == "" {
 		return errContentRequired
@@ -74,6 +78,7 @@ func (uc *createStudentNoteImpl) Execute(ctx context.Context, req CreateStudentN
 	note := &entities.StudentNote{
 		OrganizationID: req.OrgID,
 		StudentID:      req.StudentID,
+		UserID:         req.UserID,
 		Content:        req.Content,
 		Type:           noteType,
 		Internal:       internal,

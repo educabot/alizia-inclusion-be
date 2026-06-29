@@ -14,10 +14,13 @@ type StudentNote struct {
 	ID             int64     `json:"id" gorm:"primaryKey"`
 	StudentID      int64     `json:"student_id"`
 	OrganizationID uuid.UUID `json:"organization_id"`
-	Content        string    `json:"content"`
-	Type           string    `json:"type" gorm:"default:seguimiento"`
-	Internal       bool      `json:"internal" gorm:"default:true"`
-	CreatedAt      time.Time `json:"created_at"`
+	// UserID es el docente dueño de la nota: las notas son privadas, cada docente
+	// ve solo las suyas. Las filas legacy (user_id NULL) quedan invisibles.
+	UserID    int64     `json:"user_id"`
+	Content   string    `json:"content"`
+	Type      string    `json:"type" gorm:"default:seguimiento"`
+	Internal  bool      `json:"internal" gorm:"default:true"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 func (StudentNote) TableName() string {

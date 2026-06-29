@@ -12,6 +12,7 @@ import (
 type ListStudentNotesRequest struct {
 	OrgID     uuid.UUID
 	StudentID int64
+	UserID    int64
 }
 
 func (r ListStudentNotesRequest) Validate() error {
@@ -20,6 +21,9 @@ func (r ListStudentNotesRequest) Validate() error {
 	}
 	if r.StudentID <= 0 {
 		return errStudentIDRequired
+	}
+	if r.UserID <= 0 {
+		return errUserIDRequired
 	}
 	return nil
 }
@@ -40,5 +44,5 @@ func (uc *listStudentNotesImpl) Execute(ctx context.Context, req ListStudentNote
 	if err := req.Validate(); err != nil {
 		return nil, err
 	}
-	return uc.notes.ListByStudent(ctx, req.OrgID, req.StudentID)
+	return uc.notes.ListByStudent(ctx, req.OrgID, req.StudentID, req.UserID)
 }
