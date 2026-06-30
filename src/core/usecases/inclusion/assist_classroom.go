@@ -257,7 +257,7 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 		userID:      req.UserID,
 	}
 
-	resp, trace, err := runAgenticChat(ctx, uc.deps.AI, messages, tools, dispatcher, req.OrgID, maxAgenticIterations)
+	resp, trace, err := runAgenticChat(ctx, uc.deps.AI, messages, tools, dispatcher, req.OrgID, maxAgenticIterations, true)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", providers.ErrServiceUnavailable, err)
 	}
@@ -413,8 +413,14 @@ func (uc *assistClassroomImpl) persistAdaptation(ctx context.Context, req Assist
 		return
 	}
 
-	// StudentID: el [STUDENT_ID:X] del texto manda; si no, el alumno foco del request.
-	sid := studentID
+	// StudentID: prioridad al student_id del propio recurso (lo emite el modelo en el
+	// ADAPTATION_JSON o lo copió el marcador [STUDENT_ID:X]); luego el marcador del texto;
+	// y por último el alumno foco del request. Permite rellenar el alumno aunque el primer
+	// guardado haya sido sin él (se crea un turno después).
+	sid := gen.StudentID
+	if sid == nil {
+		sid = studentID
+	}
 	if sid == nil {
 		sid = req.StudentID
 	}
@@ -433,6 +439,9 @@ func (uc *assistClassroomImpl) persistAdaptation(ctx context.Context, req Assist
 			Steps:              &steps,
 			DeviceIDs:          &deviceIDs,
 			RampID:             gen.RampID,
+			// Backfill del alumno: si ya lo conocemos (sid != nil) lo rellenamos aunque el
+			// recurso se haya creado sin alumno. Si sid == nil, Update no lo toca (no pisa).
+			StudentID: sid,
 			// Status NO se toca: si el docente ya lo marcó (probado/funcionó), se conserva.
 		}
 		if gen.Type != "" {

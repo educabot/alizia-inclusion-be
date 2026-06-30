@@ -25,7 +25,7 @@ func TestRunAgenticChat_ReturnsPlainChatResponseWhenNoToolsProvided(t *testing.T
 		Return(&providers.ChatResponse{Content: "hola"}, nil)
 	msgs := []providers.ChatMessage{{Role: "user", Content: "hola"}}
 
-	resp, _, err := runAgenticChat(ctx, ai, msgs, nil, inclusionDispatcher{}, orgID, maxAgenticIterations)
+	resp, _, err := runAgenticChat(ctx, ai, msgs, nil, inclusionDispatcher{}, orgID, maxAgenticIterations, false)
 
 	require.NoError(t, err)
 	assert.Equal(t, "hola", resp.Content)
@@ -61,7 +61,7 @@ func TestRunAgenticChat_ExecutesToolThenReturnsTheFinalAnswer(t *testing.T) {
 	dispatcher := inclusionDispatcher{devices: devices}
 	msgs := []providers.ChatMessage{{Role: "user", Content: "que dispositivo uso?"}}
 
-	resp, _, err := runAgenticChat(ctx, ai, msgs, inclusionTools(), dispatcher, orgID, maxAgenticIterations)
+	resp, _, err := runAgenticChat(ctx, ai, msgs, inclusionTools(), dispatcher, orgID, maxAgenticIterations, false)
 
 	require.NoError(t, err)
 	assert.Equal(t, "Te recomiendo el Timer Visual", resp.Content)
@@ -101,7 +101,7 @@ func TestRunAgenticChat_FeedsErrorResultBackWhenToolFails(t *testing.T) {
 	dispatcher := inclusionDispatcher{devices: devices}
 	msgs := []providers.ChatMessage{{Role: "user", Content: "dispositivos?"}}
 
-	resp, _, err := runAgenticChat(ctx, ai, msgs, inclusionTools(), dispatcher, orgID, maxAgenticIterations)
+	resp, _, err := runAgenticChat(ctx, ai, msgs, inclusionTools(), dispatcher, orgID, maxAgenticIterations, false)
 
 	require.NoError(t, err, "loop must not abort on tool error")
 	assert.Equal(t, "lo siento", resp.Content)
@@ -131,10 +131,66 @@ func TestRunAgenticChat_ForcesFinalAnswerWhenIterationBudgetExhausted(t *testing
 	dispatcher := inclusionDispatcher{devices: devices}
 	msgs := []providers.ChatMessage{{Role: "user", Content: "loop"}}
 
-	resp, _, err := runAgenticChat(ctx, ai, msgs, inclusionTools(), dispatcher, orgID, 2)
+	resp, _, err := runAgenticChat(ctx, ai, msgs, inclusionTools(), dispatcher, orgID, 2, false)
 
 	require.NoError(t, err)
 	assert.Equal(t, "respuesta forzada", resp.Content)
+	ai.AssertExpectations(t)
+}
+
+// Red de seguridad RAG: si el modelo propone (bloque [STEPS]/[ADAPTATION_JSON]) sin haber
+// llamado nunca a search_content_hibrido, el loop inyecta un mensaje que lo obliga a buscar
+// y vuelve a consultar. requireSearchBeforeProposal=true (como en AssistClassroom).
+func TestRunAgenticChat_ForcesSearchWhenProposalWithoutRAG(t *testing.T) {
+	ctx := context.Background()
+	orgID := uuid.New()
+	var secondTurnMsgs []providers.ChatMessage
+
+	ai := new(mockproviders.MockAIClient)
+	// 1) El modelo cierra con una propuesta sin haber buscado.
+	ai.On("ChatWithTools", ctx, mock.AnythingOfType("[]providers.ChatMessage"), mock.AnythingOfType("[]providers.ToolDefinition")).
+		Return(&providers.ChatResponse{Content: "Acá van los pasos:\n[STEPS]\n1. Anticipá la consigna.\n[/STEPS]"}, nil).Once()
+	// 2) Tras el empujón de la red de seguridad, vuelve a consultarse (capturamos los mensajes).
+	ai.On("ChatWithTools", ctx, mock.AnythingOfType("[]providers.ChatMessage"), mock.AnythingOfType("[]providers.ToolDefinition")).
+		Run(func(args mock.Arguments) {
+			msgs, ok := args.Get(1).([]providers.ChatMessage)
+			require.True(t, ok)
+			secondTurnMsgs = msgs
+		}).
+		Return(&providers.ChatResponse{Content: "ok"}, nil).Once()
+
+	msgs := []providers.ChatMessage{{Role: "user", Content: "se mueve mucho en clase"}}
+
+	resp, _, err := runAgenticChat(ctx, ai, msgs, inclusionTools(), inclusionDispatcher{}, orgID, maxAgenticIterations, true)
+
+	require.NoError(t, err)
+	assert.Equal(t, "ok", resp.Content)
+	var sawForce bool
+	for _, m := range secondTurnMsgs {
+		if m.Role == "user" && strings.Contains(m.Content, "search_content_hibrido") {
+			sawForce = true
+		}
+	}
+	assert.True(t, sawForce, "la red de seguridad debía inyectar un mensaje que fuerce la búsqueda")
+	ai.AssertExpectations(t)
+}
+
+// Sin requireSearchBeforeProposal, una propuesta sin búsqueda se devuelve tal cual (no se
+// fuerza nada): el mecanismo es opt-in por usecase.
+func TestRunAgenticChat_DoesNotForceSearchWhenFlagOff(t *testing.T) {
+	ctx := context.Background()
+	orgID := uuid.New()
+
+	ai := new(mockproviders.MockAIClient)
+	ai.On("ChatWithTools", ctx, mock.AnythingOfType("[]providers.ChatMessage"), mock.AnythingOfType("[]providers.ToolDefinition")).
+		Return(&providers.ChatResponse{Content: "[STEPS]\n1. x\n[/STEPS]"}, nil).Once()
+
+	msgs := []providers.ChatMessage{{Role: "user", Content: "dame pasos"}}
+
+	resp, _, err := runAgenticChat(ctx, ai, msgs, inclusionTools(), inclusionDispatcher{}, orgID, maxAgenticIterations, false)
+
+	require.NoError(t, err)
+	assert.Contains(t, resp.Content, "[STEPS]")
 	ai.AssertExpectations(t)
 }
 

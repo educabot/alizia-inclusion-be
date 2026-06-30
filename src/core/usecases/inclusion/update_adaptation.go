@@ -12,6 +12,7 @@ import (
 type UpdateAdaptationRequest struct {
 	OrgID               uuid.UUID
 	AdaptationID        int64
+	StudentID           *int64
 	DeviceID            *int64
 	DeviceIDs           *[]int64
 	Title               *string
@@ -68,6 +69,9 @@ func (uc *updateAdaptationImpl) Execute(ctx context.Context, req UpdateAdaptatio
 		return nil, err
 	}
 
+	if req.StudentID != nil {
+		existing.StudentID = req.StudentID
+	}
 	if req.DeviceID != nil {
 		existing.DeviceID = req.DeviceID
 	}

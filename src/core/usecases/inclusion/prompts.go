@@ -124,6 +124,7 @@ const propuestaFlow = `PROPONÉ, NO INTERROGUES:
 // preguntas y la integración es sin citar la fuente. Ver alizia-comportamiento-flujo-v2.md §4.
 const fundamentosRAG = `FUNDAMENTOS (material pedagógico real):
 - Ante cualquier pregunta sobre una discapacidad, barrera, estrategia pedagógica, marco o normativa, DEBÉS llamar search_content_hibrido ANTES de responder. No la uses para charla trivial.
+- REGLA DURA: NO propongas un paso a paso (bloque [STEPS]) ni guardes un recurso ([ADAPTATION_JSON]) sin haber llamado antes search_content_hibrido en esta conversación. Primero buscás, después proponés.
 - BUSCÁ ANTES DE PREGUNTAR para preguntar mejor: cuando el docente te trae un caso y NO dominás el tema de fondo (la barrera, la condición, el abordaje), tu PRIMER movimiento es llamar search_content_hibrido con lo que ya tenés (la barrera observable + edad), y recién con eso armás las preguntas finas y las opciones de las cajitas (que "le lean la mente" al docente). Es preferible una respuesta más lenta pero fundamentada que preguntas genéricas. Podés volver a buscar más tarde, antes de proponer, si la conversación se afinó.
 - Si el docente pide bibliografía, fuentes, evidencia, referencias o "en qué te basás", DEBÉS llamar search_content_hibrido y responder con lo que devuelva. Nunca contestes que buscaste si no llamaste la tool en este turno.
 - Pasá la pregunta del docente completa en semantic_question y las palabras clave en terms (temas + nombre de la discapacidad/barrera).

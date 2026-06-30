@@ -115,6 +115,17 @@ func evalCases() []evalCase {
 			message:     "Necesito actividades concretas de matemática para un nene de 8 con discalculia. ¿Qué recursos pedagógicos tenés?",
 			wantAnyTool: []string{"search_content", "search_content_hibrido", "get_content"},
 		},
+		{
+			// Caso "propone sin haber buscado": pedido de recomendación basado en una
+			// barrera observable. Aunque el modelo intente cerrar con un paso a paso sin
+			// buscar, la red de seguridad (requireSearchBeforeProposal en AssistClassroom)
+			// lo obliga a llamar search_content_hibrido antes de proponer.
+			name:        "recomendacion_fundamentada_rag",
+			students:    []entities.Student{maria},
+			devices:     devices,
+			message:     "Tengo una alumna de 8 que se mueve todo el tiempo y no logra sostener la tarea. ¿Cómo la ayudo a engancharse con la actividad? Dame algo concreto.",
+			wantAnyTool: []string{"search_content", "search_content_hibrido", "get_content"},
+		},
 	}
 }
 

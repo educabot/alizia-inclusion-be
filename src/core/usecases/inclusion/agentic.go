@@ -52,6 +52,7 @@ func runAgenticChat(
 	dispatcher toolDispatcher,
 	orgID uuid.UUID,
 	maxIters int,
+	requireSearchBeforeProposal bool,
 ) (*providers.ChatResponse, []toolInvocation, error) {
 	// No tools: collapse to a single plain Chat, identical to non-agentic behavior.
 	if len(tools) == 0 {
@@ -62,6 +63,9 @@ func runAgenticChat(
 	var totalUsage providers.TokenUsage
 	var sawUsage bool
 	var trace []toolInvocation
+	// forcedSearch evita forzar la búsqueda más de una vez (no loopear si el modelo
+	// se empecina en proponer sin buscar): la red de seguridad actúa una sola vez.
+	var forcedSearch bool
 
 	for range maxIters {
 		resp, err := ai.ChatWithTools(ctx, messages, tools)
@@ -76,6 +80,19 @@ func runAgenticChat(
 		}
 
 		if len(resp.ToolCalls) == 0 {
+			// Red de seguridad RAG: si el turno final emite una propuesta (paso a paso o
+			// recurso) pero en toda la conversación nunca se buscó en la bibliografía,
+			// forzamos una búsqueda y le pedimos reformular fundamentando. Mecanismo
+			// general (no regla por caso), una sola vez, dentro del presupuesto de iteraciones.
+			if requireSearchBeforeProposal && !forcedSearch && emitsProposal(resp.Content) && !traceHasTool(trace, "search_content_hibrido") {
+				forcedSearch = true
+				slog.WarnContext(ctx, "chat.rag_safety_net_triggered", "reason", "proposal_without_search")
+				messages = append(messages,
+					providers.ChatMessage{Role: "assistant", Content: resp.Content},
+					providers.ChatMessage{Role: "user", Content: "Antes de darme esta propuesta tenés que fundamentarla: llamá a search_content_hibrido con la barrera observable y la edad, y recién entonces reformulá integrando lo que encuentres. No propongas un paso a paso ni guardes el recurso sin haber buscado en la bibliografía."},
+				)
+				continue
+			}
 			if sawUsage {
 				resp.Usage = &totalUsage
 			}
@@ -133,6 +150,23 @@ func runAgenticChat(
 		final.Usage = &totalUsage
 	}
 	return final, trace, nil
+}
+
+// emitsProposal indica si el contenido visible es una propuesta accionable: un paso a
+// paso ([STEPS]) o un recurso a guardar ([ADAPTATION_JSON]). Es la señal de que el
+// modelo "cerró" con una recomendación y, por ende, debería haberse fundamentado.
+func emitsProposal(content string) bool {
+	return strings.Contains(content, "[STEPS]") || strings.Contains(content, "[ADAPTATION_JSON")
+}
+
+// traceHasTool indica si alguna tool con ese nombre se ejecutó (sin error) en el turno.
+func traceHasTool(trace []toolInvocation, name string) bool {
+	for i := range trace {
+		if trace[i].Name == name && !trace[i].Failed {
+			return true
+		}
+	}
+	return false
 }
 
 // inclusionTools are the domain tools Alizia can call to ground its answers in
