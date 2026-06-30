@@ -276,6 +276,7 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 		observability.Text("rag_queries", strings.Join(sources.RAGQueries, " | ")),
 	)
 
+	slog.InfoContext(ctx, "chat.raw_response", "content", resp.Content)
 	studentID := extractStudentID(resp.Content)
 	deviceID := extractDeviceID(resp.Content)
 	adaptation := extractAdaptationJSON(resp.Content)

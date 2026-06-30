@@ -158,6 +158,7 @@ func writeQuestionsFormat(b *strings.Builder) {
 	b.WriteString("- type: \"open\" (texto libre, sin opciones), \"single\" (elige UNA), \"multiple\" (elige varias). id = clave corta y estable por pregunta.\n")
 	b.WriteString("- En \"single\"/\"multiple\" poné HASTA 4 opciones; NO incluyas \"Otro\" (el docente siempre puede escribir su respuesta, la interfaz se lo ofrece). En \"open\" no pongas opciones.\n")
 	b.WriteString("- Emití el bloque SOLO cuando estés repreguntando. No lo mezcles con una propuesta ni con el bloque ADAPTATION_JSON en el mismo turno.\n")
+	b.WriteString("- IMPORTANTE: el mensaje termina exactamente en el `]` que cierra el bloque. No escribas nada después (ni `}`, ni texto, ni línea en blanco extra).\n")
 }
 
 // writeDeviceCatalog imprime el catálogo de dispositivos en formato estable.
@@ -590,8 +591,68 @@ No incluyas marcadores [STUDENT_ID]/[DEVICE_ID] ni IDs crudos.`
 
 var deviceIDRegex = regexp.MustCompile(`\[DEVICE_ID:(\d+)\]`)
 var studentIDRegex = regexp.MustCompile(`\[STUDENT_ID:(\d+)\]`)
-var adaptationJSONRegex = regexp.MustCompile(`\[ADAPTATION_JSON:(\{.+\})\]`)
-var questionsJSONRegex = regexp.MustCompile(`\[QUESTIONS_JSON:(\{.+\})\]`)
+
+// extractJSONMarker extrae el objeto JSON del bloque [PREFIX:{...}] usando conteo de
+// llaves en lugar de regex. Robusto ante modelos que omiten el `]` de cierre y ante
+// sub-markers como [DEVICE_ID:X] dentro de strings JSON que confunden a regex greedy.
+func extractJSONMarker(content, prefix string) string {
+	start := strings.Index(content, prefix)
+	if start == -1 {
+		return ""
+	}
+	pos := start + len(prefix)
+	if pos >= len(content) || content[pos] != '{' {
+		return ""
+	}
+	depth := 0
+	for i := pos; i < len(content); i++ {
+		switch content[i] {
+		case '{':
+			depth++
+		case '}':
+			depth--
+			if depth == 0 {
+				return content[pos : i+1]
+			}
+		}
+	}
+	return ""
+}
+
+// stripJSONMarker elimina el bloque [PREFIX:{...}] usando conteo de llaves.
+// Tolera que el modelo omita el `]` de cierre del marker, y consume también el `}`
+// espurio que a veces emite inmediatamente después del `]`.
+func stripJSONMarker(content, prefix string) string {
+	start := strings.Index(content, prefix)
+	if start == -1 {
+		return content
+	}
+	pos := start + len(prefix)
+	if pos >= len(content) || content[pos] != '{' {
+		return content[:start]
+	}
+	depth := 0
+	for i := pos; i < len(content); i++ {
+		switch content[i] {
+		case '{':
+			depth++
+		case '}':
+			depth--
+			if depth == 0 {
+				end := i + 1
+				if end < len(content) && content[end] == ']' {
+					end++
+					// Consume `}` espurio que el modelo emite justo después del `]`
+					if end < len(content) && content[end] == '}' {
+						end++
+					}
+				}
+				return content[:start] + content[end:]
+			}
+		}
+	}
+	return content[:start]
+}
 
 func extractDeviceID(content string) *int64 {
 	matches := deviceIDRegex.FindStringSubmatch(content)
@@ -618,12 +679,12 @@ func extractStudentID(content string) *int64 {
 }
 
 func extractAdaptationJSON(content string) *GeneratedAdaptation {
-	matches := adaptationJSONRegex.FindStringSubmatch(content)
-	if len(matches) < 2 {
+	raw := extractJSONMarker(content, "[ADAPTATION_JSON:")
+	if raw == "" {
 		return nil
 	}
 	var adaptation GeneratedAdaptation
-	if err := json.Unmarshal([]byte(matches[1]), &adaptation); err != nil {
+	if err := json.Unmarshal([]byte(raw), &adaptation); err != nil {
 		return nil
 	}
 	return &adaptation
@@ -638,12 +699,12 @@ var validQuestionTypes = map[string]bool{"open": true, "single": true, "multiple
 // válida tras filtrar (tipo desconocido o sin texto). Las de opción sin opciones se
 // dejan pasar: el FE igual ofrece el input de texto libre.
 func extractQuestions(content string) []Question {
-	matches := questionsJSONRegex.FindStringSubmatch(content)
-	if len(matches) < 2 {
+	raw := extractJSONMarker(content, "[QUESTIONS_JSON:")
+	if raw == "" {
 		return nil
 	}
 	var set questionSet
-	if err := json.Unmarshal([]byte(matches[1]), &set); err != nil {
+	if err := json.Unmarshal([]byte(raw), &set); err != nil {
 		return nil
 	}
 	out := make([]Question, 0, len(set.Questions))
@@ -702,8 +763,8 @@ func sanitizeVisibleText(content string) string {
 func stripInternalMarkers(content string) string {
 	content = studentIDRegex.ReplaceAllString(content, "")
 	content = deviceIDRegex.ReplaceAllString(content, "")
-	content = adaptationJSONRegex.ReplaceAllString(content, "")
-	content = questionsJSONRegex.ReplaceAllString(content, "")
+	content = stripJSONMarker(content, "[ADAPTATION_JSON:")
+	content = stripJSONMarker(content, "[QUESTIONS_JSON:")
 	content = multiSpaceRegex.ReplaceAllString(content, " ")
 	content = spaceBeforePunctRegex.ReplaceAllString(content, "$1")
 	return strings.TrimSpace(content)
@@ -714,8 +775,8 @@ func stripInternalMarkers(content string) string {
 // de stripInternalMarkers, deja pasar [STUDENT_ID:X]/[DEVICE_ID:X]/[CONTENT_ID:X] porque
 // el FE los renderiza como chips (nombre del alumno, material o título), nunca como id crudo.
 func stripAdaptationBlock(content string) string {
-	content = adaptationJSONRegex.ReplaceAllString(content, "")
-	content = questionsJSONRegex.ReplaceAllString(content, "")
+	content = stripJSONMarker(content, "[ADAPTATION_JSON:")
+	content = stripJSONMarker(content, "[QUESTIONS_JSON:")
 	content = multiSpaceRegex.ReplaceAllString(content, " ")
 	content = spaceBeforePunctRegex.ReplaceAllString(content, "$1")
 	return strings.TrimSpace(content)
