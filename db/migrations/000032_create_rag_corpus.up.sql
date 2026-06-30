@@ -1,4 +1,4 @@
--- 000024_create_rag_corpus.up.sql
+-- 000032_create_rag_corpus.up.sql
 -- Versiona el corpus RAG (rag_resources / rag_chunks) que YA EXISTE en producción y
 -- alimenta la búsqueda híbrida (tool search_content_hibrido + endpoint /search-content/hybrid).
 -- Idempotente (IF NOT EXISTS): no-op en prod, crea el esquema en dev/local.

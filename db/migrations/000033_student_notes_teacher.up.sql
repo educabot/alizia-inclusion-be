@@ -1,4 +1,4 @@
--- 000030_student_notes_teacher.up.sql
+-- 000033_student_notes_teacher.up.sql
 -- Notas privadas del docente: cada nota pasa a tener dueño (user_id). Al ver el
 -- perfil de un alumno, un docente solo ve SUS notas. Nullable: las filas legacy
 -- (sin dueño) quedan invisibles bajo el filtro por docente. Idempotente.
