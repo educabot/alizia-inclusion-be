@@ -99,6 +99,7 @@ type createAdaptationBody struct {
 	ActivityDescription  *string                  `json:"activity_description"`
 	AdaptationStrategy   *string                  `json:"adaptation_strategy"`
 	AdaptationType       string                   `json:"adaptation_type"`
+	Outcome              *string                  `json:"outcome"`
 	Notes                *string                  `json:"notes"`
 	Steps                entities.AdaptationSteps `json:"steps"`
 	RampID               *int64                   `json:"ramp_id"`
@@ -201,6 +202,7 @@ func (c *InclusionContainer) HandleCreateAdaptation(req web.Request) web.Respons
 		ActivityDescription:  body.ActivityDescription,
 		AdaptationStrategy:   body.AdaptationStrategy,
 		AdaptationType:       body.AdaptationType,
+		Outcome:              body.Outcome,
 		Notes:                body.Notes,
 		Steps:                body.Steps,
 		RampID:               body.RampID,

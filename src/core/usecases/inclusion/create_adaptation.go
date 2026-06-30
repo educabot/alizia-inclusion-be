@@ -20,6 +20,7 @@ type CreateAdaptationRequest struct {
 	ActivityDescription *string
 	AdaptationStrategy  *string
 	AdaptationType      string
+	Outcome             *string
 	Notes               *string
 	Steps               entities.AdaptationSteps
 	RampID              *int64
@@ -91,6 +92,7 @@ func (uc *createAdaptationImpl) Execute(ctx context.Context, req CreateAdaptatio
 		ActivityDescription:  req.ActivityDescription,
 		AdaptationStrategy:   req.AdaptationStrategy,
 		AdaptationType:       adaptationType,
+		Outcome:              req.Outcome,
 		Notes:                req.Notes,
 		Steps:                req.Steps,
 		RampID:               req.RampID,
