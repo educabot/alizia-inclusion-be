@@ -235,12 +235,12 @@ func (uc *buildPromptContextImpl) loadStudentDimension(ctx context.Context, req 
 	}
 	pc.PastAdaptations = adaptations
 
-	if student.ClassroomID > 0 {
-		classroom, err := uc.classrooms.Get(ctx, req.OrgID, student.ClassroomID)
+	if student.ClassroomID != nil && *student.ClassroomID > 0 {
+		classroom, err := uc.classrooms.Get(ctx, req.OrgID, *student.ClassroomID)
 		switch {
 		case err == nil:
 			pc.Classroom = classroom
-			peers, err := uc.students.ListByClassroom(ctx, req.OrgID, student.ClassroomID)
+			peers, err := uc.students.ListByClassroom(ctx, req.OrgID, *student.ClassroomID)
 			if err != nil {
 				return err
 			}

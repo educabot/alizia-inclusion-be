@@ -24,7 +24,7 @@ type studentProfileResponse struct {
 type studentWithProfileResponse struct {
 	ID          int64                   `json:"id"`
 	Name        string                  `json:"name"`
-	ClassroomID int64                   `json:"classroom_id"`
+	ClassroomID *int64                  `json:"classroom_id,omitempty"`
 	Profile     *studentProfileResponse `json:"profile,omitempty"`
 	CreatedAt   string                  `json:"created_at"`
 }

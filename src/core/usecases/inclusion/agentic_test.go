@@ -221,9 +221,10 @@ func TestInclusionDispatcher_CreateStudentCreatesInClassroomWithProfile(t *testi
 	students := new(mockproviders.MockStudentProvider)
 	profiles := new(mockproviders.MockStudentProfileProvider)
 
-	// El aula viene en los argumentos del modelo (classroom_id). Sin alumnos previos
-	// en el aula → no es duplicado → da de alta.
+	// Con aula: busca en esa aula (vacía) y luego entre los "sin aula" (vacío) → no es
+	// duplicado → da de alta con el aula.
 	students.On("ListByClassroom", ctx, orgID, int64(9)).Return([]entities.Student{}, nil)
+	students.On("List", ctx, orgID).Return([]entities.Student{}, nil)
 	students.On("Create", ctx, mock.AnythingOfType("*entities.Student")).
 		Return(nil).
 		Run(func(args mock.Arguments) {
@@ -244,7 +245,8 @@ func TestInclusionDispatcher_CreateStudentCreatesInClassroomWithProfile(t *testi
 	var got entities.Student
 	require.NoError(t, json.Unmarshal([]byte(result), &got))
 	assert.Equal(t, int64(42), got.ID)
-	assert.Equal(t, int64(9), got.ClassroomID)
+	require.NotNil(t, got.ClassroomID)
+	assert.Equal(t, int64(9), *got.ClassroomID)
 	assert.Equal(t, "Lucas Pérez", got.Name)
 	require.NotNil(t, got.Profile)
 	assert.Equal(t, []string{"le cuesta sostener la atención"}, []string(got.Profile.Difficulties))
@@ -252,15 +254,15 @@ func TestInclusionDispatcher_CreateStudentCreatesInClassroomWithProfile(t *testi
 	profiles.AssertExpectations(t)
 }
 
-// Idempotencia: si ya existe un alumno con el mismo nombre (normalizado) en el aula,
-// create_student devuelve el existente sin volver a crearlo.
+// Idempotencia dentro del aula (comportamiento de siempre): si ya existe un alumno con el
+// mismo nombre (normalizado) en ESA aula, create_student devuelve el existente sin recrearlo.
 func TestInclusionDispatcher_CreateStudentIsIdempotentWithinClassroom(t *testing.T) {
 	ctx := context.Background()
 	orgID := uuid.New()
 	students := new(mockproviders.MockStudentProvider)
 
 	students.On("ListByClassroom", ctx, orgID, int64(9)).
-		Return([]entities.Student{{ID: 7, Name: "Lucas Pérez", ClassroomID: 9}}, nil)
+		Return([]entities.Student{{ID: 7, Name: "Lucas Pérez", ClassroomID: int64Ptr(9)}}, nil)
 
 	d := inclusionDispatcher{students: students}
 
@@ -276,16 +278,70 @@ func TestInclusionDispatcher_CreateStudentIsIdempotentWithinClassroom(t *testing
 	students.AssertNotCalled(t, "Create", mock.Anything, mock.Anything)
 }
 
-func TestInclusionDispatcher_CreateStudentRequiresClassroom(t *testing.T) {
-	d := inclusionDispatcher{}
+// El aula es opcional: create_student sin classroom_id crea al alumno SIN aula (no
+// bloqueante). Idempotencia por nombre exacto global (usa List, no ListByClassroom).
+func TestInclusionDispatcher_CreateStudentWithoutClassroom(t *testing.T) {
+	ctx := context.Background()
+	orgID := uuid.New()
+	students := new(mockproviders.MockStudentProvider)
 
-	_, err := d.Dispatch(context.Background(), uuid.New(), providers.ToolCall{
+	// Búsqueda global por nombre: no existe → da de alta.
+	students.On("List", ctx, orgID).Return([]entities.Student{}, nil)
+	students.On("Create", ctx, mock.AnythingOfType("*entities.Student")).
+		Return(nil).
+		Run(func(args mock.Arguments) {
+			s, ok := args.Get(1).(*entities.Student)
+			require.True(t, ok)
+			s.ID = 43
+		})
+
+	d := inclusionDispatcher{students: students}
+
+	result, err := d.Dispatch(ctx, orgID, providers.ToolCall{
 		Name:      "create_student",
-		Arguments: `{"name":"Lucas"}`,
+		Arguments: `{"name":"Camila"}`,
 	})
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "aula")
+	require.NoError(t, err)
+	var got entities.Student
+	require.NoError(t, json.Unmarshal([]byte(result), &got))
+	assert.Equal(t, int64(43), got.ID)
+	assert.Nil(t, got.ClassroomID, "sin aula => ClassroomID nil")
+	students.AssertExpectations(t)
+}
+
+// "Asentar" el aula después: si el alumno existe SIN aula y ahora llega classroom_id,
+// create_student le fija el aula (Update) sin duplicarlo. El aula no estaba en el aula 9
+// (ListByClassroom vacío), pero sí entre los "sin aula" (List).
+func TestInclusionDispatcher_CreateStudentBackfillsClassroom(t *testing.T) {
+	ctx := context.Background()
+	orgID := uuid.New()
+	students := new(mockproviders.MockStudentProvider)
+
+	students.On("ListByClassroom", ctx, orgID, int64(9)).Return([]entities.Student{}, nil)
+	students.On("List", ctx, orgID).
+		Return([]entities.Student{{ID: 7, Name: "Camila", ClassroomID: nil}}, nil)
+	students.On("Update", ctx, mock.AnythingOfType("*entities.Student")).
+		Return(nil).
+		Run(func(args mock.Arguments) {
+			s, ok := args.Get(1).(*entities.Student)
+			require.True(t, ok)
+			require.NotNil(t, s.ClassroomID)
+			assert.Equal(t, int64(9), *s.ClassroomID)
+		})
+
+	d := inclusionDispatcher{students: students}
+
+	result, err := d.Dispatch(ctx, orgID, providers.ToolCall{
+		Name:      "create_student",
+		Arguments: `{"name":"Camila","classroom_id":9}`,
+	})
+
+	require.NoError(t, err)
+	var got entities.Student
+	require.NoError(t, json.Unmarshal([]byte(result), &got))
+	assert.Equal(t, int64(7), got.ID)
+	students.AssertNotCalled(t, "Create", mock.Anything, mock.Anything)
 }
 
 func TestInclusionDispatcher_CreateStudentRejectsEmptyName(t *testing.T) {
@@ -306,8 +362,8 @@ func TestInclusionDispatcher_FindStudentByNameMatchesNormalized(t *testing.T) {
 	orgID := uuid.New()
 	students := new(mockproviders.MockStudentProvider)
 	students.On("List", ctx, orgID).Return([]entities.Student{
-		{ID: 1, Name: "Lucas Pérez", ClassroomID: 9},
-		{ID: 2, Name: "Martina Gómez", ClassroomID: 9},
+		{ID: 1, Name: "Lucas Pérez", ClassroomID: int64Ptr(9)},
+		{ID: 2, Name: "Martina Gómez", ClassroomID: int64Ptr(9)},
 	}, nil)
 	d := inclusionDispatcher{students: students}
 

@@ -242,8 +242,9 @@ func Test_buildAssistSystemPrompt_ContainsRepreguntaGate(t *testing.T) {
 func Test_buildAssistSystemPrompt_ContainsFirstProposalAndWarmClose(t *testing.T) {
 	prompt := buildAssistSystemPrompt(nil, nil, nil, nil, false)
 
-	assert.Contains(t, prompt, "PROPONÉ, NO INTERROGUES")
-	assert.Contains(t, prompt, "PRIMERA propuesta concreta")
+	assert.Contains(t, prompt, "CADENCIA")
+	assert.Contains(t, prompt, "PRIMERA versión concreta")
+	// Cierre: invitación a seguir trabajando juntos, como pregunta (no una afirmación suelta).
 	assert.Contains(t, prompt, "¿Continuamos?")
 }
 
@@ -263,7 +264,8 @@ func Test_buildAssistSystemPrompt_AgenticInjectsFundamentos(t *testing.T) {
 	// search_content_hibrido solo existe en fundamentosRAG (agentic=true)
 	assert.NotContains(t, promptSinAgentic, "search_content_hibrido")
 	assert.Contains(t, promptConAgentic, "search_content_hibrido")
-	assert.Contains(t, promptConAgentic, "[CONTENT_ID:")
+	// Alizia NO cita fuentes: el prompt no debe instruir el marcador [CONTENT_ID:X].
+	assert.NotContains(t, promptConAgentic, "[CONTENT_ID:")
 	// Reforzamos buscar ANTES de preguntar para preguntar mejor.
 	assert.Contains(t, promptConAgentic, "BUSCÁ ANTES DE PREGUNTAR")
 }
@@ -320,6 +322,8 @@ func Test_sanitizeVisibleText(t *testing.T) {
 	assert.Equal(t, "y la hacemos más a medida.", sanitizeVisibleText("y la hacemos más a medida. }"))
 	// DEVICE_ID mal formado también se desenvuelve.
 	assert.Equal(t, "usá el Cojín dinámico", sanitizeVisibleText("usá el [DEVICE_ID:Cojín dinámico]"))
+	// CONTENT_ID (cita de fuente) se borra del texto visible: Alizia no cita fuentes.
+	assert.Equal(t, "entrar a la tarea.", sanitizeVisibleText("entrar a la tarea. [CONTENT_ID:4]"))
 }
 
 func Test_aliziaPersona_ReinforcesNoDiagnosis(t *testing.T) {

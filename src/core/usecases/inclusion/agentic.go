@@ -330,7 +330,7 @@ func inclusionTools() []providers.ToolDefinition {
 		},
 		{
 			Name:        "create_student",
-			Description: "Da de alta un alumno NUEVO en un aula (nombre + classroom_id + barrera observable opcional). Resolvé antes el aula con list_classrooms / create_classroom. Úsala SOLO después de que el docente confirme explícitamente que quiere guardarlo; NUNCA sin esa confirmación, ni para alumnos que ya reconociste con find_student_by_name. Es idempotente: si el alumno ya existe en el aula, devuelve el existente. Devuelve el alumno con su id, que después usás como [STUDENT_ID:X] y para enlazar la adaptación.",
+			Description: "Da de alta un alumno NUEVO. El aula (classroom_id) es OPCIONAL: si el docente todavía no la dijo, creá igual al alumno sin aula y pedísela después para asentarla (no es un bloqueante). Usala cuando el docente nombra a un alumno concreto y le estás armando un recurso, para dejarlo asociado; no la uses para alumnos que ya reconociste con find_student_by_name. Es idempotente por nombre: si el alumno ya existe lo devuelve (y si ahora le pasás classroom_id y no tenía aula, se la fija). Devuelve el alumno con su id, que usás como [STUDENT_ID:X] y para enlazar la adaptación. Para fijar el aula más tarde, rellamá esta tool con el mismo name + el classroom_id (resuelto con list_classrooms / create_classroom).",
 			Parameters: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -340,7 +340,7 @@ func inclusionTools() []providers.ToolDefinition {
 					},
 					"classroom_id": map[string]any{
 						"type":        "integer",
-						"description": "ID del aula donde va el alumno (de list_classrooms o create_classroom).",
+						"description": "OPCIONAL: ID del aula (de list_classrooms o create_classroom). Si todavía no la sabés, omitilo: el alumno se crea sin aula y la completás después.",
 					},
 					"preferred_name": map[string]any{
 						"type":        "string",
@@ -349,7 +349,7 @@ func inclusionTools() []providers.ToolDefinition {
 					"difficulties": map[string]any{
 						"type":        "array",
 						"items":       map[string]any{"type": "string"},
-						"description": "Opcional: barreras observables en el aula (no diagnósticos), ej. 'le cuesta sostener la atención'.",
+						"description": "Opcional: necesidades para el aprendizaje observables en el aula (no diagnósticos), ej. 'le cuesta sostener la atención'.",
 					},
 					"is_transitory": map[string]any{
 						"type":        "boolean",
@@ -360,7 +360,7 @@ func inclusionTools() []providers.ToolDefinition {
 						"description": "Opcional: descripción libre del contexto del alumno.",
 					},
 				},
-				"required": []string{"name", "classroom_id"},
+				"required": []string{"name"},
 			},
 		},
 	}
@@ -557,19 +557,50 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 		if name == "" {
 			return "", fmt.Errorf("create_student: el nombre es obligatorio")
 		}
-		if args.ClassroomID <= 0 {
-			return "", fmt.Errorf("create_student: falta el aula (classroom_id); resolvela con list_classrooms o create_classroom")
+		// El aula es OPCIONAL: el alumno se puede crear sin aula (no bloqueante). Si llega,
+		// la usamos; si no, queda nil (columna NULL) y se completa después.
+		var classroomID *int64
+		if args.ClassroomID > 0 {
+			cid := args.ClassroomID
+			classroomID = &cid
 		}
-		// Idempotente: si ya existe ese alumno (mismo nombre normalizado) en el aula,
-		// lo devolvemos en vez de duplicarlo.
-		if existing, err := d.findStudentInClassroom(ctx, orgID, args.ClassroomID, name); err != nil {
-			return "", err
-		} else if existing != nil {
+		// Idempotencia preservando el aula (que sigue siendo la categoría normal):
+		//  - Con aula: buscamos en ESA aula (findStudentInClassroom, como siempre). Si no está,
+		//    vemos si hay un alumno "sin aula" con ese nombre (creado antes) para ASENTARLE el
+		//    aula (backfill) en vez de duplicarlo.
+		//  - Sin aula: deduplicamos entre los "sin aula" por nombre.
+		var existing *entities.Student
+		var err error
+		if classroomID != nil {
+			existing, err = d.findStudentInClassroom(ctx, orgID, *classroomID, name)
+			if err != nil {
+				return "", err
+			}
+			if existing == nil {
+				unassigned, uerr := d.findUnassignedStudentByName(ctx, orgID, name)
+				if uerr != nil {
+					return "", uerr
+				}
+				if unassigned != nil {
+					unassigned.ClassroomID = classroomID
+					if err := d.students.Update(ctx, unassigned); err != nil {
+						return "", err
+					}
+					return marshalToolResult(unassigned)
+				}
+			}
+		} else {
+			existing, err = d.findUnassignedStudentByName(ctx, orgID, name)
+			if err != nil {
+				return "", err
+			}
+		}
+		if existing != nil {
 			return marshalToolResult(existing)
 		}
 		student := &entities.Student{
 			OrganizationID: orgID,
-			ClassroomID:    args.ClassroomID,
+			ClassroomID:    classroomID,
 			Name:           name,
 		}
 		if pn := strings.TrimSpace(args.PreferredName); pn != "" {
@@ -679,7 +710,10 @@ func (d inclusionDispatcher) Dispatch(ctx context.Context, orgID uuid.UUID, call
 			if !strings.Contains(norm, query) {
 				continue
 			}
-			m := studentMatch{ID: s.ID, Name: s.Name, ClassroomID: s.ClassroomID}
+			m := studentMatch{ID: s.ID, Name: s.Name}
+			if s.ClassroomID != nil {
+				m.ClassroomID = *s.ClassroomID
+			}
 			if s.GradeLevel != nil {
 				m.GradeLevel = *s.GradeLevel
 			}
@@ -764,6 +798,24 @@ func (d inclusionDispatcher) findStudentInClassroom(ctx context.Context, orgID u
 	target := normalizeName(name)
 	for i := range students {
 		if normalizeName(students[i].Name) == target {
+			return &students[i], nil
+		}
+	}
+	return nil, nil
+}
+
+// findUnassignedStudentByName busca un alumno SIN aula (ClassroomID nil) por nombre
+// normalizado en la organización. Lo usa create_student para: (a) deduplicar cuando se crea
+// sin aula, y (b) detectar un alumno creado antes sin aula para asentarle el aula después.
+// Devuelve nil si no existe.
+func (d inclusionDispatcher) findUnassignedStudentByName(ctx context.Context, orgID uuid.UUID, name string) (*entities.Student, error) {
+	students, err := d.students.List(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
+	target := normalizeName(name)
+	for i := range students {
+		if students[i].ClassroomID == nil && normalizeName(students[i].Name) == target {
 			return &students[i], nil
 		}
 	}

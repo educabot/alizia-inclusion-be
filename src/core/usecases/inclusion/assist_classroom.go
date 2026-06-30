@@ -286,12 +286,14 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	if adaptation != nil && studentID != nil {
 		adaptation.StudentID = studentID
 	}
-	// Contenido pedagógico citado este turno: el FE lo usa para resolver los chips
-	// [CONTENT_ID:X]. Sale del back (lo que trajo el RAG), no de ids del modelo.
+	// Material del corpus que tocó el RAG este turno: lo registramos para auditar
+	// (referenced_count en el log), pero NO lo exponemos al FE. Decisión de producto:
+	// Alizia no cita fuentes; la biblioteca es insumo interno y se integra con palabras
+	// propias. Por eso la respuesta no lleva referenced_content (ver más abajo).
 	referenced := contentRefsFromTrace(trace)
-	// Quitamos solo el bloque ADAPTATION_JSON (ya extraído). Los markers
-	// [STUDENT_ID:X]/[DEVICE_ID:X]/[CONTENT_ID:X] SÍ pasan: el FE los renderiza como
-	// chips (nombre/título), nunca como id crudo.
+	// Quitamos el bloque ADAPTATION_JSON (ya extraído) y, en sanitizeVisibleText, también
+	// el [CONTENT_ID:X] (cita de fuente). Pasan [STUDENT_ID:X]/[DEVICE_ID:X]: el FE los
+	// renderiza como chips (nombre del alumno/material), nunca como id crudo.
 	cleaned := sanitizeVisibleText(stripAdaptationBlock(resp.Content))
 
 	// Guardrail duro de off-ramp: si el modelo cruzó el límite clínico (afirmar un
@@ -349,7 +351,7 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 		IdentifiedStudent: studentID,
 		RecommendedDevice: deviceID,
 		Adaptation:        adaptation,
-		ReferencedContent: referenced,
+		ReferencedContent: nil, // Alizia no cita fuentes: no exponemos el material del corpus al FE.
 		Questions:         questions,
 		SourcesUsed:       newSourcesUsed(sources),
 	}, nil
