@@ -204,7 +204,8 @@ func TestAssistClassroom_AutoCreatesResourceFromAdaptationBlock(t *testing.T) {
 	var createdWith *entities.Adaptation
 	adaptations.On("Create", mock.Anything, mock.AnythingOfType("*entities.Adaptation")).
 		Run(func(args mock.Arguments) {
-			a := args.Get(1).(*entities.Adaptation)
+			a, ok := args.Get(1).(*entities.Adaptation)
+			require.True(t, ok)
 			a.ID = 100 // simula el id asignado por la BD
 			createdWith = a
 		}).Return(nil)
