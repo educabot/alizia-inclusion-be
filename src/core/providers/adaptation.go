@@ -23,6 +23,10 @@ type AdaptationFilter struct {
 	StudentID    *int64
 	TeacherID    *int64
 	CreatedAfter *time.Time
+	// SourceConversationID filtra los recursos creados desde una conversación de chat.
+	// Lo usa el assist para listar los recursos "en curso" de la conversación y que el
+	// modelo decida si los afina (update) o crea uno nuevo.
+	SourceConversationID *int64
 }
 
 type AdaptationProvider interface {

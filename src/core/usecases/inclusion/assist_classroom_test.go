@@ -190,3 +190,81 @@ func TestAssistClassroom_RecordsTokenUsageWhenPresent(t *testing.T) {
 	assert.Equal(t, "assist", captured.Mode)
 	usage.AssertExpectations(t)
 }
+
+// TestAssistClassroom_AutoCreatesResourceFromAdaptationBlock: cuando el modelo emite un
+// ADAPTATION_JSON sin id, el assist crea el recurso automáticamente con
+// SourceConversationID seteado, y devuelve el id persistido en la respuesta.
+func TestAssistClassroom_AutoCreatesResourceFromAdaptationBlock(t *testing.T) {
+	content := `Probá fragmentar la consigna. [ADAPTATION_JSON:{"title":"Fragmentar consignas","type":"estrategia_aula","strategy":"dividir en pasos","steps":[{"orden":1,"texto":"Fragmentá la consigna"}]}]`
+	ai, students, devices, conversations, usage := assistClassroomMocks(t, content, nil)
+	conversations.On("AppendTurn", mock.Anything, mock.AnythingOfType("providers.AppendTurnParams")).
+		Return(int64(42), nil)
+
+	adaptations := new(mockproviders.MockAdaptationProvider)
+	var createdWith *entities.Adaptation
+	adaptations.On("Create", mock.Anything, mock.AnythingOfType("*entities.Adaptation")).
+		Run(func(args mock.Arguments) {
+			a := args.Get(1).(*entities.Adaptation)
+			a.ID = 100 // simula el id asignado por la BD
+			createdWith = a
+		}).Return(nil)
+	adaptations.On("Get", mock.Anything, testutil.TestOrgID, int64(100)).
+		Return(&entities.Adaptation{ID: 100, Title: "Fragmentar consignas", SourceConversationID: ptrInt64(42)}, nil)
+
+	req := assistClassroomBaseRequest
+	req.UserID = 7
+
+	got, err := inclusion.NewAssistClassroom(inclusion.AssistClassroomDeps{
+		AI: ai, Students: students, Devices: devices, Conversations: conversations, Usage: usage,
+		Adaptations:      adaptations,
+		CreateAdaptation: inclusion.NewCreateAdaptation(adaptations),
+		UpdateAdaptation: inclusion.NewUpdateAdaptation(adaptations),
+	}).Execute(context.Background(), req)
+
+	require.NoError(t, err)
+	require.NotNil(t, got.Adaptation)
+	require.NotNil(t, got.Adaptation.ID)
+	assert.Equal(t, int64(100), *got.Adaptation.ID)
+	require.NotNil(t, createdWith)
+	assert.Equal(t, int64(7), createdWith.TeacherID)
+	require.NotNil(t, createdWith.SourceConversationID)
+	assert.Equal(t, int64(42), *createdWith.SourceConversationID)
+	adaptations.AssertExpectations(t)
+}
+
+// TestAssistClassroom_AutoUpdatesResourceWhenIDBelongsToConversation: si el modelo
+// devuelve un id que pertenece a un recurso de ESTA conversación, se ACTUALIZA ese
+// recurso en vez de crear uno nuevo.
+func TestAssistClassroom_AutoUpdatesResourceWhenIDBelongsToConversation(t *testing.T) {
+	content := `Ajusté el recurso. [ADAPTATION_JSON:{"id":100,"title":"Fragmentar consignas v2","type":"estrategia_aula","strategy":"dividir mejor","steps":[{"orden":1,"texto":"Fragmentá más fino"}]}]`
+	ai, students, devices, conversations, usage := assistClassroomMocks(t, content, nil)
+	conversations.On("AppendTurn", mock.Anything, mock.AnythingOfType("providers.AppendTurnParams")).
+		Return(int64(55), nil)
+
+	adaptations := new(mockproviders.MockAdaptationProvider)
+	// loadConversationResources: el recurso 100 ya existe en esta conversación.
+	adaptations.On("List", mock.Anything, mock.AnythingOfType("providers.AdaptationFilter")).
+		Return([]entities.Adaptation{{ID: 100, Title: "Fragmentar consignas", Status: "en_curso"}}, nil)
+	adaptations.On("Get", mock.Anything, testutil.TestOrgID, int64(100)).
+		Return(&entities.Adaptation{ID: 100, Title: "Fragmentar consignas"}, nil)
+	adaptations.On("Update", mock.Anything, mock.AnythingOfType("*entities.Adaptation")).Return(nil)
+	adaptations.On("SetDevices", mock.Anything, int64(100), mock.Anything).Return(nil)
+
+	req := assistClassroomBaseRequest
+	req.UserID = 7
+	req.ConversationID = 55
+
+	got, err := inclusion.NewAssistClassroom(inclusion.AssistClassroomDeps{
+		AI: ai, Students: students, Devices: devices, Conversations: conversations, Usage: usage,
+		Adaptations:      adaptations,
+		CreateAdaptation: inclusion.NewCreateAdaptation(adaptations),
+		UpdateAdaptation: inclusion.NewUpdateAdaptation(adaptations),
+	}).Execute(context.Background(), req)
+
+	require.NoError(t, err)
+	require.NotNil(t, got.Adaptation)
+	require.NotNil(t, got.Adaptation.ID)
+	assert.Equal(t, int64(100), *got.Adaptation.ID)
+	adaptations.AssertCalled(t, "Update", mock.Anything, mock.AnythingOfType("*entities.Adaptation"))
+	adaptations.AssertNotCalled(t, "Create", mock.Anything, mock.Anything)
+}

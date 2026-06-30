@@ -216,7 +216,7 @@ func Test_stripAdaptationBlock_RemovesQuestionsBlock(t *testing.T) {
 }
 
 func Test_buildAssistSystemPrompt_ContainsQuestionsBlockFormat(t *testing.T) {
-	prompt := buildAssistSystemPrompt(nil, nil, nil, false)
+	prompt := buildAssistSystemPrompt(nil, nil, nil, nil, false)
 
 	assert.Contains(t, prompt, "PREGUNTAS AL DOCENTE (bloque estructurado)")
 	assert.Contains(t, prompt, "[QUESTIONS_JSON:")
@@ -228,7 +228,7 @@ func Test_buildAssistSystemPrompt_ContainsQuestionsBlockFormat(t *testing.T) {
 func Test_buildAssistSystemPrompt_ContainsRepreguntaGate(t *testing.T) {
 	devices := []entities.Device{{ID: 1, Name: "Organizador visual"}}
 
-	prompt := buildAssistSystemPrompt(devices, nil, nil, false)
+	prompt := buildAssistSystemPrompt(devices, nil, nil, nil, false)
 
 	assert.Contains(t, prompt, "ANTES DE PROPONER")
 	assert.Contains(t, prompt, "CÓMO PREGUNTÁS")
@@ -240,7 +240,7 @@ func Test_buildAssistSystemPrompt_ContainsRepreguntaGate(t *testing.T) {
 }
 
 func Test_buildAssistSystemPrompt_ContainsFirstProposalAndWarmClose(t *testing.T) {
-	prompt := buildAssistSystemPrompt(nil, nil, nil, false)
+	prompt := buildAssistSystemPrompt(nil, nil, nil, nil, false)
 
 	assert.Contains(t, prompt, "PROPONÉ, NO INTERROGUES")
 	assert.Contains(t, prompt, "PRIMERA propuesta concreta")
@@ -248,7 +248,7 @@ func Test_buildAssistSystemPrompt_ContainsFirstProposalAndWarmClose(t *testing.T
 }
 
 func Test_buildAssistSystemPrompt_ContainsStepsFormat(t *testing.T) {
-	prompt := buildAssistSystemPrompt(nil, nil, nil, false)
+	prompt := buildAssistSystemPrompt(nil, nil, nil, nil, false)
 
 	assert.Contains(t, prompt, "FORMATO DE RESPUESTA CON PASOS")
 	assert.Contains(t, prompt, "[STEPS]")
@@ -257,18 +257,82 @@ func Test_buildAssistSystemPrompt_ContainsStepsFormat(t *testing.T) {
 }
 
 func Test_buildAssistSystemPrompt_AgenticInjectsFundamentos(t *testing.T) {
-	promptSinAgentic := buildAssistSystemPrompt(nil, nil, nil, false)
-	promptConAgentic := buildAssistSystemPrompt(nil, nil, nil, true)
+	promptSinAgentic := buildAssistSystemPrompt(nil, nil, nil, nil, false)
+	promptConAgentic := buildAssistSystemPrompt(nil, nil, nil, nil, true)
 
 	// search_content_hibrido solo existe en fundamentosRAG (agentic=true)
 	assert.NotContains(t, promptSinAgentic, "search_content_hibrido")
 	assert.Contains(t, promptConAgentic, "search_content_hibrido")
 	assert.Contains(t, promptConAgentic, "[CONTENT_ID:")
+	// Reforzamos buscar ANTES de preguntar para preguntar mejor.
+	assert.Contains(t, promptConAgentic, "BUSCÁ ANTES DE PREGUNTAR")
+}
+
+func Test_buildAssistSystemPrompt_AsksForAgeNotGrade(t *testing.T) {
+	prompt := buildAssistSystemPrompt(nil, nil, nil, nil, false)
+
+	assert.Contains(t, prompt, "¿Qué edad tiene?")
+	assert.NotContains(t, prompt, "edad o grado")
+}
+
+func Test_buildAssistSystemPrompt_AutoSavesResourceWithProposal(t *testing.T) {
+	prompt := buildAssistSystemPrompt(nil, nil, nil, nil, false)
+
+	// El recurso se guarda solo junto con la propuesta; ya NO se pide permiso.
+	assert.Contains(t, prompt, "GENERAR Y GUARDAR EL RECURSO")
+	assert.Contains(t, prompt, "se guarda solo")
+	assert.NotContains(t, prompt, "¿Querés que la guarde como recurso?")
+	assert.NotContains(t, prompt, "turno POSTERIOR")
+}
+
+func Test_buildAssistSystemPrompt_ListsConversationResourcesForUpdate(t *testing.T) {
+	resources := []entities.Adaptation{{ID: 42, Title: "Fragmentar consignas", Status: "en_curso"}}
+
+	prompt := buildAssistSystemPrompt(nil, nil, nil, resources, false)
+
+	assert.Contains(t, prompt, "RECURSOS YA GUARDADOS EN ESTA CONVERSACIÓN")
+	assert.Contains(t, prompt, "[REC_ID:42]")
+	assert.Contains(t, prompt, "Fragmentar consignas")
+	// Instrucción de update-vs-create por id.
+	assert.Contains(t, prompt, `campo "id"`)
+}
+
+func Test_extractAdaptationJSON_ParsesID(t *testing.T) {
+	withID := `[ADAPTATION_JSON:{"id":42,"title":"t","type":"estrategia_aula","strategy":"s","steps":[{"orden":1,"texto":"x"}]}]`
+	withoutID := `[ADAPTATION_JSON:{"title":"t","type":"estrategia_aula","strategy":"s"}]`
+
+	got := extractAdaptationJSON(withID)
+	require.NotNil(t, got)
+	require.NotNil(t, got.ID)
+	assert.Equal(t, int64(42), *got.ID)
+
+	none := extractAdaptationJSON(withoutID)
+	require.NotNil(t, none)
+	assert.Nil(t, none.ID)
+}
+
+func Test_sanitizeVisibleText(t *testing.T) {
+	// Marker mal formado (nombre, no id): se desenvuelve al texto interno.
+	assert.Equal(t, "en grupales a María se mueve", sanitizeVisibleText("en grupales a [STUDENT_ID:María] se mueve"))
+	// Marker numérico válido: se conserva para que el FE lo renderice como chip.
+	assert.Equal(t, "trabajá con [STUDENT_ID:7] así", sanitizeVisibleText("trabajá con [STUDENT_ID:7] así"))
+	// Llave huérfana de un bloque JSON mal cerrado: se quita.
+	assert.Equal(t, "y la hacemos más a medida.", sanitizeVisibleText("y la hacemos más a medida. }"))
+	// DEVICE_ID mal formado también se desenvuelve.
+	assert.Equal(t, "usá el Cojín dinámico", sanitizeVisibleText("usá el [DEVICE_ID:Cojín dinámico]"))
 }
 
 func Test_aliziaPersona_ReinforcesNoDiagnosis(t *testing.T) {
 	assert.Contains(t, aliziaPersona, "No diagnosticás ni insinuás un diagnóstico")
 	assert.Contains(t, aliziaPersona, "No abrís con empatía en abstracto ni con soluciones genéricas")
+}
+
+// El alumno nunca se enmarca como una molestia a contener/reubicar: el objetivo es la
+// participación, no "que moleste menos". Encuadre inclusivo, no de gestión de la disrupción.
+func Test_aliziaPersona_RejectsNuisanceFraming(t *testing.T) {
+	assert.Contains(t, aliziaPersona, `que moleste menos`)
+	assert.Contains(t, aliziaPersona, "participar y aprender")
+	assert.Contains(t, aliziaPersona, "no de evitar que")
 }
 
 func Test_buildRecommendSystemPrompt_ContainsDeviceInfo(t *testing.T) {

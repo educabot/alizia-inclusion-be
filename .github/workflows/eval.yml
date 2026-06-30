@@ -1,0 +1,51 @@
+name: Eval (tool-calling)
+
+# Eval de comportamiento del modelo real contra Azure (gpt-5.4): verifica que ante
+# inputs que deberían disparar búsqueda, el modelo SÍ llama la tool correcta.
+# NO bloquea PRs (es su propio workflow): corre de noche y a demanda. Cuesta tokens y
+# es no-determinístico, por eso usa pass-rate (EVAL_THRESHOLD) y reintentos (EVAL_RUNS).
+#
+# Requiere cargar estos secrets en el repo (Settings → Secrets → Actions):
+#   AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT
+#   (opcionales) AZURE_OPENAI_MODEL, AZURE_OPENAI_API_VERSION
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # 06:00 UTC ~ 03:00 ART, todos los días
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: "Corridas por caso (EVAL_RUNS)"
+        required: false
+        default: "3"
+      threshold:
+        description: "Pass-rate mínimo 0..1 (EVAL_THRESHOLD)"
+        required: false
+        default: "0.5"
+
+permissions:
+  contents: read
+
+env:
+  GOPRIVATE: github.com/educabot/*
+
+jobs:
+  eval:
+    name: Eval tool-calling
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: "1.26.1"
+      - name: Configure private modules
+        run: git config --global url."https://x-token:${{ secrets.GH_PAT }}@github.com/educabot/".insteadOf "https://github.com/educabot/"
+      - name: Run eval
+        run: make eval
+        env:
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_MODEL: ${{ secrets.AZURE_OPENAI_MODEL }}
+          AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
+          EVAL_RUNS: ${{ github.event.inputs.runs || '3' }}
+          EVAL_THRESHOLD: ${{ github.event.inputs.threshold || '0.5' }}
