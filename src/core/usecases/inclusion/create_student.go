@@ -10,17 +10,16 @@ import (
 )
 
 type CreateStudentRequest struct {
-	OrgID       uuid.UUID
-	ClassroomID int64
+	OrgID uuid.UUID
+	// ClassroomID es opcional: el alumno se puede crear sin aula (no bloqueante). El aula
+	// se completa después con UpdateStudent. nil => sin aula.
+	ClassroomID *int64
 	Name        string
 }
 
 func (r CreateStudentRequest) Validate() error {
 	if r.OrgID == uuid.Nil {
 		return errOrgIDRequired
-	}
-	if r.ClassroomID <= 0 {
-		return errClassroomIDRequired
 	}
 	if r.Name == "" {
 		return errNameRequired

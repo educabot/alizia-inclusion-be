@@ -13,7 +13,7 @@ import (
 
 type createStudentBody struct {
 	Name        string `json:"name"`
-	ClassroomID int64  `json:"classroom_id"`
+	ClassroomID *int64 `json:"classroom_id"`
 }
 
 type updateStudentBody struct {

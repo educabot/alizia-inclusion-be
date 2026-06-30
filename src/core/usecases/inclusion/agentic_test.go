@@ -25,7 +25,7 @@ func TestRunAgenticChat_ReturnsPlainChatResponseWhenNoToolsProvided(t *testing.T
 		Return(&providers.ChatResponse{Content: "hola"}, nil)
 	msgs := []providers.ChatMessage{{Role: "user", Content: "hola"}}
 
-	resp, _, err := runAgenticChat(ctx, ai, msgs, nil, inclusionDispatcher{}, orgID, maxAgenticIterations)
+	resp, _, err := runAgenticChat(ctx, ai, msgs, nil, inclusionDispatcher{}, orgID, maxAgenticIterations, false)
 
 	require.NoError(t, err)
 	assert.Equal(t, "hola", resp.Content)
@@ -61,7 +61,7 @@ func TestRunAgenticChat_ExecutesToolThenReturnsTheFinalAnswer(t *testing.T) {
 	dispatcher := inclusionDispatcher{devices: devices}
 	msgs := []providers.ChatMessage{{Role: "user", Content: "que dispositivo uso?"}}
 
-	resp, _, err := runAgenticChat(ctx, ai, msgs, inclusionTools(), dispatcher, orgID, maxAgenticIterations)
+	resp, _, err := runAgenticChat(ctx, ai, msgs, inclusionTools(), dispatcher, orgID, maxAgenticIterations, false)
 
 	require.NoError(t, err)
 	assert.Equal(t, "Te recomiendo el Timer Visual", resp.Content)
@@ -101,7 +101,7 @@ func TestRunAgenticChat_FeedsErrorResultBackWhenToolFails(t *testing.T) {
 	dispatcher := inclusionDispatcher{devices: devices}
 	msgs := []providers.ChatMessage{{Role: "user", Content: "dispositivos?"}}
 
-	resp, _, err := runAgenticChat(ctx, ai, msgs, inclusionTools(), dispatcher, orgID, maxAgenticIterations)
+	resp, _, err := runAgenticChat(ctx, ai, msgs, inclusionTools(), dispatcher, orgID, maxAgenticIterations, false)
 
 	require.NoError(t, err, "loop must not abort on tool error")
 	assert.Equal(t, "lo siento", resp.Content)
@@ -131,10 +131,66 @@ func TestRunAgenticChat_ForcesFinalAnswerWhenIterationBudgetExhausted(t *testing
 	dispatcher := inclusionDispatcher{devices: devices}
 	msgs := []providers.ChatMessage{{Role: "user", Content: "loop"}}
 
-	resp, _, err := runAgenticChat(ctx, ai, msgs, inclusionTools(), dispatcher, orgID, 2)
+	resp, _, err := runAgenticChat(ctx, ai, msgs, inclusionTools(), dispatcher, orgID, 2, false)
 
 	require.NoError(t, err)
 	assert.Equal(t, "respuesta forzada", resp.Content)
+	ai.AssertExpectations(t)
+}
+
+// Red de seguridad RAG: si el modelo propone (bloque [STEPS]/[ADAPTATION_JSON]) sin haber
+// llamado nunca a search_content_hibrido, el loop inyecta un mensaje que lo obliga a buscar
+// y vuelve a consultar. requireSearchBeforeProposal=true (como en AssistClassroom).
+func TestRunAgenticChat_ForcesSearchWhenProposalWithoutRAG(t *testing.T) {
+	ctx := context.Background()
+	orgID := uuid.New()
+	var secondTurnMsgs []providers.ChatMessage
+
+	ai := new(mockproviders.MockAIClient)
+	// 1) El modelo cierra con una propuesta sin haber buscado.
+	ai.On("ChatWithTools", ctx, mock.AnythingOfType("[]providers.ChatMessage"), mock.AnythingOfType("[]providers.ToolDefinition")).
+		Return(&providers.ChatResponse{Content: "Acá van los pasos:\n[STEPS]\n1. Anticipá la consigna.\n[/STEPS]"}, nil).Once()
+	// 2) Tras el empujón de la red de seguridad, vuelve a consultarse (capturamos los mensajes).
+	ai.On("ChatWithTools", ctx, mock.AnythingOfType("[]providers.ChatMessage"), mock.AnythingOfType("[]providers.ToolDefinition")).
+		Run(func(args mock.Arguments) {
+			msgs, ok := args.Get(1).([]providers.ChatMessage)
+			require.True(t, ok)
+			secondTurnMsgs = msgs
+		}).
+		Return(&providers.ChatResponse{Content: "ok"}, nil).Once()
+
+	msgs := []providers.ChatMessage{{Role: "user", Content: "se mueve mucho en clase"}}
+
+	resp, _, err := runAgenticChat(ctx, ai, msgs, inclusionTools(), inclusionDispatcher{}, orgID, maxAgenticIterations, true)
+
+	require.NoError(t, err)
+	assert.Equal(t, "ok", resp.Content)
+	var sawForce bool
+	for _, m := range secondTurnMsgs {
+		if m.Role == "user" && strings.Contains(m.Content, "search_content_hibrido") {
+			sawForce = true
+		}
+	}
+	assert.True(t, sawForce, "la red de seguridad debía inyectar un mensaje que fuerce la búsqueda")
+	ai.AssertExpectations(t)
+}
+
+// Sin requireSearchBeforeProposal, una propuesta sin búsqueda se devuelve tal cual (no se
+// fuerza nada): el mecanismo es opt-in por usecase.
+func TestRunAgenticChat_DoesNotForceSearchWhenFlagOff(t *testing.T) {
+	ctx := context.Background()
+	orgID := uuid.New()
+
+	ai := new(mockproviders.MockAIClient)
+	ai.On("ChatWithTools", ctx, mock.AnythingOfType("[]providers.ChatMessage"), mock.AnythingOfType("[]providers.ToolDefinition")).
+		Return(&providers.ChatResponse{Content: "[STEPS]\n1. x\n[/STEPS]"}, nil).Once()
+
+	msgs := []providers.ChatMessage{{Role: "user", Content: "dame pasos"}}
+
+	resp, _, err := runAgenticChat(ctx, ai, msgs, inclusionTools(), inclusionDispatcher{}, orgID, maxAgenticIterations, false)
+
+	require.NoError(t, err)
+	assert.Contains(t, resp.Content, "[STEPS]")
 	ai.AssertExpectations(t)
 }
 
@@ -165,9 +221,10 @@ func TestInclusionDispatcher_CreateStudentCreatesInClassroomWithProfile(t *testi
 	students := new(mockproviders.MockStudentProvider)
 	profiles := new(mockproviders.MockStudentProfileProvider)
 
-	// El aula viene en los argumentos del modelo (classroom_id). Sin alumnos previos
-	// en el aula → no es duplicado → da de alta.
+	// Con aula: busca en esa aula (vacía) y luego entre los "sin aula" (vacío) → no es
+	// duplicado → da de alta con el aula.
 	students.On("ListByClassroom", ctx, orgID, int64(9)).Return([]entities.Student{}, nil)
+	students.On("List", ctx, orgID).Return([]entities.Student{}, nil)
 	students.On("Create", ctx, mock.AnythingOfType("*entities.Student")).
 		Return(nil).
 		Run(func(args mock.Arguments) {
@@ -188,7 +245,8 @@ func TestInclusionDispatcher_CreateStudentCreatesInClassroomWithProfile(t *testi
 	var got entities.Student
 	require.NoError(t, json.Unmarshal([]byte(result), &got))
 	assert.Equal(t, int64(42), got.ID)
-	assert.Equal(t, int64(9), got.ClassroomID)
+	require.NotNil(t, got.ClassroomID)
+	assert.Equal(t, int64(9), *got.ClassroomID)
 	assert.Equal(t, "Lucas Pérez", got.Name)
 	require.NotNil(t, got.Profile)
 	assert.Equal(t, []string{"le cuesta sostener la atención"}, []string(got.Profile.Difficulties))
@@ -196,15 +254,15 @@ func TestInclusionDispatcher_CreateStudentCreatesInClassroomWithProfile(t *testi
 	profiles.AssertExpectations(t)
 }
 
-// Idempotencia: si ya existe un alumno con el mismo nombre (normalizado) en el aula,
-// create_student devuelve el existente sin volver a crearlo.
+// Idempotencia dentro del aula (comportamiento de siempre): si ya existe un alumno con el
+// mismo nombre (normalizado) en ESA aula, create_student devuelve el existente sin recrearlo.
 func TestInclusionDispatcher_CreateStudentIsIdempotentWithinClassroom(t *testing.T) {
 	ctx := context.Background()
 	orgID := uuid.New()
 	students := new(mockproviders.MockStudentProvider)
 
 	students.On("ListByClassroom", ctx, orgID, int64(9)).
-		Return([]entities.Student{{ID: 7, Name: "Lucas Pérez", ClassroomID: 9}}, nil)
+		Return([]entities.Student{{ID: 7, Name: "Lucas Pérez", ClassroomID: int64Ptr(9)}}, nil)
 
 	d := inclusionDispatcher{students: students}
 
@@ -220,16 +278,70 @@ func TestInclusionDispatcher_CreateStudentIsIdempotentWithinClassroom(t *testing
 	students.AssertNotCalled(t, "Create", mock.Anything, mock.Anything)
 }
 
-func TestInclusionDispatcher_CreateStudentRequiresClassroom(t *testing.T) {
-	d := inclusionDispatcher{}
+// El aula es opcional: create_student sin classroom_id crea al alumno SIN aula (no
+// bloqueante). Idempotencia por nombre exacto global (usa List, no ListByClassroom).
+func TestInclusionDispatcher_CreateStudentWithoutClassroom(t *testing.T) {
+	ctx := context.Background()
+	orgID := uuid.New()
+	students := new(mockproviders.MockStudentProvider)
 
-	_, err := d.Dispatch(context.Background(), uuid.New(), providers.ToolCall{
+	// Búsqueda global por nombre: no existe → da de alta.
+	students.On("List", ctx, orgID).Return([]entities.Student{}, nil)
+	students.On("Create", ctx, mock.AnythingOfType("*entities.Student")).
+		Return(nil).
+		Run(func(args mock.Arguments) {
+			s, ok := args.Get(1).(*entities.Student)
+			require.True(t, ok)
+			s.ID = 43
+		})
+
+	d := inclusionDispatcher{students: students}
+
+	result, err := d.Dispatch(ctx, orgID, providers.ToolCall{
 		Name:      "create_student",
-		Arguments: `{"name":"Lucas"}`,
+		Arguments: `{"name":"Camila"}`,
 	})
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "aula")
+	require.NoError(t, err)
+	var got entities.Student
+	require.NoError(t, json.Unmarshal([]byte(result), &got))
+	assert.Equal(t, int64(43), got.ID)
+	assert.Nil(t, got.ClassroomID, "sin aula => ClassroomID nil")
+	students.AssertExpectations(t)
+}
+
+// "Asentar" el aula después: si el alumno existe SIN aula y ahora llega classroom_id,
+// create_student le fija el aula (Update) sin duplicarlo. El aula no estaba en el aula 9
+// (ListByClassroom vacío), pero sí entre los "sin aula" (List).
+func TestInclusionDispatcher_CreateStudentBackfillsClassroom(t *testing.T) {
+	ctx := context.Background()
+	orgID := uuid.New()
+	students := new(mockproviders.MockStudentProvider)
+
+	students.On("ListByClassroom", ctx, orgID, int64(9)).Return([]entities.Student{}, nil)
+	students.On("List", ctx, orgID).
+		Return([]entities.Student{{ID: 7, Name: "Camila", ClassroomID: nil}}, nil)
+	students.On("Update", ctx, mock.AnythingOfType("*entities.Student")).
+		Return(nil).
+		Run(func(args mock.Arguments) {
+			s, ok := args.Get(1).(*entities.Student)
+			require.True(t, ok)
+			require.NotNil(t, s.ClassroomID)
+			assert.Equal(t, int64(9), *s.ClassroomID)
+		})
+
+	d := inclusionDispatcher{students: students}
+
+	result, err := d.Dispatch(ctx, orgID, providers.ToolCall{
+		Name:      "create_student",
+		Arguments: `{"name":"Camila","classroom_id":9}`,
+	})
+
+	require.NoError(t, err)
+	var got entities.Student
+	require.NoError(t, json.Unmarshal([]byte(result), &got))
+	assert.Equal(t, int64(7), got.ID)
+	students.AssertNotCalled(t, "Create", mock.Anything, mock.Anything)
 }
 
 func TestInclusionDispatcher_CreateStudentRejectsEmptyName(t *testing.T) {
@@ -250,8 +362,8 @@ func TestInclusionDispatcher_FindStudentByNameMatchesNormalized(t *testing.T) {
 	orgID := uuid.New()
 	students := new(mockproviders.MockStudentProvider)
 	students.On("List", ctx, orgID).Return([]entities.Student{
-		{ID: 1, Name: "Lucas Pérez", ClassroomID: 9},
-		{ID: 2, Name: "Martina Gómez", ClassroomID: 9},
+		{ID: 1, Name: "Lucas Pérez", ClassroomID: int64Ptr(9)},
+		{ID: 2, Name: "Martina Gómez", ClassroomID: int64Ptr(9)},
 	}, nil)
 	d := inclusionDispatcher{students: students}
 

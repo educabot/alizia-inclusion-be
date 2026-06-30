@@ -38,6 +38,9 @@ func (r *adaptationRepo) List(ctx context.Context, filter providers.AdaptationFi
 	if filter.CreatedAfter != nil {
 		q = q.Where("created_at >= ?", *filter.CreatedAfter)
 	}
+	if filter.SourceConversationID != nil {
+		q = q.Where("source_conversation_id = ?", *filter.SourceConversationID)
+	}
 	err := q.Order("created_at DESC").Find(&adaptations).Error
 	if err != nil {
 		return nil, err

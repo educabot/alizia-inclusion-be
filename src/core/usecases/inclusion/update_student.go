@@ -52,7 +52,7 @@ func (uc *updateStudentImpl) Execute(ctx context.Context, req UpdateStudentReque
 		existing.Name = *req.Name
 	}
 	if req.ClassroomID != nil {
-		existing.ClassroomID = *req.ClassroomID
+		existing.ClassroomID = req.ClassroomID
 	}
 
 	if err := uc.students.Update(ctx, existing); err != nil {

@@ -42,3 +42,6 @@ production/
 
 # go test tmp (Application Control workaround)
 .gotmp/
+
+# Build output binary
+/alizia-inclusion-api

@@ -44,7 +44,7 @@ func NewStudent(id, classroomID int64, name string) entities.Student {
 	return entities.Student{
 		ID:             id,
 		OrganizationID: TestOrgID,
-		ClassroomID:    classroomID,
+		ClassroomID:    &classroomID,
 		Name:           name,
 		TimeTrackedEntity: entities.TimeTrackedEntity{
 			CreatedAt: time.Now(),
