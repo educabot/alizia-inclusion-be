@@ -128,7 +128,7 @@ func (uc *recommendDeviceImpl) persistTurn(ctx context.Context, req RecommendDev
 		metadata["adaptation"] = adaptation
 	}
 	studentIDCopy := req.StudentID
-	return uc.conversations.AppendTurn(ctx, providers.AppendTurnParams{
+	result, err := uc.conversations.AppendTurn(ctx, providers.AppendTurnParams{
 		ConversationID:   req.ConversationID,
 		OrgID:            req.OrgID,
 		UserID:           req.UserID,
@@ -138,4 +138,5 @@ func (uc *recommendDeviceImpl) persistTurn(ctx context.Context, req RecommendDev
 		AssistantContent: assistantContent,
 		Metadata:         metadata,
 	})
+	return result.ConversationID, err
 }

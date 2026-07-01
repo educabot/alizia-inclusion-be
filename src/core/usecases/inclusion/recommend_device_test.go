@@ -145,7 +145,7 @@ func TestRecommendDevice_PersistsTurnWithMetadataWhenUserIDPresent(t *testing.T)
 			require.True(t, ok)
 			captured = p
 		}).
-		Return(int64(99), nil)
+		Return(providers.AppendTurnResult{ConversationID: 99, AssistantMessageID: 990}, nil)
 	req := baseRecommendRequest
 	req.UserID = 5
 

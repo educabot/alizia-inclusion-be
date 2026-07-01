@@ -23,9 +23,9 @@ func (m *MockConversationProvider) ListByUser(ctx context.Context, orgID uuid.UU
 	return args.Get(0).([]entities.Conversation), args.Error(1)
 }
 
-func (m *MockConversationProvider) AppendTurn(ctx context.Context, params providers.AppendTurnParams) (int64, error) {
+func (m *MockConversationProvider) AppendTurn(ctx context.Context, params providers.AppendTurnParams) (providers.AppendTurnResult, error) {
 	args := m.Called(ctx, params)
-	return args.Get(0).(int64), args.Error(1)
+	return args.Get(0).(providers.AppendTurnResult), args.Error(1)
 }
 
 func (m *MockConversationProvider) Delete(ctx context.Context, orgID uuid.UUID, id int64) error {

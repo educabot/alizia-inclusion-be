@@ -50,6 +50,9 @@ type UseCases struct {
 	GetChatHistory          inclusionuc.GetChatHistory
 	DeleteConversation      inclusionuc.DeleteConversation
 	RenameConversation      inclusionuc.RenameConversation
+	SubmitMessageFeedback   inclusionuc.SubmitMessageFeedback
+	DeleteMessageFeedback   inclusionuc.DeleteMessageFeedback
+	ListMessageFeedback     inclusionuc.ListMessageFeedback
 
 	GetMetrics dashuc.GetMetrics
 	GetAIUsage dashuc.GetAIUsage
@@ -118,6 +121,9 @@ func NewUseCases(repos *Repositories, cfg *config.Config) *UseCases {
 		GetChatHistory:          inclusionuc.NewGetChatHistory(repos.Conversations),
 		DeleteConversation:      inclusionuc.NewDeleteConversation(repos.Conversations),
 		RenameConversation:      inclusionuc.NewRenameConversation(repos.Conversations),
+		SubmitMessageFeedback:   inclusionuc.NewSubmitMessageFeedback(repos.MessageFeedback),
+		DeleteMessageFeedback:   inclusionuc.NewDeleteMessageFeedback(repos.MessageFeedback),
+		ListMessageFeedback:     inclusionuc.NewListMessageFeedback(repos.MessageFeedback),
 
 		GetMetrics: dashuc.NewGetMetrics(repos.Students, repos.Adaptations, repos.Classrooms),
 		GetAIUsage: dashuc.NewGetAIUsage(repos.AIUsage),

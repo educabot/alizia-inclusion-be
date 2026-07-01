@@ -45,6 +45,9 @@ func NewHandlers(uc *UseCases, cfg *config.Config) *entrypoints.WebHandlerContai
 			GetChatHistory:           uc.GetChatHistory,
 			DeleteConversation:       uc.DeleteConversation,
 			RenameConversation:       uc.RenameConversation,
+			SubmitMessageFeedback:    uc.SubmitMessageFeedback,
+			DeleteMessageFeedback:    uc.DeleteMessageFeedback,
+			ListMessageFeedback:      uc.ListMessageFeedback,
 		},
 		Management: &entrypoints.ManagementContainer{
 			ListClassrooms:  uc.ListClassrooms,

@@ -21,6 +21,8 @@ type conversationResponse struct {
 }
 
 type conversationMsgResponse struct {
+	// ID es el id persistido del mensaje; el FE lo usa para anclar el feedback.
+	ID        int64  `json:"id"`
 	Role      string `json:"role"`
 	Content   string `json:"content"`
 	CreatedAt string `json:"created_at"`
@@ -30,6 +32,7 @@ func mapConversation(c entities.Conversation) conversationResponse {
 	msgs := make([]conversationMsgResponse, len(c.Messages))
 	for i, m := range c.Messages {
 		msgs[i] = conversationMsgResponse{
+			ID:        m.ID,
 			Role:      m.Role,
 			Content:   m.Content,
 			CreatedAt: m.CreatedAt.Format(time.RFC3339),
