@@ -128,7 +128,7 @@ func TestAssistClassroom_PersistsTurnWhenUserIDPresent(t *testing.T) {
 			require.True(t, ok)
 			captured = p
 		}).
-		Return(int64(42), nil)
+		Return(providers.AppendTurnResult{ConversationID: 42, AssistantMessageID: 420}, nil)
 	req := assistClassroomBaseRequest
 	req.UserID = 7
 
@@ -137,6 +137,7 @@ func TestAssistClassroom_PersistsTurnWhenUserIDPresent(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, int64(42), got.ConversationID)
+	assert.Equal(t, int64(420), got.MessageID)
 	assert.Equal(t, int64(7), captured.UserID)
 	assert.Equal(t, assistClassroomBaseRequest.Message, captured.UserContent)
 	conversations.AssertExpectations(t)
@@ -169,7 +170,7 @@ func TestAssistClassroom_RecordsTokenUsageWhenPresent(t *testing.T) {
 			Usage:   &providers.TokenUsage{PromptTokens: 10, CompletionTokens: 5, TotalTokens: 15},
 		}, nil)
 	conversations.On("AppendTurn", mock.Anything, mock.AnythingOfType("providers.AppendTurnParams")).
-		Return(int64(1), nil)
+		Return(providers.AppendTurnResult{ConversationID: 1, AssistantMessageID: 10}, nil)
 	var captured providers.AIUsageRecord
 	usage.On("Record", mock.Anything, mock.AnythingOfType("providers.AIUsageRecord")).
 		Run(func(args mock.Arguments) {
@@ -198,7 +199,7 @@ func TestAssistClassroom_AutoCreatesResourceFromAdaptationBlock(t *testing.T) {
 	content := `Probá fragmentar la consigna. [ADAPTATION_JSON:{"title":"Fragmentar consignas","type":"estrategia_aula","strategy":"dividir en pasos","steps":[{"orden":1,"texto":"Fragmentá la consigna"}]}]`
 	ai, students, devices, conversations, usage := assistClassroomMocks(t, content, nil)
 	conversations.On("AppendTurn", mock.Anything, mock.AnythingOfType("providers.AppendTurnParams")).
-		Return(int64(42), nil)
+		Return(providers.AppendTurnResult{ConversationID: 42, AssistantMessageID: 420}, nil)
 
 	adaptations := new(mockproviders.MockAdaptationProvider)
 	var createdWith *entities.Adaptation
@@ -240,7 +241,7 @@ func TestAssistClassroom_AutoUpdatesResourceWhenIDBelongsToConversation(t *testi
 	content := `Ajusté el recurso. [ADAPTATION_JSON:{"id":100,"title":"Fragmentar consignas v2","type":"estrategia_aula","strategy":"dividir mejor","steps":[{"orden":1,"texto":"Fragmentá más fino"}]}]`
 	ai, students, devices, conversations, usage := assistClassroomMocks(t, content, nil)
 	conversations.On("AppendTurn", mock.Anything, mock.AnythingOfType("providers.AppendTurnParams")).
-		Return(int64(55), nil)
+		Return(providers.AppendTurnResult{ConversationID: 55, AssistantMessageID: 550}, nil)
 
 	adaptations := new(mockproviders.MockAdaptationProvider)
 	// loadConversationResources: el recurso 100 ya existe en esta conversación.

@@ -101,8 +101,9 @@ func (r *conversationRepo) Rename(ctx context.Context, orgID uuid.UUID, id int64
 	return nil
 }
 
-func (r *conversationRepo) AppendTurn(ctx context.Context, params providers.AppendTurnParams) (int64, error) {
+func (r *conversationRepo) AppendTurn(ctx context.Context, params providers.AppendTurnParams) (providers.AppendTurnResult, error) {
 	var convID int64
+	var assistantMsgID int64
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if params.ConversationID == 0 {
 			conv := entities.Conversation{
@@ -154,10 +155,12 @@ func (r *conversationRepo) AppendTurn(ctx context.Context, params providers.Appe
 		if err := tx.Create(&msgs).Error; err != nil {
 			return fmt.Errorf("create messages: %w", err)
 		}
+		// msgs[1] es el mensaje del asistente; GORM le pobló el id tras el Create.
+		assistantMsgID = msgs[1].ID
 		return nil
 	})
 	if err != nil {
-		return 0, err
+		return providers.AppendTurnResult{}, err
 	}
-	return convID, nil
+	return providers.AppendTurnResult{ConversationID: convID, AssistantMessageID: assistantMsgID}, nil
 }

@@ -77,6 +77,11 @@ func ConfigureMappings(engine *gin.Engine, h *entrypoints.WebHandlerContainer, c
 	api.DELETE("/chat/conversation/:id", webgin.Adapt(h.Inclusion.HandleDeleteConversation))
 	api.PATCH("/chat/conversation/:id", webgin.Adapt(h.Inclusion.HandleRenameConversation))
 
+	// Feedback de mensajes (manito arriba/abajo + comentario). Revisión interna.
+	api.POST("/chat/messages/:messageId/feedback", webgin.Adapt(h.Inclusion.HandleSubmitMessageFeedback))
+	api.DELETE("/chat/messages/:messageId/feedback", webgin.Adapt(h.Inclusion.HandleDeleteMessageFeedback))
+	api.GET("/chat/feedback", webgin.Adapt(h.Inclusion.HandleListMessageFeedback))
+
 	// Dashboard
 	api.GET("/dashboard/metrics", webgin.Adapt(h.Dashboard.HandleGetMetrics))
 	api.GET("/dashboard/ai-usage", webgin.Adapt(h.Dashboard.HandleGetAIUsage))

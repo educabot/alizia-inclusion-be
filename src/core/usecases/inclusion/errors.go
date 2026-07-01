@@ -25,4 +25,6 @@ var (
 	errQuestionRequired       = fmt.Errorf("%w: semantic_question is required", providers.ErrValidation)
 	errContentRequired        = fmt.Errorf("%w: content is required", providers.ErrValidation)
 	errInvalidNoteType        = fmt.Errorf("%w: type must be one of: diagnostico, observable, seguimiento", providers.ErrValidation)
+	errMessageIDRequired      = fmt.Errorf("%w: message_id is required", providers.ErrValidation)
+	errInvalidRating          = fmt.Errorf("%w: rating must be one of: like, dislike", providers.ErrValidation)
 )

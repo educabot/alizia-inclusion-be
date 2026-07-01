@@ -31,4 +31,7 @@ type InclusionContainer struct {
 	GetChatHistory          inclusionuc.GetChatHistory
 	DeleteConversation      inclusionuc.DeleteConversation
 	RenameConversation      inclusionuc.RenameConversation
+	SubmitMessageFeedback   inclusionuc.SubmitMessageFeedback
+	DeleteMessageFeedback   inclusionuc.DeleteMessageFeedback
+	ListMessageFeedback     inclusionuc.ListMessageFeedback
 }

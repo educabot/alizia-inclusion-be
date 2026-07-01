@@ -59,6 +59,9 @@ type ContentRef struct {
 type AssistClassroomResponse struct {
 	Response          string               `json:"response"`
 	ConversationID    int64                `json:"conversation_id"`
+	// MessageID es el id persistido del mensaje del asistente de este turno. El FE
+	// lo usa para anclar el feedback (manito arriba/abajo). 0 si no se persistió.
+	MessageID int64 `json:"message_id"`
 	IdentifiedStudent *int64               `json:"identified_student,omitempty"`
 	RecommendedDevice *int64               `json:"recommended_device,omitempty"`
 	Adaptation        *GeneratedAdaptation `json:"adaptation,omitempty"`
@@ -311,10 +314,11 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 		questions = nil
 	}
 
-	convID, persistErr := uc.persistTurn(ctx, req, cleaned, studentID, deviceID, adaptation)
+	convID, assistantMsgID, persistErr := uc.persistTurn(ctx, req, cleaned, studentID, deviceID, adaptation)
 	if persistErr != nil {
 		slog.WarnContext(ctx, "assist_classroom: persist turn failed", "error", persistErr, "user_id", req.UserID, "mode", req.Mode)
 		convID = req.ConversationID
+		assistantMsgID = 0
 	}
 
 	// Auto-persistencia del recurso: si el modelo emitió un ADAPTATION_JSON, lo creamos
@@ -348,6 +352,7 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	return &AssistClassroomResponse{
 		Response:          cleaned,
 		ConversationID:    convID,
+		MessageID:         assistantMsgID,
 		IdentifiedStudent: studentID,
 		RecommendedDevice: deviceID,
 		Adaptation:        adaptation,
@@ -357,9 +362,9 @@ func (uc *assistClassroomImpl) Execute(ctx context.Context, req AssistClassroomR
 	}, nil
 }
 
-func (uc *assistClassroomImpl) persistTurn(ctx context.Context, req AssistClassroomRequest, assistantContent string, studentID, deviceID *int64, adaptation *GeneratedAdaptation) (int64, error) {
+func (uc *assistClassroomImpl) persistTurn(ctx context.Context, req AssistClassroomRequest, assistantContent string, studentID, deviceID *int64, adaptation *GeneratedAdaptation) (convID, assistantMsgID int64, err error) {
 	if uc.deps.Conversations == nil || req.UserID == 0 {
-		return req.ConversationID, nil
+		return req.ConversationID, 0, nil
 	}
 	mode := req.Mode
 	if mode == "" {
@@ -375,7 +380,7 @@ func (uc *assistClassroomImpl) persistTurn(ctx context.Context, req AssistClassr
 	if adaptation != nil {
 		metadata["adaptation"] = adaptation
 	}
-	return uc.deps.Conversations.AppendTurn(ctx, providers.AppendTurnParams{
+	result, err := uc.deps.Conversations.AppendTurn(ctx, providers.AppendTurnParams{
 		ConversationID:   req.ConversationID,
 		OrgID:            req.OrgID,
 		UserID:           req.UserID,
@@ -385,6 +390,7 @@ func (uc *assistClassroomImpl) persistTurn(ctx context.Context, req AssistClassr
 		AssistantContent: assistantContent,
 		Metadata:         metadata,
 	})
+	return result.ConversationID, result.AssistantMessageID, err
 }
 
 // loadConversationResources lista los recursos ya guardados en la conversación, para
